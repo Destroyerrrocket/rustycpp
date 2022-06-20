@@ -1,0 +1,103 @@
+use crate::grammars::defineast::{*};
+use crate::utils::pretoken::PreToken;
+use crate::utils::pretoken::PreToken::{*};
+use crate::utils::pretoken::PreprocessingOperator;
+
+grammar;
+
+pub DefineStmt = <Define>;
+
+Define: DefineAst = {
+	WhiteCom* <i:Ident> WhiteCom+ <rl:ReplacementList> Newline? => DefineAst::Define(i, None, IsVariadic::False, rl),
+	WhiteCom* <i:Ident> <par:Param> WhiteCom* <rl:ReplacementList> Newline? => DefineAst::Define(i, Some(par.0), par.1, rl),
+};
+
+CommaList: (Vec<String>, IsVariadic) = {
+   WhiteCom* <e:Ident> <mut v:(WhiteCom* Comma WhiteCom* <Ident>)*>  <dot:(WhiteCom* Comma WhiteCom* (<Ident>)? ThreeDot)?> WhiteCom* => {v.insert(0, e); (v, if dot.is_some() {IsVariadic::True(dot.unwrap().3.unwrap_or("".to_string()))} else {IsVariadic::False})},
+   WhiteCom* <idDot:(<Ident>)?> ThreeDot WhiteCom* => (vec!(), IsVariadic::True(idDot.unwrap_or("".to_string()))),
+   WhiteCom* => (vec!(), IsVariadic::False)
+};
+
+Param: (Vec<String>, IsVariadic) = {
+	LParen <v:CommaList> RParen => <>,
+}
+
+WhiteCom = {
+	Comment,
+	Whitespace
+}
+
+ReplacementList: Vec<PreToken> = {
+	(<ReplacementTokenNonWhite> <ReplacementToken*>)? => {match <> {
+			None => vec!(),
+			Some((pre1, mut preVec)) => {preVec.insert(0, pre1); preVec},
+		}
+	}
+}
+ReplacementTokenNonWhite: PreToken = {
+	<HeaderName> => PreToken::HeaderName(<>),
+	<Ident> => PreToken::Ident(<>),
+	<PreprocessingOperator> => PreToken::PreprocessingOperator(<>),
+	<OperatorPunctuator> => PreToken::OperatorPunctuator(<>),
+	<LParen> => <>,
+	<RParen> => <>,
+	<Comma> => <>,
+	<ThreeDot> => <>,
+	<Keyword> => PreToken::Keyword(<>),
+	<StringLiteral> => PreToken::StringLiteral(<>),
+	<UdStringLiteral> => PreToken::UdStringLiteral(<>),
+	<RawStringLiteral> => PreToken::RawStringLiteral(<>),
+	<CharLiteral> => PreToken::CharLiteral(<>),
+	<UdCharLiteral> => PreToken::UdCharLiteral(<>),
+	<PPNumber> => PreToken::PPNumber(<>),
+	<Unknown> => PreToken::Unknown(<>),
+}
+ReplacementToken: PreToken = {
+	<HeaderName> => PreToken::HeaderName(<>),
+	<Ident> => PreToken::Ident(<>),
+	<PreprocessingOperator> => PreToken::PreprocessingOperator(<>),
+	<OperatorPunctuator> => PreToken::OperatorPunctuator(<>),
+	<LParen> => <>,
+	<RParen> => <>,
+	<Comma> => <>,
+	<ThreeDot> => <>,
+	<Comment> => PreToken::Comment(<>),
+	<Whitespace> => PreToken::Whitespace(<>),
+	<Keyword> => PreToken::Keyword(<>),
+	<StringLiteral> => PreToken::StringLiteral(<>),
+	<UdStringLiteral> => PreToken::UdStringLiteral(<>),
+	<RawStringLiteral> => PreToken::RawStringLiteral(<>),
+	<CharLiteral> => PreToken::CharLiteral(<>),
+	<UdCharLiteral> => PreToken::UdCharLiteral(<>),
+	<PPNumber> => PreToken::PPNumber(<>),
+	<Unknown> => PreToken::Unknown(<>),
+};
+
+
+extern {
+
+	type Location = usize;
+	type Error = String;
+
+	enum PreToken {
+		HeaderName => HeaderName(<String>),
+		Ident => Ident(<String>),
+		PreprocessingOperator => PreprocessingOperator(<PreprocessingOperator>),
+		LParen => OperatorPunctuator("("),
+		RParen => OperatorPunctuator(")"),
+		Comma => OperatorPunctuator(","),
+		ThreeDot => OperatorPunctuator("..."),
+		OperatorPunctuator => OperatorPunctuator(<&'static str>),
+		Keyword => Keyword(<&'static str>),
+		Newline => Newline,
+		Whitespace => Whitespace(<String>),
+		Comment => Comment(<String>),
+		StringLiteral => StringLiteral(<String>),
+		UdStringLiteral => UdStringLiteral(<String>),
+		RawStringLiteral => RawStringLiteral(<String>),
+		CharLiteral => CharLiteral(<String>),
+		UdCharLiteral => UdCharLiteral(<String>),
+		PPNumber => PPNumber(<String>),
+		Unknown => Unknown(<String>),
+	}
+}

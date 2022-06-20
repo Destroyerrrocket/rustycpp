@@ -1,3 +1,14 @@
+#define HelloBois boisSayHello()
+#define HelloWorld(abab, bobo) baba
+#define Empty() void
+#define LotsOfArgs(format, ...) fprintf(stderr, format __VA_OPT__(,) __VA_ARGS__)
+#define SendToTheVoid(sacrifice...) voidingMan(sacrifice)
+#define PleaseImplementSemanticChecks(one, two, one, two) duplicateThis(two, one)
+#undef HelloWorld
+#undef Empty
+#undef LotsOfArgs
+#undef SendToTheVoid
+
 #if __has_include(<iostream>)
 #include "hello.h"
 #endif

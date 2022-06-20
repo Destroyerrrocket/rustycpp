@@ -5,6 +5,10 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+# Unfortunatelly, right now lalrpop has some minnor issues that I needed to patch out
+[build-dependencies]
+lalrpop = {version = "0.19.8", path = "../lalrpop/lalrpop"}
+
 [dependencies]
 clap = { version = "3.2.5", features = ["derive"] }
 lazy-regex = "2.3.0"
@@ -13,3 +17,4 @@ regex = "1.0.0"
 onig = "6"
 lazy_static = "1.4.0"
 logos = "0.12.1"
+lalrpop-util = {version = "0.19.8", path = "../lalrpop/lalrpop-util"}

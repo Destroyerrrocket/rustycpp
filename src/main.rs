@@ -2,12 +2,14 @@
 #![allow(non_snake_case)]
 mod compiler;
 mod prelexer;
+mod preprocessor;
+mod utils;
+mod grammars;
 
 use clap::Parser;
 use std::{fs::File, io::Read};
-use compiler::compiler::CompileFile;
-use compiler::compiler::Compiler;
-use onig::define_user_property;
+use crate::utils::structs::CompileFile;
+use compiler::Compiler;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -21,7 +23,6 @@ struct Args {
 }
 
 fn main() {
-    define_user_property("ONIG_OPTION_FIND_LONGEST", &[]);
     let args = Args::parse();
     if args.files.is_empty()
     {
@@ -50,19 +51,19 @@ fn main() {
         let mut file: File = match File::open(&line) {
             Ok(it) => it,
             Err(err) => {
-                eprintln!("Could not open {file}. Error: {error}", file=args.files, error=err.to_string());
+                eprintln!("Could not open {file}. Error: {error}", file=line, error=err.to_string());
                 return;
             }
         };
         let mut filecontents : String = String::new();
         if let Err(err) = file.read_to_string(&mut filecontents) {
-            eprintln!("Error reading {file}. Error: {error}", file=args.files, error=err.to_string());
+            eprintln!("Error reading {file}. Error: {error}", file=line, error=err.to_string());
             return;
         }
         compile_files.push(CompileFile::new(std::string::String::from(line), filecontents));
     }
 
     let compiler = Compiler::new(compile_files);
-    compiler.print_step123();
+    compiler.print_preprocessor();
     println!("Hello, world!");
 }
