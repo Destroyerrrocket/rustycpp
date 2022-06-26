@@ -1,4 +1,6 @@
 #![feature(option_result_contains)]
+#![feature(iter_collect_into)]
+#![feature(is_some_with)]
 #![allow(non_snake_case)]
 mod compiler;
 mod prelexer;
@@ -32,13 +34,13 @@ fn main() {
     let mut file: File = match File::open(&args.files) {
         Ok(it) => it,
         Err(err) => {
-            eprintln!("Could not open {file}. Error: {error}", file=args.files, error=err.to_string());
+            eprintln!("Could not open {file}. Error: {error}", file=args.files, error=err);
             return;
         }
     };
     let mut filecontents : String = String::new();
     if let Err(err) = file.read_to_string(&mut filecontents) {
-        eprintln!("Error reading {file}. Error: {error}", file=args.files, error=err.to_string());
+        eprintln!("Error reading {file}. Error: {error}", file=args.files, error=err);
         return;
     }
 
@@ -51,13 +53,13 @@ fn main() {
         let mut file: File = match File::open(&line) {
             Ok(it) => it,
             Err(err) => {
-                eprintln!("Could not open {file}. Error: {error}", file=line, error=err.to_string());
+                eprintln!("Could not open {file}. Error: {error}", file=line, error=err);
                 return;
             }
         };
         let mut filecontents : String = String::new();
         if let Err(err) = file.read_to_string(&mut filecontents) {
-            eprintln!("Error reading {file}. Error: {error}", file=line, error=err.to_string());
+            eprintln!("Error reading {file}. Error: {error}", file=line, error=err);
             return;
         }
         compile_files.push(CompileFile::new(std::string::String::from(line), filecontents));

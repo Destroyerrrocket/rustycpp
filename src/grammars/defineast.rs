@@ -9,17 +9,37 @@ pub enum IsVariadic {
 }
 
 impl PartialEq for IsVariadic {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-			(Self::False, Self::False) |
-            (Self::True(_), Self::True(_)) => true,
-            _ => false,
-        }
-    }
+	fn eq(&self, other: &Self) -> bool {
+		matches!((self, other), (Self::False, Self::False) | (Self::True(_), Self::True(_)))
+	}
+}
+
+#[derive(Debug, Clone)]
+pub enum PreTokenDefinePreParse {
+	Normal(PreToken),
+	Arg(String),
+	Hash,
+	HashHash,
+	VariadicArg,
+	VariadicOpt,
+	VariadicOptParenL,
+	VariadicOptParenR,
+}
+
+#[derive(Debug, Clone)]
+pub enum PreTokenDefine {
+	Normal(PreToken),
+	Arg(String),
+	VariadicArg,
+	Hash(Box<PreTokenDefine>),
+	HashHash(Box<PreTokenDefine>, Box<PreTokenDefine>),
+	VariadicOpt(Vec<Box<PreTokenDefine>>),
 }
 
 #[derive(Debug)]
-pub enum DefineAst {
-	Define(String, Option<Vec<String>>, IsVariadic, Vec<PreToken>),
-	Err,
+pub struct DefineAst {
+	pub id: String,
+	pub param: Option<Vec<String>>,
+	pub variadic: IsVariadic,
+	pub replacement: Vec<PreTokenDefine>,
 }

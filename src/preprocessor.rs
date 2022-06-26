@@ -1,6 +1,6 @@
-use std::{collections::{VecDeque, HashMap}};
+use std::collections::{VecDeque, HashMap};
 
-use crate::{utils::{pretoken::{PreToken, PreprocessingOperator}, structs::CompileFile, lalrpoplexerwrapper::LalrPopLexerWrapper}, prelexer::{PreLexer, PreprocessingToken}, grammars::{define, defineast::{*}}};
+use crate::{utils::{pretoken::*, structs::*}, prelexer::{PreLexer, PreprocessingToken}, grammars::{defineast::{*}}};
 
 #[derive(Debug)]
 struct FileLexer<'a> {
@@ -15,10 +15,14 @@ enum ScopeStatus {
 	AlreadySucceededBlock,
 }
 
+mod defineparse;
+
+
 #[derive(Debug)]
 pub struct Preprocessor<'a> {
 	files: Vec<FileLexer<'a>>,
 	generated: VecDeque<PreprocessingToken>,
+	errors: VecDeque<CompileMsg<'a>>,
 	scope: Vec<ScopeStatus>,
 	definitions: HashMap<String, DefineAst>,
 	atStartLine: bool,
@@ -32,53 +36,28 @@ impl<'a> Preprocessor<'a> {
 				lexer: PreLexer::new(file.content()),
 				}),
 			generated: VecDeque::new(),
+			errors: VecDeque::new(),
 			scope: vec!(),
 			definitions: HashMap::new(),
 			atStartLine: true,
 		}
 	}
 
-	fn defineMacro(&mut self) -> () {
-		let vecPrepro = Iterator::take_while(&mut self.files.last_mut().unwrap().lexer, |pre| pre.kind != PreToken::Newline).collect::<VecDeque<PreprocessingToken>>();
-		let lexer = LalrPopLexerWrapper::new(vecPrepro);
+	fn currFile(&self) -> &FileLexer {self.files.last().unwrap()}
+	fn tokenLocCurrStr(&self, preToken: &PreprocessingToken) -> String {self.currFile().compFile.getLocStr(preToken.originalDiff)}
 
-		let definition;
-		match define::DefineStmtParser::new().parse(lexer) {
-			Err(e) => {eprintln!("{:?}", e); panic!("TODO: Error more gracefully");}
-			Ok(e) => {definition = e;}
-		}
-		if let DefineAst::Define(ref ident, ref params, ref variadic, ref replacement) = definition {
-			// TODO: CHECK SEMANTICALLY
-			if let Some(DefineAst::Define(identOther, paramsOther, variadicOther, replacementOther)) = self.definitions.get_mut(ident) {
-				if  (params.is_none() && paramsOther.is_none()) || (
-						params.as_ref().unwrap().len() == paramsOther.as_ref().unwrap().len() &&
-						variadic == variadicOther
-					) {
-						*replacementOther = replacement.to_vec();
-					} else {
-						eprint!("Couldn't replace macro {}", ident);
-					}
-			} else {
-				self.definitions.insert(ident.to_string(), definition);
-			}
-		}
-		println!("Macros:");
-		for (_,defi) in self.definitions.iter() {
-			println!("{:?}", defi);
-		}
-	}
-
-	fn undefineMacro(&mut self) -> () {
+	fn undefineMacro(&mut self, preToken: PreprocessingToken) -> () {
 		let vecPrepro = Iterator::take_while(&mut self.files.last_mut().unwrap().lexer, |pre| pre.kind != PreToken::Newline).collect::<Vec<PreprocessingToken>>();
-		match vecPrepro.into_iter().find(|e| if let PreToken::Whitespace(_) = e.kind {false} else if let PreToken::Comment(_) = e.kind {false} else {true}) {
-			None => {eprintln!("Expected an identifier to undefine!");}
+		let currFile = self.files.last().unwrap().compFile;
+		match vecPrepro.into_iter().find(|e| !e.kind.isWhitespace()) {
+			None => {self.errors.push_back(CompileError::from_preTo("Expected an identifier to undefine", &currFile, &preToken));}
 			Some(e) => {match e.kind {
 				PreToken::Ident(id) => {
 					if let None = self.definitions.remove(&id) {
-						eprintln!("Macro {} is not defined at this point", id);
+						self.errors.push_back(CompileError::from_preTo(format!("Macro {} is not defined when reached", id), &currFile, &preToken));
 					}
 				}
-				_ => {eprintln!("Expected an identifier, found: {}", e.kind.to_str());}
+				_ => {self.errors.push_back(CompileError::from_preTo(format!("Expected an identifier, found: {}", e.kind.to_str()), &currFile, &preToken));}
 			}}
 		}
 		println!("Macros:");
@@ -92,11 +71,11 @@ impl<'a> Preprocessor<'a> {
 		todo!("Implement including");
 	}
 
-	fn consumeMacroInclude(&mut self) -> Option<String> {
+	fn consumeMacroInclude(&mut self, PreToken: PreprocessingToken) -> Option<String> {
 		todo!("Implement header extraction");
 	}
 
-	fn consumeMacroDef(&mut self) -> Option<String> {
+	fn consumeMacroDef(&mut self, PreToken: PreprocessingToken) -> Option<String> {
 		let currFile = self.files.last_mut().unwrap();
 		let identStr;
 		loop {
@@ -105,8 +84,7 @@ impl<'a> Preprocessor<'a> {
 				None => {return None;}
 				Some(ident) => {match ident.kind {
 					PreToken::Ident(str) => {identStr = str; break;}
-					PreToken::Whitespace(_) |
-					PreToken::Comment(_) => {continue;}
+					PreToken::Whitespace(_) => {continue;}
 					PreToken::Newline => {return None;}
 					_ => {self.reachNl(); return None;}
 				}}
@@ -129,7 +107,7 @@ impl<'a> Preprocessor<'a> {
 			}
 		};
 	}
-	fn consumeMacroExpr(&mut self) -> () {
+	fn consumeMacroExpr(&mut self, PreToken: PreprocessingToken) -> () {
 		todo!();
 	}
 
@@ -144,7 +122,7 @@ impl<'a> Preprocessor<'a> {
 		return false;
 	}
 
-	fn preprocessorDirective(&mut self, PreToken: PreprocessingToken) -> () {
+	fn preprocessorDirective(&'a mut self, PreToken: PreprocessingToken) -> () {
 		let currFile = self.files.last_mut().unwrap();
 		let operation;
 		let enabledBlock = match self.scope.last() {
@@ -173,33 +151,34 @@ impl<'a> Preprocessor<'a> {
 		}
 		if enabledBlock {
 			match operation.kind.to_str() {
-				"include" => {currFile.lexer.expectHeader(); let t = self.consumeMacroInclude(); self.includeFile(t);}
-				"define" => {self.defineMacro();}
-				"undef" => {self.undefineMacro();}
-				"if" => {let t = self.consumeMacroExpr(); let t2 = if self.evalIfScope(t) == true {ScopeStatus::SuccessBlock} else {ScopeStatus::FailureBlock}; self.scope.push(t2);}
-				"ifdef" => {let t = {self.consumeMacroDef()};let t2 = if self.evalIfDef(t) == true {ScopeStatus::SuccessBlock} else {ScopeStatus::FailureBlock}; self.scope.push(t2);}
-				"ifndef" => {let t = self.consumeMacroDef(); let t2 = if self.evalIfDef(t) == false {ScopeStatus::SuccessBlock} else {ScopeStatus::FailureBlock}; self.scope.push(t2);}
+				"include" => {currFile.lexer.expectHeader(); let t = self.consumeMacroInclude(operation); self.includeFile(t);}
+				"define" => {self.defineMacro(operation);}
+				"undef" => {self.undefineMacro(operation);}
+				"if" => {let t = self.consumeMacroExpr(operation); let t2 = if self.evalIfScope(t) == true {ScopeStatus::SuccessBlock} else {ScopeStatus::FailureBlock}; self.scope.push(t2);}
+				"ifdef" => {let t = {self.consumeMacroDef(operation)};let t2 = if self.evalIfDef(t) == true {ScopeStatus::SuccessBlock} else {ScopeStatus::FailureBlock}; self.scope.push(t2);}
+				"ifndef" => {let t = self.consumeMacroDef(operation); let t2 = if self.evalIfDef(t) == false {ScopeStatus::SuccessBlock} else {ScopeStatus::FailureBlock}; self.scope.push(t2);}
 				"elif" |
 				"else" => {
 					if let Some(scope) = self.scope.last_mut() {
 						*scope = ScopeStatus::AlreadySucceededBlock;
 						self.reachNl(); // TODO: Check empty in else
 					} else {
-						eprintln!("Missmatched preprocessor conditional block at: {}", currFile.compFile.getLocStr(operation.originalDiff));
+						self.errors.push_back(CompileError::from_preTo("Missmatched preprocessor conditional block", &currFile.compFile, &operation));
 					}
 				}
 				"pragma" => {
-					eprintln!("LMAO, you really expected me to implement this now XD. No worries, we'll get there :D at: {}", currFile.compFile.getLocStr(operation.originalDiff));
+					self.errors.push_back(CompileError::from_preTo("LMAO, you really expected me to implement this now XD. No worries, we'll get there :D", &currFile.compFile, &operation));
 					self.reachNl();
 				}
 				"endif" => {
 					if self.scope.is_empty() {
-						eprintln!("Missmatched preprocessor conditional block at: {}", currFile.compFile.getLocStr(operation.originalDiff));
+						self.errors.push_back(CompileError::from_preTo("Missmatched preprocessor conditional block", &currFile.compFile, &operation));
 					} else {self.scope.pop();}
 					self.reachNl(); // TODO: Check empty
 				}
 				_ => {
-					eprintln!("I do not know this preprocessing expression yet! I'm learning though :) at: {}", currFile.compFile.getLocStr(operation.originalDiff));
+					self.errors.push_back(CompileError::from_preTo("I do not know this preprocessing expression yet! I'm learning though :)", &currFile.compFile, &operation));
+					self.reachNl();
 				}
 			}
 		} else if &ScopeStatus::FailureBlock == self.scope.last().unwrap() {
@@ -208,7 +187,7 @@ impl<'a> Preprocessor<'a> {
 					self.scope.push(ScopeStatus::AlreadySucceededBlock);
 				}
 				"elif" => {
-					let macroExpr = self.consumeMacroExpr();
+					let macroExpr = self.consumeMacroExpr(operation);
 					if self.evalIfScope(macroExpr) == true {
 						let scope = self.scope.last_mut().unwrap();
 						*scope = ScopeStatus::SuccessBlock
@@ -235,12 +214,12 @@ impl<'a> Preprocessor<'a> {
 					self.reachNl(); // TODO: Check empty
 					self.scope.pop();
 				}
-				_ => {}
+				_ => {self.reachNl();}
 			}
 		}
 	}
 
-	fn consume(&mut self, newToken: PreprocessingToken) -> () {
+	fn consume(&'a mut self, newToken: PreprocessingToken) -> () {
 		loop {
 			match self.scope.last() {
 				Some(ScopeStatus::SuccessBlock) |
@@ -248,7 +227,6 @@ impl<'a> Preprocessor<'a> {
 					if self.atStartLine {
 						match newToken.kind {
 							PreToken::Whitespace(_) |
-							PreToken::Comment(_) |
 							PreToken::Newline => {self.generated.push_back(newToken); break;}
 							PreToken::PreprocessingOperator(PreprocessingOperator::Hash) => {
 								self.preprocessorDirective(newToken); break;
@@ -283,7 +261,6 @@ impl<'a> Preprocessor<'a> {
 					if self.atStartLine {
 						match newToken.kind {
 							PreToken::Whitespace(_) |
-							PreToken::Comment(_) |
 							PreToken::Newline => {break;}
 							PreToken::PreprocessingOperator(PreprocessingOperator::Hash) => {
 								self.preprocessorDirective(newToken); break;
@@ -308,25 +285,31 @@ impl<'a> Preprocessor<'a> {
 	}
 }
 impl<'a> Iterator for Preprocessor<'a> {
-	type Item = PreprocessingToken;
+	type Item = Result<PreprocessingToken, CompileMsg<'a>>;
 	fn next(&mut self) -> Option<Self::Item> {
+		let this = self as *mut Self;
+		unsafe {
 		loop {
-			match self.generated.pop_front() {
-				Some(tok) => {return Some(tok);}
+			if let Some(err) = (*this).errors.pop_front() {
+				return Some(Err(err));
+			}
+			match (*this).generated.pop_front() {
+				Some(tok) => {return Some(Ok(tok));}
 				None => {
-					match self.files.last_mut() {
+					match (*this).files.last_mut() {
 						None => {return None;}
 						Some(file) => {
 							match file.lexer.next() {
-								None => {self.files.pop();}
+								None => {(*this).files.pop();}
 								Some(token) => {
-									self.consume(token);
+									(*this).consume(token);
 								}
 							}
 						}
 					}
 				}
 			}
+		}
 		}
 	}
 }

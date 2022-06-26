@@ -1,19 +1,5 @@
 use logos::{Logos};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum PreprocessingOperator {
-	Hash,
-	HashHash,
-}
-impl PreprocessingOperator {
-	fn to_str(&self) -> &str {
-		return match self {
-			PreprocessingOperator::Hash => "#",
-			PreprocessingOperator::HashHash => "##",
-		};
-	}
-}
-
 #[derive(PartialEq, Debug, Logos)]
 pub enum PreTokenLexer {
 	#[regex(r"[a-zA-Z_[^\x00-\x7F]][a-zA-Z0-9_[^\x00-\x7F]]*")]
@@ -196,6 +182,34 @@ pub enum PreTokenLexer {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum WhiteCom {
+	Comment(String),
+	Whitespace(&'static str),
+}
+impl WhiteCom {
+	fn as_str(&self) -> &str {
+		return match self {
+			Self::Comment(string) => string.as_str(),
+			Self::Whitespace(string) => string,
+		};
+	}
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum PreprocessingOperator {
+	Hash,
+	HashHash,
+}
+impl PreprocessingOperator {
+	fn as_str(&self) -> &str {
+		return match self {
+			PreprocessingOperator::Hash => "#",
+			PreprocessingOperator::HashHash => "##",
+		};
+	}
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum PreToken {
 	HeaderName(String),
 	Ident(String),
@@ -203,8 +217,7 @@ pub enum PreToken {
 	OperatorPunctuator(&'static str),
 	Keyword(&'static str),
 	Newline,
-	Whitespace(String),
-	Comment(String),
+	Whitespace(WhiteCom),
 	StringLiteral(String),
 	UdStringLiteral(String),
 	RawStringLiteral(String),
@@ -372,8 +385,14 @@ impl PreToken {
 				_ => {panic!("How did you manage to get a keyword not in my list");}
 			}),
 			PreTokenLexer::Newline => PreToken::Newline,
-			PreTokenLexer::Whitespace => PreToken::Whitespace(content),
-			PreTokenLexer::Comment => PreToken::Comment(content),
+			PreTokenLexer::Whitespace => PreToken::Whitespace(WhiteCom::Whitespace(match content.as_str() {
+				"\t" => "\t",
+				" " => " ",
+				"\x0B" => "\x0B",
+				"\x0C" => "\x0C",
+				_ => {panic!("How did you manage to get a whitespace not in my list");}
+			})),
+			PreTokenLexer::Comment => PreToken::Whitespace(WhiteCom::Comment(content)),
 			PreTokenLexer::StringLiteral => PreToken::StringLiteral(content),
 			PreTokenLexer::UdStringLiteral => PreToken::UdStringLiteral(content),
 			PreTokenLexer::RawStringLiteral => PreToken::RawStringLiteral(content),
@@ -389,17 +408,19 @@ impl PreToken {
 			Self::PPNumber(string) |
 			Self::HeaderName(string) |
 			Self::Ident(string) |
-			Self::Comment(string) |
 			Self::StringLiteral(string) |
 			Self::UdStringLiteral(string) |
 			Self::RawStringLiteral(string) |
 			Self::CharLiteral(string) |
-			Self::UdCharLiteral(string) |
+			Self::UdCharLiteral(string) => string.as_str(),
 			Self::Whitespace(string) => string.as_str(),
+			Self::PreprocessingOperator(op) => op.as_str(),
 			Self::OperatorPunctuator(string) |
 			Self::Keyword(string) => string,
-			Self::PreprocessingOperator(op) => op.to_str(),
 			Self::Newline => "\n",
 		}
+	}
+	pub fn isWhitespace(&self) -> bool {
+		matches!(self, PreToken::Whitespace(_))
 	}
 }

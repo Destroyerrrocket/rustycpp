@@ -1,8 +1,14 @@
 #define HelloBois boisSayHello()
 #define HelloWorld(abab, bobo) baba
 #define Empty() void
-#define LotsOfArgs(format, ...) fprintf(stderr, format __VA_OPT__(,) __VA_ARGS__)
+#define STRINGFY(a) ab  ## a get() {#    a # a ab  ## a}
+#define LotsOfArgs(format, ...) fprintf(stderr, format __VA_OPT__((,)) __VA_ARGS__)
 #define SendToTheVoid(sacrifice...) voidingMan(sacrifice)
+#define SendToTheVoid(sacrifice) voidingMan(sacrifice)
+#define SendToTheVoid(sacrifice...) voidingMan(sacrifice);
+#define SendToTheVoid(sacrifice...) voidingMan	(sacrifice/* txt */)
+#define MixEverythingHardExtension(a, sacrifice...) voidingMan(__VA_OPT__(#a, __VA_OPT__(data##sacrifice)))
+
 #define PleaseImplementSemanticChecks(one, two, one, two) duplicateThis(two, one)
 #undef HelloWorld
 #undef Empty

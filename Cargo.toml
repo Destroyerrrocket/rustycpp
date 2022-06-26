@@ -17,4 +17,5 @@ regex = "1.0.0"
 onig = "6"
 lazy_static = "1.4.0"
 logos = "0.12.1"
+colored = "2.0.0"
 lalrpop-util = {version = "0.19.8", path = "../lalrpop/lalrpop-util"}

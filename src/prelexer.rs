@@ -9,7 +9,7 @@ use logos::Logos;
 pub struct PreprocessingToken {
 	pub kind: PreToken,
 	pub originalDiff : usize,
-	pub originalLen : usize,
+	pub originalDiffEnd : usize,
 }
 
 #[derive(Debug)]
@@ -166,8 +166,8 @@ impl<'a> Iterator for PreLexer<'a> {
 			res = Some(
 				Self::Item {
 					kind: kind,
-					originalLen: originalString.len(),
 					originalDiff: self.diff,
+					originalDiffEnd: self.diff+originalString.len(),
 				}
 			);
 			self.diff+=idx+splices*2;
