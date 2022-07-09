@@ -1,17 +1,21 @@
 #![feature(option_result_contains)]
 #![feature(iter_collect_into)]
 #![feature(is_some_with)]
+#![feature(new_uninit)]
 #![allow(non_snake_case)]
+#![allow(dead_code)]
 mod compiler;
+mod filemap;
+mod grammars;
 mod prelexer;
 mod preprocessor;
+mod test;
 mod utils;
-mod grammars;
 
+use crate::filemap::FileMap;
 use clap::Parser;
-use std::{fs::File, io::Read};
-use crate::utils::structs::CompileFile;
 use compiler::Compiler;
+use std::{fs::File, io::Read};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -20,52 +24,47 @@ struct Args {
     #[clap(short, long, action)]
     print_step2: bool,
     /// Filelist to compile
-    #[clap(short, long, value_parser, default_value="")]
+    #[clap(short, long, value_parser, default_value = "")]
     files: String,
 }
 
 fn main() {
     let args = Args::parse();
-    if args.files.is_empty()
-    {
+    if args.files.is_empty() {
         eprintln!("File list not specified!");
         return;
     }
     let mut file: File = match File::open(&args.files) {
         Ok(it) => it,
         Err(err) => {
-            eprintln!("Could not open {file}. Error: {error}", file=args.files, error=err);
+            eprintln!(
+                "Could not open {file}. Error: {error}",
+                file = args.files,
+                error = err
+            );
             return;
         }
     };
-    let mut filecontents : String = String::new();
+    let mut filecontents: String = String::new();
     if let Err(err) = file.read_to_string(&mut filecontents) {
-        eprintln!("Error reading {file}. Error: {error}", file=args.files, error=err);
+        eprintln!(
+            "Error reading {file}. Error: {error}",
+            file = args.files,
+            error = err
+        );
         return;
     }
 
-    let mut compile_files = Vec::new();
-    for line in filecontents.lines()
-    {
+    let mut compileFiles = FileMap::new();
+    for line in filecontents.lines() {
         if !line.ends_with(".cpp") {
-            eprint!("Unsuported file type: {file}", file=line);
-        }
-        let mut file: File = match File::open(&line) {
-            Ok(it) => it,
-            Err(err) => {
-                eprintln!("Could not open {file}. Error: {error}", file=line, error=err);
-                return;
-            }
-        };
-        let mut filecontents : String = String::new();
-        if let Err(err) = file.read_to_string(&mut filecontents) {
-            eprintln!("Error reading {file}. Error: {error}", file=line, error=err);
+            eprintln!("Unsuported file type: {file}", file = line);
             return;
         }
-        compile_files.push(CompileFile::new(std::string::String::from(line), filecontents));
+        compileFiles.getAddFile(line);
     }
 
-    let compiler = Compiler::new(compile_files);
+    let mut compiler = Compiler::new(compileFiles);
     compiler.print_preprocessor();
     println!("Hello, world!");
 }

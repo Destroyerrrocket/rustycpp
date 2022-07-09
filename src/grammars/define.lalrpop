@@ -1,7 +1,9 @@
 use crate::grammars::defineast::{*};
+use crate::utils::structs::{*};
 use crate::utils::pretoken::{*};
 use crate::utils::pretoken::PreToken::{*};
 use crate::utils::pretoken::PreprocessingOperator;
+use std::sync::Arc;
 
 grammar;
 
@@ -27,34 +29,34 @@ ArgMVar: PreTokenDefine = {
 }
 
 ReTokNoWhiteSp: PreTokenDefine = {
-	<HeaderName> => PreTokenDefine::Normal(PreToken::HeaderName(<>)),
-	<Ident> => PreTokenDefine::Normal(PreToken::Ident(<>)),
-	<PreprocessingOperator> => PreTokenDefine::Normal(PreToken::PreprocessingOperator(<>)),
-	<OperatorPunctuator> => PreTokenDefine::Normal(PreToken::OperatorPunctuator(<>)),
-	<Keyword> => PreTokenDefine::Normal(PreToken::Keyword(<>)),
-	<StringLiteral> => PreTokenDefine::Normal(PreToken::StringLiteral(<>)),
-	<UdStringLiteral> => PreTokenDefine::Normal(PreToken::UdStringLiteral(<>)),
-	<RawStringLiteral> => PreTokenDefine::Normal(PreToken::RawStringLiteral(<>)),
-	<CharLiteral> => PreTokenDefine::Normal(PreToken::CharLiteral(<>)),
-	<UdCharLiteral> => PreTokenDefine::Normal(PreToken::UdCharLiteral(<>)),
-	<PPNumber> => PreTokenDefine::Normal(PreToken::PPNumber(<>)),
-	<Unknown> => PreTokenDefine::Normal(PreToken::Unknown(<>)),
+	<l:@L> <t:HeaderName> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: PreToken::HeaderName(t), end: r.0}}),
+	<l:@L> <t:Ident> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: PreToken::Ident(t), end: r.0}}),
+	<l:@L> <t:PreprocessingOperator> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: PreToken::PreprocessingOperator(t), end: r.0}}),
+	<l:@L> <t:OperatorPunctuator> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: PreToken::OperatorPunctuator(t), end: r.0}}),
+	<l:@L> <t:Keyword> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: PreToken::Keyword(t), end: r.0}}),
+	<l:@L> <t:StringLiteral> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: PreToken::StringLiteral(t), end: r.0}}),
+	<l:@L> <t:UdStringLiteral> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: PreToken::UdStringLiteral(t), end: r.0}}),
+	<l:@L> <t:RawStringLiteral> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: PreToken::RawStringLiteral(t), end: r.0}}),
+	<l:@L> <t:CharLiteral> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: PreToken::CharLiteral(t), end: r.0}}),
+	<l:@L> <t:UdCharLiteral> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: PreToken::UdCharLiteral(t), end: r.0}}),
+	<l:@L> <t:PPNumber> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: PreToken::PPNumber(t), end: r.0}}),
+	<l:@L> <t:Unknown> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: PreToken::Unknown(t), end: r.0}}),
 }
 
 ReTokNormal: PreTokenDefine = {
-	<HeaderName> => PreTokenDefine::Normal(PreToken::HeaderName(<>)),
-	<Ident> => PreTokenDefine::Normal(PreToken::Ident(<>)),
-	<PreprocessingOperator> => PreTokenDefine::Normal(PreToken::PreprocessingOperator(<>)),
-	<OperatorPunctuator> => PreTokenDefine::Normal(PreToken::OperatorPunctuator(<>)),
-	<Keyword> => PreTokenDefine::Normal(PreToken::Keyword(<>)),
-	<Whitespace> => PreTokenDefine::Normal(PreToken::Whitespace(<>)),
-	<StringLiteral> => PreTokenDefine::Normal(PreToken::StringLiteral(<>)),
-	<UdStringLiteral> => PreTokenDefine::Normal(PreToken::UdStringLiteral(<>)),
-	<RawStringLiteral> => PreTokenDefine::Normal(PreToken::RawStringLiteral(<>)),
-	<CharLiteral> => PreTokenDefine::Normal(PreToken::CharLiteral(<>)),
-	<UdCharLiteral> => PreTokenDefine::Normal(PreToken::UdCharLiteral(<>)),
-	<PPNumber> => PreTokenDefine::Normal(PreToken::PPNumber(<>)),
-	<Unknown> => PreTokenDefine::Normal(PreToken::Unknown(<>)),
+	<l:@L> <t:HeaderName> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos{start: l.0, tok: PreToken::HeaderName(t), end: r.0}}),
+	<l:@L> <t:Ident> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos{start: l.0, tok: PreToken::Ident(t), end: r.0}}),
+	<l:@L> <t:PreprocessingOperator> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos{start: l.0, tok: PreToken::PreprocessingOperator(t), end: r.0}}),
+	<l:@L> <t:OperatorPunctuator> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos{start: l.0, tok: PreToken::OperatorPunctuator(t), end: r.0}}),
+	<l:@L> <t:Keyword> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos{start: l.0, tok: PreToken::Keyword(t), end: r.0}}),
+	<l:@L> <t:Whitespace> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos{start: l.0, tok: PreToken::Whitespace(t), end: r.0}}),
+	<l:@L> <t:StringLiteral> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos{start: l.0, tok: PreToken::StringLiteral(t), end: r.0}}),
+	<l:@L> <t:UdStringLiteral> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos{start: l.0, tok: PreToken::UdStringLiteral(t), end: r.0}}),
+	<l:@L> <t:RawStringLiteral> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos{start: l.0, tok: PreToken::RawStringLiteral(t), end: r.0}}),
+	<l:@L> <t:CharLiteral> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos{start: l.0, tok: PreToken::CharLiteral(t), end: r.0}}),
+	<l:@L> <t:UdCharLiteral> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos{start: l.0, tok: PreToken::UdCharLiteral(t), end: r.0}}),
+	<l:@L> <t:PPNumber> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos{start: l.0, tok: PreToken::PPNumber(t), end: r.0}}),
+	<l:@L> <t:Unknown> <r:@R> => PreTokenDefine::Normal(FilePreTokPos{file: l.1, tokPos: PreTokPos{start: l.0, tok: PreToken::Unknown(t), end: r.0}}),
 }
 
 WhiteComTok = {
@@ -62,7 +64,7 @@ WhiteComTok = {
 }
 
 extern {
-	type Location = usize;
+	type Location = (usize, Arc<CompileFile>);
 	type Error = ();
 
 	enum PreTokenDefinePreParse {

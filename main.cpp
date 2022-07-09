@@ -8,7 +8,7 @@
 #define SendToTheVoid(sacrifice...) voidingMan(sacrifice);
 #define SendToTheVoid(sacrifice...) voidingMan	(sacrifice/* txt */)
 #define MixEverythingHardExtension(a, sacrifice...) voidingMan(__VA_OPT__(#a, __VA_OPT__(data##sacrifice)))
-
+#define BadOne(e) e #
 #define PleaseImplementSemanticChecks(one, two, one, two) duplicateThis(two, one)
 #undef HelloWorld
 #undef Empty

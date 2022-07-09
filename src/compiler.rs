@@ -1,37 +1,41 @@
-use std::process::abort;
+use std::sync::{Arc, Mutex};
 
-use crate::prelexer::{PreLexer};
-use crate::preprocessor::{*};
-use crate::utils::structs::{*};
+use crate::filemap::FileMap;
+use crate::preprocessor::*;
+use crate::utils::structs::*;
 
+type TranslationUnit = String;
 #[derive(Debug)]
 pub struct Compiler {
-	compile_files : Vec<CompileFile>,
+    compileFiles: Arc<Mutex<FileMap>>,
+    mainTranslationUnits: Vec<TranslationUnit>,
 }
 
 impl Compiler {
-	pub fn new(compile_files:  Vec<CompileFile>) -> Compiler {
-		Compiler{compile_files}
-	}
+    pub fn new(compileFiles: FileMap) -> Compiler {
+        let mainTranslationUnits = compileFiles.getCurrPaths();
+        Compiler {
+            compileFiles: Arc::new(Mutex::new(compileFiles)),
+            mainTranslationUnits,
+        }
+    }
 
-	pub fn print_step123(&self) -> () {
-		for comp_file in &self.compile_files {
-			println!("Applying preprocessor lexer to: {}", &comp_file.path());
-			for prepro_token in PreLexer::new(&comp_file.content()) {
-				println!("{:?}", prepro_token);
-			}
-		}
-	}
-
-	pub fn print_preprocessor(&self) -> () {
-		for comp_file in &self.compile_files {
-			println!("Applying preprocessor to: {}", &comp_file.path());
-			for prepro_token in Preprocessor::new(&comp_file) {
-				match prepro_token {
-					Ok(tok) => {println!("{}", tok.kind.to_str());}
-					Err(err) => {eprintln!("{}", err.to_string()); if err.severity() == CompileMsgKind::FatalError {panic!("Force stop. Unrecoverable error");}}
-				}
-			}
-		}
-	}
+    pub fn print_preprocessor(&mut self) -> () {
+        for compFile in &self.mainTranslationUnits {
+            println!("Applying preprocessor to: {}", &compFile);
+            for prepro_token in Preprocessor::new((self.compileFiles.clone(), compFile)) {
+                match prepro_token {
+                    Ok(tok) => {
+                        println!("{}", tok.tokPos.tok.to_str());
+                    }
+                    Err(err) => {
+                        eprintln!("{}", err.to_string());
+                        if err.severity() == CompileMsgKind::FatalError {
+                            panic!("Force stop. Unrecoverable error");
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

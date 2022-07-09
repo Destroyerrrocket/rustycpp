@@ -1,51 +1,63 @@
-use crate::{prelexer::PreprocessingToken};
+use std::sync::Arc;
 
 use colored::Colorize;
 
-#[derive(Debug)]
+use super::pretoken::PreToken;
+
+#[derive(Debug, Default)]
 pub struct CompileFile {
-	path: String,
-	content: String,
-	newlines: Vec<usize>,
+    path: String,
+    content: Arc<String>,
+    newlines: Vec<usize>,
 }
 
 impl CompileFile {
-	pub fn new(path: String, content: String) -> CompileFile {
-		CompileFile {
-			path: path,
-			content: content.replace("\r\n", "\n"),
-			newlines: content.char_indices().filter(|(_, char)| match char {'\n' => true, _ => false}).map(|(idx, _)| idx).collect(),
-		}
-	}
+    pub fn new(path: String, content: String) -> CompileFile {
+        let contentFile = Arc::new(content.replace("\r\n", "\n"));
+        CompileFile {
+            path: path,
+            content: contentFile.clone(),
+            newlines: contentFile
+                .char_indices()
+                .filter(|(_, char)| match char {
+                    '\n' => true,
+                    _ => false,
+                })
+                .map(|(idx, _)| idx)
+                .collect(),
+        }
+    }
 
-	pub fn path(&self) -> &String {
-		return &self.path;
-	}
-	pub fn content(&self) -> &String {
-		return &self.content;
-	}
+    pub fn path(&self) -> &String {
+        return &self.path;
+    }
+    pub fn content(&self) -> &String {
+        return &self.content;
+    }
 
-	pub fn getRowColumn(&self, diff: usize) -> (usize, usize) {
-		if self.newlines.is_empty() {return (1, diff+1);}
-		let part = self.newlines.as_slice().partition_point(|&x| x < diff);
-		if part == self.newlines.len() {
-			return (part+1, diff-self.newlines.last().unwrap());
-		}
-		return (part+1, diff-self.newlines.get(part-1).unwrap_or(&0));
-	}
+    pub fn getRowColumn(&self, diff: usize) -> (usize, usize) {
+        if self.newlines.is_empty() {
+            return (1, diff + 1);
+        }
+        let part = self.newlines.as_slice().partition_point(|&x| x < diff);
+        if part == self.newlines.len() {
+            return (part + 1, diff - self.newlines.last().unwrap());
+        }
+        return (part + 1, diff - self.newlines.get(part - 1).unwrap_or(&0));
+    }
 
-	pub fn getLocStr(&self, diff:usize) -> String {
-		let (r,c) = self.getRowColumn(diff);
-		format!("{}:{}:{}", self.path(), r, c)
-	}
+    pub fn getLocStr(&self, diff: usize) -> String {
+        let (r, c) = self.getRowColumn(diff);
+        format!("{}:{}:{}", self.path(), r, c)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CompileMsgKind {
-	Notice,
-	Warning,
-	Error,
-	FatalError,
+    Notice,
+    Warning,
+    Error,
+    FatalError,
 }
 
 impl ToString for CompileMsgKind {
@@ -60,49 +72,135 @@ impl ToString for CompileMsgKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct CompileMsg<'a> {
-	kind: CompileMsgKind,
-	msg: String,
-	file: &'a CompileFile,
-	at: usize,
-	atEnd: Option<usize>,
+pub struct CompileMsg {
+    kind: CompileMsgKind,
+    msg: String,
+    file: Arc<CompileFile>,
+    at: usize,
+    atEnd: Option<usize>,
 }
 
-impl<'a> CompileMsg<'a> {
-	pub fn errorLocStr(&self) -> String {
-		return self.file.getLocStr(self.at);
-	}
+impl CompileMsg {
+    pub fn errorLocStr(&self) -> String {
+        return self.file.getLocStr(self.at);
+    }
 
-	pub fn severity(&self) -> CompileMsgKind {
-		return self.kind;
-	}
+    pub fn severity(&self) -> CompileMsgKind {
+        return self.kind;
+    }
 }
 
-impl<'a> ToString for CompileMsg<'a> {
-	fn to_string(&self) -> String {
-		return format!("{}:{}\nAt: {}", self.kind.to_string(), self.msg, self.errorLocStr());
-	}
+impl ToString for CompileMsg {
+    fn to_string(&self) -> String {
+        return format!(
+            "{} at: {}\n{}\n",
+            self.kind.to_string(),
+            self.errorLocStr(),
+            self.msg
+        );
+    }
 }
 
 pub struct CompileError {}
 
-impl<'a> CompileError {
-	pub fn from_preTo<T: ToString>(msg: T, file: &'a CompileFile, preToken: &PreprocessingToken) -> CompileMsg<'a> {
-		CompileMsg { msg: msg.to_string(), file: file, at: preToken.originalDiff, atEnd: Some(preToken.originalDiffEnd), kind: CompileMsgKind::Error }
-	}
+impl CompileError {
+    pub fn from_preTo<T: ToString>(msg: T, preToken: &FilePreTokPos<PreToken>) -> CompileMsg {
+        CompileMsg {
+            msg: msg.to_string(),
+            file: preToken.file.clone(),
+            at: preToken.tokPos.start,
+            atEnd: Some(preToken.tokPos.end),
+            kind: CompileMsgKind::Error,
+        }
+    }
 
-	pub fn from_at(msg: String, file: &CompileFile, at: usize, atEnd: Option<usize>) -> CompileMsg {
-		CompileMsg { msg: msg, file: file, at: at, atEnd: atEnd, kind: CompileMsgKind::Error }
-	}
+    pub fn from_at(
+        msg: String,
+        file: Arc<CompileFile>,
+        at: usize,
+        atEnd: Option<usize>,
+    ) -> CompileMsg {
+        CompileMsg {
+            msg: msg,
+            file: file,
+            at: at,
+            atEnd: atEnd,
+            kind: CompileMsgKind::Error,
+        }
+    }
 }
 
 pub struct CompileWarning {}
-impl<'a> CompileWarning {
-	pub fn from_preTo<T: ToString>(msg: T, file: &'a CompileFile, preToken: &PreprocessingToken) -> CompileMsg<'a> {
-		CompileMsg { msg: msg.to_string(), file: file, at: preToken.originalDiff, atEnd: Some(preToken.originalDiffEnd), kind: CompileMsgKind::Warning }
-	}
+impl CompileWarning {
+    pub fn from_preTo<T: ToString>(msg: T, preToken: &FilePreTokPos<PreToken>) -> CompileMsg {
+        CompileMsg {
+            msg: msg.to_string(),
+            file: preToken.file.clone(),
+            at: preToken.tokPos.start,
+            atEnd: Some(preToken.tokPos.end),
+            kind: CompileMsgKind::Warning,
+        }
+    }
 
-	pub fn from_at(msg: String, file: &CompileFile, at: usize, atEnd: Option<usize>) -> CompileMsg {
-		CompileMsg { msg: msg, file: file, at: at, atEnd: atEnd, kind: CompileMsgKind::Warning }
-	}
+    pub fn from_at(
+        msg: String,
+        file: Arc<CompileFile>,
+        at: usize,
+        atEnd: Option<usize>,
+    ) -> CompileMsg {
+        CompileMsg {
+            msg: msg,
+            file: file,
+            at: at,
+            atEnd: atEnd,
+            kind: CompileMsgKind::Warning,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PreTokPos<T: Clone> {
+    pub start: usize,
+    pub tok: T,
+    pub end: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct FilePreTokPos<T: Clone> {
+    pub file: Arc<CompileFile>,
+    pub tokPos: PreTokPos<T>,
+}
+
+impl<T: Clone> FilePreTokPos<T> {
+    pub fn new(file: Arc<CompileFile>, tok: PreTokPos<T>) -> FilePreTokPos<T> {
+        FilePreTokPos {
+            file: file,
+            tokPos: tok,
+        }
+    }
+
+    pub fn new_meta(tok: T) -> FilePreTokPos<T> {
+        FilePreTokPos {
+            file: Arc::new(CompileFile::default()),
+            tokPos: PreTokPos {
+                start: 0,
+                tok,
+                end: 0,
+            },
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! filePreTokPosMatch {
+    ( $x:pat ) => {
+        FilePreTokPos {
+            file: _,
+            tokPos: PreTokPos {
+                start: _,
+                tok: $x,
+                end: _,
+            },
+        }
+    };
 }
