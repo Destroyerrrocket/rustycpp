@@ -2,8 +2,10 @@
 #![feature(iter_collect_into)]
 #![feature(is_some_with)]
 #![feature(new_uninit)]
+#![feature(unwrap_infallible)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
+
 mod compiler;
 mod filemap;
 mod grammars;
@@ -29,15 +31,16 @@ struct Args {
 }
 
 fn main() {
+    env_logger::init();
     let args = Args::parse();
     if args.files.is_empty() {
-        eprintln!("File list not specified!");
+        log::error!("File list not specified!");
         return;
     }
     let mut file: File = match File::open(&args.files) {
         Ok(it) => it,
         Err(err) => {
-            eprintln!(
+            log::error!(
                 "Could not open {file}. Error: {error}",
                 file = args.files,
                 error = err
@@ -47,7 +50,7 @@ fn main() {
     };
     let mut filecontents: String = String::new();
     if let Err(err) = file.read_to_string(&mut filecontents) {
-        eprintln!(
+        log::error!(
             "Error reading {file}. Error: {error}",
             file = args.files,
             error = err
@@ -58,7 +61,7 @@ fn main() {
     let mut compileFiles = FileMap::new();
     for line in filecontents.lines() {
         if !line.ends_with(".cpp") {
-            eprintln!("Unsuported file type: {file}", file = line);
+            log::error!("Unsuported file type: {file}", file = line);
             return;
         }
         compileFiles.getAddFile(line);
@@ -66,5 +69,4 @@ fn main() {
 
     let mut compiler = Compiler::new(compileFiles);
     compiler.print_preprocessor();
-    println!("Hello, world!");
 }

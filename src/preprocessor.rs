@@ -75,9 +75,9 @@ impl Preprocessor {
                 }
             },
         }
-        println!("Macros:");
+        log::debug!("Macros:");
         for (_, defi) in self.definitions.iter() {
-            println!("{:?}", defi);
+            log::debug!("{:?}", defi);
         }
         return;
     }
@@ -136,7 +136,7 @@ impl Preprocessor {
             }
         }
     }
-    fn consumeMacroExpr(&mut self, PreToken: FilePreTokPos<PreToken>) -> () {
+    fn consumeMacroExpr(&mut self, preToken: FilePreTokPos<PreToken>) -> () {
         todo!();
     }
 

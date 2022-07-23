@@ -1,7 +1,7 @@
-use std::sync::Arc;
+use lalrpop_util::ParseError;
 
 use crate::{
-    filePreTokPosMatch,
+    filePreTokPosMatchArm,
     grammars::{define, defineast::*},
     utils::{
         funcs::all_unique_elements,
@@ -90,6 +90,7 @@ impl Preprocessor {
             .collect();
 
         let mut inHashHash = false;
+
         toksPre = toksPre
             .into_iter()
             .rev()
@@ -104,17 +105,53 @@ impl Preprocessor {
                     true
                 }
             })
+            .collect::<Vec<FilePreTokPos<PreTokenDefinePreParse>>>()
+            .into_iter()
             .rev()
             .collect::<Vec<FilePreTokPos<PreTokenDefinePreParse>>>();
 
-        println!("DEBUG: {:?}", toksPre);
         let lexer = LalrPopLexerWrapper::new(toksPre.as_slice());
         let res = define::DefineStmtParser::new().parse(lexer);
-        let mut at: (usize, Arc<CompileFile>) = (0, Arc::new(CompileFile::default()));
-        return res.map_err(|err| {
-            let errMsg = format!("Parse error: {:?}", err);
-            err.map_location(|e| at = e);
-            CompileError::from_at(errMsg, at.1, at.0, None)
+        return res.map_err(|err| match err {
+            ParseError::ExtraToken { token } => CompileError::from_at(
+                format!(
+                    "Found token {:?} when I wasn't expecting any other tokens",
+                    token.1
+                )
+                .to_string(),
+                (token.0).1.clone(),
+                (token.0).0,
+                Some((token.2).0),
+            ),
+            ParseError::InvalidToken { location } => CompileError::from_at(
+                format!("Found invalid token").to_string(),
+                (location.1).clone(),
+                location.0,
+                None,
+            ),
+            ParseError::UnrecognizedEOF { location, expected } => CompileError::from_at(
+                format!(
+                    "Found early end of file while expecting to find: {:?}",
+                    expected
+                )
+                .to_string(),
+                (location.1).clone(),
+                location.0,
+                None,
+            ),
+            ParseError::UnrecognizedToken { token, expected } => CompileError::from_at(
+                format!(
+                    "Found {:?} while expecting to find: {:?}",
+                    token.1, expected
+                )
+                .to_string(),
+                (token.0).1.clone(),
+                (token.0).0,
+                Some((token.2).0),
+            ),
+            ParseError::User { error: _ } => {
+                unreachable!("I haven't defined a custom parsing error. This is odd")
+            }
         });
     }
 
@@ -232,13 +269,16 @@ impl Preprocessor {
             while rl.last().is_some_and(|tok| {
                 matches!(
                     tok,
-                    PreTokenDefine::Normal(filePreTokPosMatch!(PreToken::Whitespace(_)))
+                    PreTokenDefine::Normal(filePreTokPosMatchArm!(PreToken::Whitespace(_)))
                 )
             }) {
                 rl.pop();
             }
             if res.variadic == IsVariadic::False {
-                if rl.iter().any(|x| matches!(x, PreTokenDefine::VariadicArg)) {
+                if rl
+                    .iter()
+                    .any(|x| matches!(x, PreTokenDefine::VariadicArg(_)))
+                {
                     return Err(CompileError::from_preTo(
                         "Non-variadic macro can't use __VA_ARGS__",
                         &initialToken,
@@ -246,7 +286,7 @@ impl Preprocessor {
                 }
                 if rl
                     .iter()
-                    .any(|x| matches!(x, PreTokenDefine::VariadicOpt(_)))
+                    .any(|x| matches!(x, PreTokenDefine::VariadicOpt(_, _)))
                 {
                     return Err(CompileError::from_preTo(
                         "Non-variadic macro can't use __VA_OPT__",
@@ -286,7 +326,7 @@ impl Preprocessor {
         return Ok(());
     }
 
-    pub fn defineMacro(&mut self, preToken: FilePreTokPos<PreToken>) -> () {
+    pub fn defineMacro(&mut self, preToken: FilePreTokPos<PreToken>) {
         let vecPrepro = Iterator::take_while(&mut self.multilexer, |pre| {
             pre.tokPos.tok != PreToken::Newline
         })
@@ -300,9 +340,9 @@ impl Preprocessor {
                 Ok(_) => {}
             };
         }
-        println!("Macros:");
+        log::debug!("Macros:");
         for (_, defi) in self.definitions.iter() {
-            println!("{:?}", defi);
+            log::debug!("{:?}", defi);
         }
     }
 }

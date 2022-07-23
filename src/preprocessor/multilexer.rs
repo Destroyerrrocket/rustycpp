@@ -47,16 +47,16 @@ impl MultiLexer {
         }
     }
 
-    pub fn pushTokensDec(&mut self, mut toks: VecDeque<FilePreTokPos<PreToken>>) -> () {
-        self.pushedTokens.append(&mut toks);
+    pub fn pushTokensDec(&mut self, toks: VecDeque<FilePreTokPos<PreToken>>) -> () {
+        for i in toks.into_iter().rev() {
+            self.pushedTokens.push_front(i);
+        }
     }
 
     pub fn pushTokensVec(&mut self, toks: Vec<FilePreTokPos<PreToken>>) -> () {
-        self.pushedTokens.append(
-            &mut toks
-                .into_iter()
-                .collect::<VecDeque<FilePreTokPos<PreToken>>>(),
-        );
+        for i in toks.into_iter().rev() {
+            self.pushedTokens.push_front(i);
+        }
     }
 
     pub fn pushToken(&mut self, tok: FilePreTokPos<PreToken>) -> () {
@@ -96,12 +96,9 @@ impl Iterator for MultiLexer {
             return Some(t);
         }
         loop {
-            let mut popLexer = false;
             if let Some(lexer) = self.files.last_mut() {
                 match lexer.lexer.next() {
-                    None => {
-                        popLexer = true;
-                    }
+                    None => {}
                     Some(tok) => {
                         return Some(FilePreTokPos::new(
                             self.fileMapping.lock().unwrap().getFile(&lexer.compFile),
@@ -112,10 +109,8 @@ impl Iterator for MultiLexer {
             } else {
                 return None;
             }
-
-            if popLexer {
-                self.files.pop();
-            }
+            // If we reach here, the single-lexer is empty. We pop it and hope the next one provides more content.
+            self.files.pop();
         }
     }
 }

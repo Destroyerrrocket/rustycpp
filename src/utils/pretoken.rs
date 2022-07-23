@@ -161,6 +161,7 @@ pub enum PreTokenLexer {
     Newline,
     #[regex(r"[\t \x0B\x0C]")]
     Whitespace,
+    #[regex(r"//[^\n]*\n?")]
     #[regex(r"/\*[^\*/]*\*/")]
     Comment,
     /* Lmao, no repetition ranges ???*/
@@ -181,7 +182,7 @@ pub enum PreTokenLexer {
     Error,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum WhiteCom {
     Comment(String),
     Whitespace(&'static str),
@@ -195,7 +196,7 @@ impl WhiteCom {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PreprocessingOperator {
     Hash,
     HashHash,
@@ -209,7 +210,7 @@ impl PreprocessingOperator {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PreToken {
     HeaderName(String),
     Ident(String),
@@ -227,6 +228,7 @@ pub enum PreToken {
     Unknown(String),
     DisableMacro(String),
     EnableMacro(String),
+    ValidNop,
 }
 
 impl PreToken {
@@ -433,8 +435,7 @@ impl PreToken {
             PreToken::PreprocessingOperator(op) => op.as_str(),
             PreToken::OperatorPunctuator(string) | PreToken::Keyword(string) => string,
             PreToken::Newline => "\n",
-            PreToken::DisableMacro(_) => "DisableMacro",
-            PreToken::EnableMacro(_) => "EnableMacro",
+            PreToken::DisableMacro(_) | PreToken::EnableMacro(_) | PreToken::ValidNop => "",
         };
     }
     pub fn isWhitespace(&self) -> bool {

@@ -32,11 +32,11 @@ pub enum PreTokenDefinePreParse {
 #[derive(Debug, Clone)]
 pub enum PreTokenDefine {
     Normal(FilePreTokPos<PreToken>),
-    Arg(String),
-    VariadicArg,
-    Hash(Box<PreTokenDefine>),
-    HashHash(Box<PreTokenDefine>, Box<PreTokenDefine>),
-    VariadicOpt(Vec<Box<PreTokenDefine>>),
+    Arg(FilePreTokPos<String>),
+    VariadicArg(FilePreTokPos<()>),
+    Hash(FilePreTokPos<()>, Vec<PreTokenDefine>),
+    HashHash(FilePreTokPos<()>, Vec<PreTokenDefine>, Vec<PreTokenDefine>),
+    VariadicOpt(FilePreTokPos<()>, Vec<PreTokenDefine>),
 }
 
 #[derive(Debug, Clone)]

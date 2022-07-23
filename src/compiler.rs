@@ -20,16 +20,16 @@ impl Compiler {
         }
     }
 
-    pub fn print_preprocessor(&mut self) -> () {
+    pub fn print_preprocessor(&mut self) {
         for compFile in &self.mainTranslationUnits {
-            println!("Applying preprocessor to: {}", &compFile);
+            log::info!("Applying preprocessor to: {}", &compFile);
             for prepro_token in Preprocessor::new((self.compileFiles.clone(), compFile)) {
                 match prepro_token {
                     Ok(tok) => {
-                        println!("{}", tok.tokPos.tok.to_str());
+                        log::info!("{}", tok.tokPos.tok.to_str());
                     }
                     Err(err) => {
-                        eprintln!("{}", err.to_string());
+                        log::info!("{}", err.to_string());
                         if err.severity() == CompileMsgKind::FatalError {
                             panic!("Force stop. Unrecoverable error");
                         }

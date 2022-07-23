@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::sync::Arc;
 
 use super::structs::{CompileFile, FilePreTokPos};
@@ -11,13 +12,13 @@ pub enum LalrPopLexerWrapperState {
 }
 
 #[derive(Debug)]
-pub struct LalrPopLexerWrapper<'slice, T: Clone> {
+pub struct LalrPopLexerWrapper<'slice, T: Clone + Debug> {
     tokens: &'slice [FilePreTokPos<T>],
     state: LalrPopLexerWrapperState,
     idx: usize,
 }
 
-impl<'slice, T: Clone> LalrPopLexerWrapper<'slice, T> {
+impl<'slice, T: Clone + Debug> LalrPopLexerWrapper<'slice, T> {
     pub fn new(tokens: &'slice [FilePreTokPos<T>]) -> LalrPopLexerWrapper<T> {
         LalrPopLexerWrapper {
             tokens: tokens,
@@ -27,7 +28,7 @@ impl<'slice, T: Clone> LalrPopLexerWrapper<'slice, T> {
     }
 }
 
-impl<'slice, T: Clone> Iterator for LalrPopLexerWrapper<'slice, T> {
+impl<'slice, T: Clone + Debug> Iterator for LalrPopLexerWrapper<'slice, T> {
     type Item = Result<((usize, Arc<CompileFile>), T, (usize, Arc<CompileFile>)), ()>;
     fn next(&mut self) -> Option<Self::Item> {
         loop {

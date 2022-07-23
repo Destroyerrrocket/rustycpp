@@ -1,7 +1,7 @@
 use lazy_regex::{regex_captures, regex_find};
 
 use crate::utils::{
-    pretoken::{PreToken, PreTokenLexer},
+    pretoken::{PreToken, PreTokenLexer, WhiteCom},
     structs::PreTokPos,
 };
 use logos::Logos;
@@ -95,7 +95,7 @@ impl PreLexer {
         return (None, 0);
     }
 
-    fn applySplice(&mut self, splice_point: usize) -> () {
+    fn applySplice(&mut self, splice_point: usize) {
         self.current.remove(splice_point);
         self.current.remove(splice_point);
     }
@@ -157,8 +157,16 @@ impl PreLexer {
 
     fn doNext(&mut self) -> Option<PreTokPos<PreToken>> {
         let mut res: Option<PreTokPos<PreToken>> = None;
-        let (kind, idx, splices) = self.getNextTokenData();
-        if let Some(kind) = kind {
+        let (kind, mut idx, splices) = self.getNextTokenData();
+
+        if let Some(mut kind) = kind {
+            if let PreToken::Whitespace(WhiteCom::Comment(comment)) = &mut kind {
+                if comment.ends_with("\n") {
+                    comment.pop();
+                    idx = idx.checked_sub(1).unwrap();
+                }
+            }
+
             let (mut lineEnd, mut columnEnd) = (self.line, self.column);
             {
                 let (mut idxCpy, mut splicesCpy) = (idx as i64, splices as i64);

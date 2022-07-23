@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::sync::Arc;
 
 use colored::Colorize;
@@ -104,7 +105,10 @@ impl ToString for CompileMsg {
 pub struct CompileError {}
 
 impl CompileError {
-    pub fn from_preTo<T: ToString>(msg: T, preToken: &FilePreTokPos<PreToken>) -> CompileMsg {
+    pub fn from_preTo<T: ToString, Tok: Clone + Debug>(
+        msg: T,
+        preToken: &FilePreTokPos<Tok>,
+    ) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
             file: preToken.file.clone(),
@@ -114,14 +118,14 @@ impl CompileError {
         }
     }
 
-    pub fn from_at(
-        msg: String,
+    pub fn from_at<T: ToString>(
+        msg: T,
         file: Arc<CompileFile>,
         at: usize,
         atEnd: Option<usize>,
     ) -> CompileMsg {
         CompileMsg {
-            msg: msg,
+            msg: msg.to_string(),
             file: file,
             at: at,
             atEnd: atEnd,
@@ -159,19 +163,24 @@ impl CompileWarning {
 }
 
 #[derive(Debug, Clone)]
-pub struct PreTokPos<T: Clone> {
+pub struct PreTokPos<T: Clone + Debug> {
     pub start: usize,
     pub tok: T,
     pub end: usize,
 }
+impl<T: Clone + Debug> PreTokPos<T> {
+    pub fn tokString(&self) -> String {
+        format!("{:?}", self.tok).to_string()
+    }
+}
 
 #[derive(Debug, Clone)]
-pub struct FilePreTokPos<T: Clone> {
+pub struct FilePreTokPos<T: Clone + Debug> {
     pub file: Arc<CompileFile>,
     pub tokPos: PreTokPos<T>,
 }
 
-impl<T: Clone> FilePreTokPos<T> {
+impl<T: Clone + Debug> FilePreTokPos<T> {
     pub fn new(file: Arc<CompileFile>, tok: PreTokPos<T>) -> FilePreTokPos<T> {
         FilePreTokPos {
             file: file,
@@ -189,10 +198,25 @@ impl<T: Clone> FilePreTokPos<T> {
             },
         }
     }
+
+    pub fn new_meta_c<U: Clone + Debug>(tok: T, other: &FilePreTokPos<U>) -> FilePreTokPos<T> {
+        FilePreTokPos {
+            file: other.file.clone(),
+            tokPos: PreTokPos {
+                start: other.tokPos.start,
+                tok,
+                end: other.tokPos.end,
+            },
+        }
+    }
+
+    pub fn tokString(&self) -> String {
+        self.tokPos.tokString()
+    }
 }
 
 #[macro_export]
-macro_rules! filePreTokPosMatch {
+macro_rules! filePreTokPosMatchArm {
     ( $x:pat ) => {
         FilePreTokPos {
             file: _,
@@ -202,5 +226,22 @@ macro_rules! filePreTokPosMatch {
                 end: _,
             },
         }
+    };
+}
+
+#[macro_export]
+macro_rules! filePreTokPosMatches {
+    ( $file:expr, $x:pat ) => {
+        matches!(
+            $file,
+            FilePreTokPos {
+                file: _,
+                tokPos: PreTokPos {
+                    start: _,
+                    tok: $x,
+                    end: _,
+                },
+            }
+        )
     };
 }

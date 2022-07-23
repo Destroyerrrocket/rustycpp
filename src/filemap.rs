@@ -24,7 +24,7 @@ impl<'a> FileMap {
     pub fn getAddFile(&'a mut self, path: &str) -> Arc<CompileFile> {
         if !self.files.contains_key(path) {
             if !path.ends_with(".cpp") && !path.ends_with(".hpp") {
-                eprintln!("Unsuported file type: {}", path);
+                log::error!("Unsuported file type: {}", path);
             }
             let mut file: File = match File::open(&path) {
                 Ok(it) => it,
@@ -61,7 +61,7 @@ impl<'a> FileMap {
     }
 
     #[allow(dead_code)]
-    pub fn addTestFile(&mut self, path: String, content: String) -> () {
+    pub fn addTestFile(&mut self, path: String, content: String) {
         self.files
             .insert(path.to_string(), Arc::new(CompileFile::new(path, content)));
     }

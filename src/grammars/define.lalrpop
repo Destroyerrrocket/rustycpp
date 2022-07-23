@@ -1,7 +1,6 @@
 use crate::grammars::defineast::{*};
 use crate::utils::structs::{*};
 use crate::utils::pretoken::{*};
-use crate::utils::pretoken::PreToken::{*};
 use crate::utils::pretoken::PreprocessingOperator;
 use std::sync::Arc;
 
@@ -16,16 +15,39 @@ Define: Vec<PreTokenDefine> = {
 
 Elem: PreTokenDefine = {
 	<ArgMVar> => <>,
-	Hash Whitespace* <ArgMVar> => PreTokenDefine::Hash(Box::new(<>)),
-	<to: ReTokNoWhiteSp> HashHash Whitespace* <arg: ArgMVar> => PreTokenDefine::HashHash(Box::new(to), Box::new(arg)),
-	<arg: ArgMVar> HashHash Whitespace* <to: ReTokNoWhiteSp> => PreTokenDefine::HashHash(Box::new(arg), Box::new(to)),
-	VariadicOpt Whitespace* VariadicOptParenL <Define> VariadicOptParenR => PreTokenDefine::VariadicOpt(<>.into_iter().map(|x| Box::new(x)).collect::<Vec<Box<PreTokenDefine>>>()),
+	<l:@L> <h:Hash> <r:@R> Whitespace* <a:ArgMVar> => {
+		PreTokenDefine::Hash(
+			FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: (), end: r.0}},
+			vec![a])
+	},
+	<to:ReTokNoWhiteSp> <l:@L> <hh:HashHash> <r:@R> Whitespace* <arg: ArgMVar> => {
+		PreTokenDefine::HashHash(
+			FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: (), end: r.0}},
+			vec!(to), vec!(arg))
+	},
+	<arg: ArgMVar> <l:@L> <hh:HashHash> <r:@R> Whitespace* <to: ReTokNoWhiteSp> => {
+		PreTokenDefine::HashHash(
+			FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: (), end: r.0}},
+			vec!(arg), vec!(to))
+	},
+
+	<arg1: ArgMVar> <l:@L> <hh:HashHash> <r:@R> Whitespace* <arg2: ArgMVar> => {
+		PreTokenDefine::HashHash(
+			FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: (), end: r.0}},
+			vec!(arg1), vec!(arg2))
+	},
+
 	<ReTokNormal> => <>,
 }
 
 ArgMVar: PreTokenDefine = {
-	<Arg> => PreTokenDefine::Arg(<>),
-	<VariadicArg> => PreTokenDefine::VariadicArg,
+	<l:@L> <a:Arg> <r:@R> => PreTokenDefine::Arg(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: a, end: r.0}}),
+	<l:@L> <v:VariadicArg> <r:@R> => PreTokenDefine::VariadicArg(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: (), end: r.0}}),
+	<l:@L> <va:VariadicOpt> <r:@R> Whitespace* VariadicOptParenL <d:Define> VariadicOptParenR => {
+		PreTokenDefine::VariadicOpt(
+			FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: (), end: r.0}},
+			d.into_iter().collect::<Vec<PreTokenDefine>>())
+	},
 }
 
 ReTokNoWhiteSp: PreTokenDefine = {
