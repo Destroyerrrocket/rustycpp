@@ -35,7 +35,7 @@ fn getToksPreprocessedNoWs(files: &[(&'static str, &'static str)]) -> Vec<PreTok
     return res;
 }
 
-fn toksToString(toks: &Vec<PreToken>) -> String {
+fn toksToString(toks: &[PreToken]) -> String {
     let mut res = String::new();
     for s in toks.iter().map(|x| x.to_str()) {
         res.push_str(s);
@@ -46,7 +46,7 @@ fn toksToString(toks: &Vec<PreToken>) -> String {
 
 fn preprocessAndStringify(string: &'static str) -> String {
     let info = &[("test", string)];
-    return toksToString(&getToksPreprocessedNoWs(info));
+    toksToString(&getToksPreprocessedNoWs(info))
 }
 #[test]
 fn testMacroReplacement() {

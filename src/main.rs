@@ -5,6 +5,7 @@
 #![feature(unwrap_infallible)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
+#![allow(clippy::needless_return)]
 
 mod compiler;
 mod filemap;

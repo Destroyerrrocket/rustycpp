@@ -106,49 +106,42 @@ impl PreLexer {
         loop {
             if self.current.is_empty() {
                 break;
+            } else if regex_find!(r#"^<::[^:>]"#, &self.current).is_some() {
+                (kind, idx) = (
+                    Some(PreToken::new(
+                        PreTokenLexer::OperatorPunctuator,
+                        "<".to_string(),
+                    )),
+                    1,
+                );
+                break;
             } else {
-                if let Some(_) = regex_find!(r#"^<::[^:>]"#, &self.current) {
-                    (kind, idx) = (
-                        Some(PreToken::new(
-                            PreTokenLexer::OperatorPunctuator,
-                            "<".to_string(),
-                        )),
-                        1,
-                    );
-                    break;
-                } else {
+                let splice_point_slash_nl = self.spliceNewlinePosition();
+                (kind, idx) = self.getNextTokenNonSpliced();
+                if splice_point_slash_nl.contains(&idx)
+                    || (matches!(kind, Some(PreToken::Unknown(_)))
+                        && splice_point_slash_nl.is_some())
+                {
+                    self.applySplice(splice_point_slash_nl.unwrap());
+                    splices += 1;
+                    continue;
+                } else if matches!(kind, Some(PreToken::Unknown(_))) {
+                    self.current = prevCurrent;
+                    splices = 0;
                     let splice_point_slash_nl = self.spliceNewlinePosition();
-                    (kind, idx) = self.getNextTokenNonSpliced();
-                    if splice_point_slash_nl.contains(&idx)
-                        || (match kind {
-                            Some(PreToken::Unknown(_)) => true,
-                            _ => false,
-                        } && splice_point_slash_nl.is_some())
-                    {
+                    if splice_point_slash_nl.contains(&idx) {
                         self.applySplice(splice_point_slash_nl.unwrap());
                         splices += 1;
-                        continue;
-                    } else if match kind {
-                        Some(PreToken::Unknown(_)) => true,
-                        _ => false,
-                    } {
-                        self.current = prevCurrent;
-                        splices = 0;
-                        let splice_point_slash_nl = self.spliceNewlinePosition();
-                        if splice_point_slash_nl.contains(&idx) {
-                            self.applySplice(splice_point_slash_nl.unwrap());
-                            splices += 1;
-                        }
-                        break;
-                    } else if kind.is_some() {
-                        break;
-                    } else {
-                        eprintln!(
-                            "Encountered unmachable preprocessing token at: {} {}",
-                            self.line, self.column
-                        );
-                        return (None, 0, 0);
                     }
+                    break;
+                } else if kind.is_some() {
+                    break;
+                } else {
+                    eprintln!(
+                        "Encountered unmachable preprocessing token at: {} {}",
+                        self.line, self.column
+                    );
+                    return (None, 0, 0);
                 }
             }
         }
@@ -161,7 +154,7 @@ impl PreLexer {
 
         if let Some(mut kind) = kind {
             if let PreToken::Whitespace(WhiteCom::Comment(comment)) = &mut kind {
-                if comment.ends_with("\n") {
+                if comment.ends_with('\n') {
                     comment.pop();
                     idx = idx.checked_sub(1).unwrap();
                 }

@@ -41,29 +41,29 @@ impl MultiLexer {
             fileMapping: files,
             files: vec![FileLexer {
                 compFile: file.to_string(),
-                lexer: lexer,
+                lexer,
             }],
             pushedTokens: VecDeque::new(),
         }
     }
 
-    pub fn pushTokensDec(&mut self, toks: VecDeque<FilePreTokPos<PreToken>>) -> () {
+    pub fn pushTokensDec(&mut self, toks: VecDeque<FilePreTokPos<PreToken>>) {
         for i in toks.into_iter().rev() {
             self.pushedTokens.push_front(i);
         }
     }
 
-    pub fn pushTokensVec(&mut self, toks: Vec<FilePreTokPos<PreToken>>) -> () {
+    pub fn pushTokensVec(&mut self, toks: Vec<FilePreTokPos<PreToken>>) {
         for i in toks.into_iter().rev() {
             self.pushedTokens.push_front(i);
         }
     }
 
-    pub fn pushToken(&mut self, tok: FilePreTokPos<PreToken>) -> () {
+    pub fn pushToken(&mut self, tok: FilePreTokPos<PreToken>) {
         self.pushedTokens.push_back(tok);
     }
 
-    pub fn pushFile(&mut self, path: String) -> () {
+    pub fn pushFile(&mut self, path: String) {
         self.files.push(FileLexer {
             compFile: path.clone(),
             lexer: PreLexer::new(

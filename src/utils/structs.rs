@@ -16,24 +16,21 @@ impl CompileFile {
     pub fn new(path: String, content: String) -> CompileFile {
         let contentFile = Arc::new(content.replace("\r\n", "\n"));
         CompileFile {
-            path: path,
+            path,
             content: contentFile.clone(),
             newlines: contentFile
                 .char_indices()
-                .filter(|(_, char)| match char {
-                    '\n' => true,
-                    _ => false,
-                })
+                .filter(|(_, char)| matches!(char, '\n'))
                 .map(|(idx, _)| idx)
                 .collect(),
         }
     }
 
     pub fn path(&self) -> &String {
-        return &self.path;
+        &self.path
     }
     pub fn content(&self) -> &String {
-        return &self.content;
+        &self.content
     }
 
     pub fn getRowColumn(&self, diff: usize) -> (usize, usize) {
@@ -53,7 +50,7 @@ impl CompileFile {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompileMsgKind {
     Notice,
     Warning,
@@ -83,22 +80,22 @@ pub struct CompileMsg {
 
 impl CompileMsg {
     pub fn errorLocStr(&self) -> String {
-        return self.file.getLocStr(self.at);
+        self.file.getLocStr(self.at)
     }
 
     pub fn severity(&self) -> CompileMsgKind {
-        return self.kind;
+        self.kind
     }
 }
 
 impl ToString for CompileMsg {
     fn to_string(&self) -> String {
-        return format!(
+        format!(
             "{} at: {}\n{}\n",
             self.kind.to_string(),
             self.errorLocStr(),
             self.msg
-        );
+        )
     }
 }
 
@@ -126,9 +123,9 @@ impl CompileError {
     ) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
-            file: file,
-            at: at,
-            atEnd: atEnd,
+            file,
+            at,
+            atEnd,
             kind: CompileMsgKind::Error,
         }
     }
@@ -153,10 +150,10 @@ impl CompileWarning {
         atEnd: Option<usize>,
     ) -> CompileMsg {
         CompileMsg {
-            msg: msg,
-            file: file,
-            at: at,
-            atEnd: atEnd,
+            msg,
+            file,
+            at,
+            atEnd,
             kind: CompileMsgKind::Warning,
         }
     }
@@ -170,7 +167,7 @@ pub struct PreTokPos<T: Clone + Debug> {
 }
 impl<T: Clone + Debug> PreTokPos<T> {
     pub fn tokString(&self) -> String {
-        format!("{:?}", self.tok).to_string()
+        format!("{:?}", self.tok)
     }
 }
 
@@ -183,7 +180,7 @@ pub struct FilePreTokPos<T: Clone + Debug> {
 impl<T: Clone + Debug> FilePreTokPos<T> {
     pub fn new(file: Arc<CompileFile>, tok: PreTokPos<T>) -> FilePreTokPos<T> {
         FilePreTokPos {
-            file: file,
+            file,
             tokPos: tok,
         }
     }

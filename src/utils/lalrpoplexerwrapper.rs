@@ -21,7 +21,7 @@ pub struct LalrPopLexerWrapper<'slice, T: Clone + Debug> {
 impl<'slice, T: Clone + Debug> LalrPopLexerWrapper<'slice, T> {
     pub fn new(tokens: &'slice [FilePreTokPos<T>]) -> LalrPopLexerWrapper<T> {
         LalrPopLexerWrapper {
-            tokens: tokens,
+            tokens,
             state: LalrPopLexerWrapperState::Normal,
             idx: 0,
         }
@@ -31,27 +31,25 @@ impl<'slice, T: Clone + Debug> LalrPopLexerWrapper<'slice, T> {
 impl<'slice, T: Clone + Debug> Iterator for LalrPopLexerWrapper<'slice, T> {
     type Item = Result<((usize, Arc<CompileFile>), T, (usize, Arc<CompileFile>)), ()>;
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if self.tokens.is_empty() {
-                return None;
-            } else {
-                let tok = &self.tokens[0];
-                self.tokens = &self.tokens[1..];
-                self.idx += 1;
-                /*
-                if tok.kind.isWhitespace() && matches!(self.state, LalrPopLexerWrapperState::SkipWhitespace | LalrPopLexerWrapperState::SkipWsNl) {
-                    continue;
-                }
-                if matches!(tok.kind, PreToken::Newline) && matches!(self.state,LalrPopLexerWrapperState::SkipWsNl) {
-                    continue;
-                }
-                */
-                return Some(Ok((
-                    (tok.tokPos.start, tok.file.clone()),
-                    tok.tokPos.tok.clone(),
-                    (tok.tokPos.end, tok.file.clone()),
-                )));
+        if self.tokens.is_empty() {
+            None
+        } else {
+            let tok = &self.tokens[0];
+            self.tokens = &self.tokens[1..];
+            self.idx += 1;
+            /*
+            if tok.kind.isWhitespace() && matches!(self.state, LalrPopLexerWrapperState::SkipWhitespace | LalrPopLexerWrapperState::SkipWsNl) {
+                continue;
             }
+            if matches!(tok.kind, PreToken::Newline) && matches!(self.state,LalrPopLexerWrapperState::SkipWsNl) {
+                continue;
+            }
+            */
+            Some(Ok((
+                (tok.tokPos.start, tok.file.clone()),
+                tok.tokPos.tok.clone(),
+                (tok.tokPos.end, tok.file.clone()),
+            )))
         }
     }
 }

@@ -13,9 +13,9 @@ use self::multilexer::MultiLexer;
 
 #[derive(Debug, PartialEq)]
 enum ScopeStatus {
-    SuccessBlock,
-    FailureBlock,
-    AlreadySucceededBlock,
+    Success,
+    Failure,
+    AlreadySucceeded,
 }
 
 mod defineparse;
@@ -46,7 +46,7 @@ impl Preprocessor {
         }
     }
 
-    fn undefineMacro(&mut self, preToken: FilePreTokPos<PreToken>) -> () {
+    fn undefineMacro(&mut self, preToken: FilePreTokPos<PreToken>) {
         let vecPrepro = Iterator::take_while(&mut self.multilexer, |pre| {
             pre.tokPos.tok != PreToken::Newline
         })
@@ -60,7 +60,7 @@ impl Preprocessor {
             }
             Some(e) => match e.tokPos.tok {
                 PreToken::Ident(id) => {
-                    if let None = self.definitions.remove(&id) {
+                    if self.definitions.remove(&id).is_none() {
                         self.errors.push_back(CompileError::from_preTo(
                             format!("Macro {} is not defined when reached", id),
                             &preToken,
@@ -82,15 +82,15 @@ impl Preprocessor {
         return;
     }
 
-    fn includeFile(&mut self, file: Option<String>) -> () {
+    fn includeFile(&mut self, _file: Option<String>) {
         todo!("Implement including");
     }
 
-    fn consumeMacroInclude(&mut self, PreToken: FilePreTokPos<PreToken>) -> Option<String> {
+    fn consumeMacroInclude(&mut self, _PreToken: FilePreTokPos<PreToken>) -> Option<String> {
         todo!("Implement header extraction");
     }
 
-    fn consumeMacroDef(&mut self, PreToken: FilePreTokPos<PreToken>) -> Option<String> {
+    fn consumeMacroDef(&mut self, _PreToken: FilePreTokPos<PreToken>) -> Option<String> {
         let identStr;
         loop {
             let inIdent = self.multilexer.next();
@@ -120,27 +120,26 @@ impl Preprocessor {
         return Some(identStr);
     }
 
-    fn reachNl(&mut self) -> () {
+    fn reachNl(&mut self) {
         loop {
             let inIdent = self.multilexer.next();
             match inIdent {
                 None => {
                     return;
                 }
-                Some(ident) => match ident.tokPos.tok {
-                    PreToken::Newline => {
+                Some(ident) => {
+                    if ident.tokPos.tok == PreToken::Newline {
                         return;
                     }
-                    _ => {}
-                },
+                }
             }
         }
     }
-    fn consumeMacroExpr(&mut self, preToken: FilePreTokPos<PreToken>) -> () {
+    fn consumeMacroExpr(&mut self, _preToken: FilePreTokPos<PreToken>) {
         todo!();
     }
 
-    fn evalIfScope(&self, tree: ()) -> bool {
+    fn evalIfScope(&self, _tree: ()) -> bool {
         todo!();
     }
 
@@ -151,12 +150,9 @@ impl Preprocessor {
         return false;
     }
 
-    fn preprocessorDirective(&mut self, PreToken: FilePreTokPos<PreToken>) -> () {
+    fn preprocessorDirective(&mut self, _PreToken: FilePreTokPos<PreToken>) {
         let operation;
-        let enabledBlock = match self.scope.last() {
-            Some(ScopeStatus::SuccessBlock) | None => true,
-            _ => false,
-        };
+        let enabledBlock = matches!(self.scope.last(), Some(ScopeStatus::Success) | None);
         loop {
             match self.multilexer.next() {
                 None => {
@@ -189,34 +185,34 @@ impl Preprocessor {
                 }
                 "if" => {
                     let t = self.consumeMacroExpr(operation);
-                    let t2 = if self.evalIfScope(t) == true {
-                        ScopeStatus::SuccessBlock
+                    let t2 = if self.evalIfScope(t) {
+                        ScopeStatus::Success
                     } else {
-                        ScopeStatus::FailureBlock
+                        ScopeStatus::Failure
                     };
                     self.scope.push(t2);
                 }
                 "ifdef" => {
                     let t = { self.consumeMacroDef(operation) };
-                    let t2 = if self.evalIfDef(t) == true {
-                        ScopeStatus::SuccessBlock
+                    let t2 = if self.evalIfDef(t) {
+                        ScopeStatus::Success
                     } else {
-                        ScopeStatus::FailureBlock
+                        ScopeStatus::Failure
                     };
                     self.scope.push(t2);
                 }
                 "ifndef" => {
                     let t = self.consumeMacroDef(operation);
-                    let t2 = if self.evalIfDef(t) == false {
-                        ScopeStatus::SuccessBlock
+                    let t2 = if !self.evalIfDef(t) {
+                        ScopeStatus::Success
                     } else {
-                        ScopeStatus::FailureBlock
+                        ScopeStatus::Failure
                     };
                     self.scope.push(t2);
                 }
                 "elif" | "else" => {
                     if let Some(scope) = self.scope.last_mut() {
-                        *scope = ScopeStatus::AlreadySucceededBlock;
+                        *scope = ScopeStatus::AlreadySucceeded;
                         self.reachNl(); // TODO: Check empty in else
                     } else {
                         self.errors.push_back(CompileError::from_preTo(
@@ -248,21 +244,21 @@ impl Preprocessor {
                     self.reachNl();
                 }
             }
-        } else if &ScopeStatus::FailureBlock == self.scope.last().unwrap() {
+        } else if &ScopeStatus::Failure == self.scope.last().unwrap() {
             match operation.tokPos.tok.to_str() {
                 "if" | "ifdef" | "ifndef" => {
-                    self.scope.push(ScopeStatus::AlreadySucceededBlock);
+                    self.scope.push(ScopeStatus::AlreadySucceeded);
                 }
                 "elif" => {
                     let macroExpr = self.consumeMacroExpr(operation);
-                    if self.evalIfScope(macroExpr) == true {
+                    if self.evalIfScope(macroExpr) {
                         let scope = self.scope.last_mut().unwrap();
-                        *scope = ScopeStatus::SuccessBlock
+                        *scope = ScopeStatus::Success
                     }
                 }
                 "else" => {
                     let scope = self.scope.last_mut().unwrap();
-                    *scope = ScopeStatus::SuccessBlock;
+                    *scope = ScopeStatus::Success;
                     self.reachNl(); // TODO: Check empty
                 }
                 "endif" => {
@@ -273,11 +269,11 @@ impl Preprocessor {
                     self.reachNl();
                 }
             }
-        } else if &ScopeStatus::AlreadySucceededBlock == self.scope.last().unwrap() {
+        } else if &ScopeStatus::AlreadySucceeded == self.scope.last().unwrap() {
             match operation.tokPos.tok.to_str() {
                 "if" | "ifdef" | "ifndef" => {
                     self.reachNl();
-                    self.scope.push(ScopeStatus::AlreadySucceededBlock);
+                    self.scope.push(ScopeStatus::AlreadySucceeded);
                 }
                 "endif" => {
                     self.reachNl(); // TODO: Check empty
@@ -290,10 +286,10 @@ impl Preprocessor {
         }
     }
 
-    fn consume(&mut self, newToken: FilePreTokPos<PreToken>) -> () {
+    fn consume(&mut self, newToken: FilePreTokPos<PreToken>) {
         loop {
             match self.scope.last() {
-                Some(ScopeStatus::SuccessBlock) | None => {
+                Some(ScopeStatus::Success) | None => {
                     if self.atStartLine {
                         match newToken.tokPos.tok {
                             PreToken::Whitespace(_) | PreToken::Newline => {
@@ -383,7 +379,7 @@ impl Preprocessor {
         }
     }
 }
-impl<'a> Iterator for Preprocessor {
+impl Iterator for Preprocessor {
     type Item = Result<FilePreTokPos<PreToken>, CompileMsg>;
     fn next(&mut self) -> Option<Self::Item> {
         let this = self as *mut Self;

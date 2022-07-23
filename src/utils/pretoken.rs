@@ -1,6 +1,6 @@
 use logos::Logos;
 
-#[derive(PartialEq, Debug, Logos)]
+#[derive(PartialEq, Eq, Debug, Logos)]
 pub enum PreTokenLexer {
     #[regex(r"[a-zA-Z_[^\x00-\x7F]][a-zA-Z0-9_[^\x00-\x7F]]*")]
     Ident,
@@ -203,10 +203,10 @@ pub enum PreprocessingOperator {
 }
 impl PreprocessingOperator {
     fn as_str(&self) -> &str {
-        return match self {
+        match self {
             PreprocessingOperator::Hash => "#",
             PreprocessingOperator::HashHash => "##",
-        };
+        }
     }
 }
 

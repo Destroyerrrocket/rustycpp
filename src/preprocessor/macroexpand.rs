@@ -35,33 +35,27 @@ impl Preprocessor {
             let mut paramDisabledMacros = disabledMacros.clone();
             paramLexer.pushTokensVec(namedArgs.get(&a.tokPos.tok).unwrap().clone());
             let mut preproTokie = VecDeque::new();
-            loop {
-                if let Some(tok) = paramLexer.next() {
-                    match &tok {
-                        filePreTokPosMatchArm!(PreToken::EnableMacro(nameMacro)) => {
-                            paramDisabledMacros.remove(nameMacro);
-                        }
-                        filePreTokPosMatchArm!(PreToken::DisableMacro(nameMacro)) => {
-                            paramDisabledMacros.insert(nameMacro.clone());
-                        }
-                        filePreTokPosMatchArm!(PreToken::Ident(_)) => {
-                            let toks = Self::macroExpand(
-                                definitions,
-                                &paramDisabledMacros,
-                                &mut paramLexer,
-                                tok,
-                            )?;
-                            toks.into_iter()
-                                .collect_into::<VecDeque<FilePreTokPos<PreToken>>>(
-                                    &mut preproTokie,
-                                );
-                        }
-                        _ => {
-                            preproTokie.push_back(tok);
-                        }
+            while let Some(tok) = paramLexer.next() {
+                match &tok {
+                    filePreTokPosMatchArm!(PreToken::EnableMacro(nameMacro)) => {
+                        paramDisabledMacros.remove(nameMacro);
                     }
-                } else {
-                    break;
+                    filePreTokPosMatchArm!(PreToken::DisableMacro(nameMacro)) => {
+                        paramDisabledMacros.insert(nameMacro.clone());
+                    }
+                    filePreTokPosMatchArm!(PreToken::Ident(_)) => {
+                        let toks = Self::macroExpand(
+                            definitions,
+                            &paramDisabledMacros,
+                            &mut paramLexer,
+                            tok,
+                        )?;
+                        toks.into_iter()
+                            .collect_into::<VecDeque<FilePreTokPos<PreToken>>>(&mut preproTokie);
+                    }
+                    _ => {
+                        preproTokie.push_back(tok);
+                    }
                 }
             }
             log::debug!(
@@ -97,27 +91,23 @@ impl Preprocessor {
                 let mut paramLexer = MultiLexer::new_def(lexer.fileMapping());
                 paramLexer.pushTokensVec(variadic[posVariadic].clone());
                 let mut preproTokie = VecDeque::new();
-                loop {
-                    if let Some(tok) = paramLexer.next() {
-                        match &tok {
-                            filePreTokPosMatchArm!(PreToken::Ident(_)) => {
-                                let toks = Self::macroExpand(
-                                    definitions,
-                                    disabledMacros,
-                                    &mut paramLexer,
-                                    tok,
-                                )?;
-                                toks.into_iter()
-                                    .collect_into::<VecDeque<FilePreTokPos<PreToken>>>(
-                                        &mut preproTokie,
-                                    );
-                            }
-                            _ => {
-                                preproTokie.push_back(tok);
-                            }
+                while let Some(tok) = paramLexer.next() {
+                    match &tok {
+                        filePreTokPosMatchArm!(PreToken::Ident(_)) => {
+                            let toks = Self::macroExpand(
+                                definitions,
+                                disabledMacros,
+                                &mut paramLexer,
+                                tok,
+                            )?;
+                            toks.into_iter()
+                                .collect_into::<VecDeque<FilePreTokPos<PreToken>>>(
+                                    &mut preproTokie,
+                                );
                         }
-                    } else {
-                        break;
+                        _ => {
+                            preproTokie.push_back(tok);
+                        }
                     }
                 }
                 result.append(&mut preproTokie);
@@ -183,12 +173,12 @@ impl Preprocessor {
                     el.tokPos
                         .tok
                         .to_str()
-                        .replace("\\", "\\\\")
-                        .replace("\"", "\\\"")
+                        .replace('\\', "\\\\")
+                        .replace('\"', "\\\"")
                         .as_str(),
                 );
             } else {
-                text.push_str(&el.tokPos.tok.to_str());
+                text.push_str(el.tokPos.tok.to_str());
             }
             log::debug!("CURRENT TEXT: {} WITH TOKEN: {:?}", text, el);
         }
@@ -346,7 +336,7 @@ impl Preprocessor {
             true,
         )
         .is_ok_and(|x| {
-            x.into_iter().any(|x| -> bool {
+            x.iter().any(|x| -> bool {
                 !filePreTokPosMatches!(
                     x,
                     PreToken::Whitespace(_)
@@ -473,8 +463,8 @@ impl Preprocessor {
         Vec<Vec<FilePreTokPos<PreToken>>>,
     ) {
         let mut named = HashMap::new();
-        for i in 0..params.len() {
-            named.insert(params[i].clone(), paramRes.remove(0));
+        for param in params {
+            named.insert(param.clone(), paramRes.remove(0));
         }
         return (named, paramRes);
     }

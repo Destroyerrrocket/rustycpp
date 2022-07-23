@@ -36,9 +36,7 @@ impl Preprocessor {
                         PreToken::Ident(s) => {
                             if parse.param.is_some_and(|param| param.contains(&s)) {
                                 PreTokenDefinePreParse::Arg(s)
-                            } else if s.as_str() == variadicStr {
-                                PreTokenDefinePreParse::VariadicArg
-                            } else if s.as_str() == "__VA_ARGS__" {
+                            } else if s.as_str() == variadicStr || s.as_str() == "__VA_ARGS__" {
                                 PreTokenDefinePreParse::VariadicArg
                             } else if s.as_str() == "__VA_OPT__" {
                                 vaOptExpectParen.push(-1);
@@ -117,14 +115,13 @@ impl Preprocessor {
                 format!(
                     "Found token {:?} when I wasn't expecting any other tokens",
                     token.1
-                )
-                .to_string(),
+                ),
                 (token.0).1.clone(),
                 (token.0).0,
                 Some((token.2).0),
             ),
             ParseError::InvalidToken { location } => CompileError::from_at(
-                format!("Found invalid token").to_string(),
+                "Found invalid token".to_string(),
                 (location.1).clone(),
                 location.0,
                 None,
@@ -133,8 +130,7 @@ impl Preprocessor {
                 format!(
                     "Found early end of file while expecting to find: {:?}",
                     expected
-                )
-                .to_string(),
+                ),
                 (location.1).clone(),
                 location.0,
                 None,
@@ -143,8 +139,7 @@ impl Preprocessor {
                 format!(
                     "Found {:?} while expecting to find: {:?}",
                     token.1, expected
-                )
-                .to_string(),
+                ),
                 (token.0).1.clone(),
                 (token.0).0,
                 Some((token.2).0),
@@ -181,7 +176,7 @@ impl Preprocessor {
         } else {
             return Err(CompileError::from_preTo(
                 "Expected identifier in macro definition",
-                &initialToken,
+                initialToken,
             ));
         };
         let mut rlt;
@@ -281,7 +276,7 @@ impl Preprocessor {
                 {
                     return Err(CompileError::from_preTo(
                         "Non-variadic macro can't use __VA_ARGS__",
-                        &initialToken,
+                        initialToken,
                     ));
                 }
                 if rl
@@ -290,7 +285,7 @@ impl Preprocessor {
                 {
                     return Err(CompileError::from_preTo(
                         "Non-variadic macro can't use __VA_OPT__",
-                        &initialToken,
+                        initialToken,
                     ));
                 }
             }
@@ -306,7 +301,7 @@ impl Preprocessor {
         preToken: &FilePreTokPos<PreToken>,
     ) -> Result<(), CompileMsg> {
         let def = {
-            match self.getAstMacro(&preToken, vecPrepro) {
+            match self.getAstMacro(preToken, vecPrepro) {
                 Err(err) => {
                     return Err(err);
                 }
@@ -317,7 +312,7 @@ impl Preprocessor {
         match self.definitions.get_mut(&def.id) {
             Some(other) => {
                 *other = def;
-                return Err(CompileWarning::from_preTo("Redefining macro", &preToken));
+                return Err(CompileWarning::from_preTo("Redefining macro", preToken));
             }
             None => {
                 self.definitions.insert(def.id.to_string(), def);
@@ -333,11 +328,8 @@ impl Preprocessor {
         .collect::<Vec<FilePreTokPos<PreToken>>>();
         {
             let res = self.defineMacroImpl(vecPrepro, &preToken);
-            match res {
-                Err(err) => {
-                    self.errors.push_back(err);
-                }
-                Ok(_) => {}
+            if let Err(err) = res {
+                self.errors.push_back(err);
             };
         }
         log::debug!("Macros:");
