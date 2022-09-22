@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashMap, VecDeque},
     sync::{Arc, Mutex},
 };
 
@@ -8,6 +8,8 @@ use crate::{
     grammars::defineast::*,
     utils::{pretoken::*, structs::*},
 };
+
+use multiset::HashMultiSet;
 
 use self::multilexer::MultiLexer;
 
@@ -29,7 +31,7 @@ pub struct Preprocessor {
     errors: VecDeque<CompileMsg>,
     scope: Vec<ScopeStatus>,
     definitions: HashMap<String, DefineAst>,
-    disabledMacros: HashSet<String>,
+    disabledMacros: HashMultiSet<String>,
     atStartLine: bool,
 }
 
@@ -41,7 +43,7 @@ impl Preprocessor {
             errors: VecDeque::new(),
             scope: vec![],
             definitions: HashMap::new(),
-            disabledMacros: HashSet::new(),
+            disabledMacros: HashMultiSet::new(),
             atStartLine: true,
         }
     }
@@ -323,7 +325,7 @@ impl Preprocessor {
                             PreToken::Ident(_) => {
                                 let toks = Self::macroExpand(
                                     &self.definitions,
-                                    &self.disabledMacros,
+                                    &mut self.disabledMacros,
                                     &mut self.multilexer,
                                     newToken,
                                 );

@@ -40,6 +40,21 @@ MaybeHashHash: PreTokenDefine = {
 			FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: (), end: r.0}},
 			vec!(to), vec!(arg))
 	},
+	<to:Hash> <l:@L> <hh:HashHash> <r:@R> Whitespace* <arg: Hash> => {
+		PreTokenDefine::HashHash(
+			FilePreTokPos{file: l.1.clone(), tokPos: PreTokPos {start: l.0, tok: (), end: r.0}},
+				vec!(PreTokenDefine::Normal(
+					FilePreTokPos{file: l.1.clone(), tokPos: PreTokPos {
+						start: l.0, tok: PreToken::PreprocessingOperator(PreprocessingOperator::Hash), end: r.0
+					}},
+				)),
+				vec!(PreTokenDefine::Normal(
+					FilePreTokPos{file: l.1, tokPos: PreTokPos {
+						start: l.0, tok: PreToken::PreprocessingOperator(PreprocessingOperator::Hash), end: r.0
+					}},
+				))
+			)
+	},
 }
 
 ArgMVar: PreTokenDefine = {
