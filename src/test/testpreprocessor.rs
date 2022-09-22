@@ -19,7 +19,14 @@ fn generateFileMap(files: &[(&'static str, &'static str)]) -> (Arc<Mutex<FileMap
 fn getToksPreprocessed(files: &[(&'static str, &'static str)]) -> Vec<PreToken> {
     let prep = Preprocessor::new(generateFileMap(files));
     return prep
-        .filter_map(|x| x.ok())
+        .filter_map(|x| {
+            if let Some(err) = x.as_ref().err() {
+                log::error!("{}", err.to_string());
+                None
+            } else {
+                x.ok()
+            }
+        })
         .map(|x| x.tokPos.tok)
         .collect::<Vec<PreToken>>();
 }
@@ -31,13 +38,22 @@ fn getErrsPreprocessed(files: &[(&'static str, &'static str)]) -> Vec<CompileMsg
 
 fn getToksPreprocessedNoWs(files: &[(&'static str, &'static str)]) -> Vec<PreToken> {
     let mut res = getToksPreprocessed(files);
-    res.retain(|x| !matches!(x, PreToken::Whitespace(_) | PreToken::Newline));
+    res.retain(|x| {
+        !matches!(
+            x,
+            PreToken::Whitespace(_)
+                | PreToken::Newline
+                | PreToken::ValidNop
+                | PreToken::EnableMacro(_)
+                | PreToken::DisableMacro(_)
+        )
+    });
     return res;
 }
 
 fn toksToString(toks: &[PreToken]) -> String {
     let mut res = String::new();
-    for s in toks.iter().map(|x| x.to_str()) {
+    for s in toks.iter().filter_map /*TODO: FILTER NOPS?*/ (|x| Some(x.to_str())) {
         res.push_str(s);
         res.push(' ');
     }

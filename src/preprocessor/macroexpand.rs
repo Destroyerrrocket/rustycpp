@@ -13,6 +13,18 @@ use crate::{
 use super::{multilexer::MultiLexer, Preprocessor};
 
 impl Preprocessor {
+    fn anyNonMetaToken(toks: &VecDeque<FilePreTokPos<PreToken>>) -> bool {
+        for tok in toks {
+            if !matches!(
+                tok.tokPos.tok,
+                PreToken::ValidNop | PreToken::EnableMacro(_) | PreToken::DisableMacro(_)
+            ) {
+                return true;
+            }
+        }
+        false
+    }
+
     fn expandNormal(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
         t: &FilePreTokPos<PreToken>,
@@ -65,6 +77,16 @@ impl Preprocessor {
                     .map(|x| x.tokString())
                     .collect::<Vec<String>>()
             );
+            while let Some(filePreTokPosMatchArm!(PreToken::Whitespace(_))) = preproTokie.front() {
+                preproTokie.pop_front();
+            }
+            while let Some(filePreTokPosMatchArm!(PreToken::Whitespace(_))) = preproTokie.back() {
+                preproTokie.pop_back();
+            }
+
+            if preproTokie.is_empty() {
+                preproTokie.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, a));
+            }
             result.append(&mut preproTokie);
         } else {
             namedArgs
@@ -73,6 +95,9 @@ impl Preprocessor {
                 .clone()
                 .into_iter()
                 .collect_into(&mut result);
+            if namedArgs.get(&a.tokPos.tok).unwrap().is_empty() {
+                FilePreTokPos::new_meta_c(PreToken::ValidNop, a);
+            }
         }
         return Ok(result);
     }
@@ -87,6 +112,7 @@ impl Preprocessor {
         vaTok: &FilePreTokPos<()>,
     ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
         if expandArg {
+            let mut tempResult = VecDeque::new();
             for posVariadic in 0..variadic.len() {
                 let mut paramLexer = MultiLexer::new_def(lexer.fileMapping());
                 paramLexer.pushTokensVec(variadic[posVariadic].clone());
@@ -110,15 +136,25 @@ impl Preprocessor {
                         }
                     }
                 }
-                result.append(&mut preproTokie);
+                tempResult.append(&mut preproTokie);
 
                 if posVariadic + 1 != variadic.len() {
-                    result.push_back(FilePreTokPos::new_meta_c(
+                    tempResult.push_back(FilePreTokPos::new_meta_c(
                         PreToken::OperatorPunctuator(","),
                         vaTok,
                     ))
                 }
             }
+            while let Some(filePreTokPosMatchArm!(PreToken::Whitespace(_))) = tempResult.front() {
+                tempResult.pop_front();
+            }
+            while let Some(filePreTokPosMatchArm!(PreToken::Whitespace(_))) = tempResult.back() {
+                tempResult.pop_back();
+            }
+            if tempResult.is_empty() {
+                tempResult.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, vaTok));
+            }
+            result.append(&mut tempResult);
         } else {
             for posVariadic in 0..variadic.len() {
                 for v in variadic[posVariadic].iter() {
@@ -130,6 +166,9 @@ impl Preprocessor {
                         vaTok,
                     ))
                 }
+            }
+            if variadic.is_empty() {
+                result.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, vaTok));
             }
         }
         return Ok(result);
@@ -156,33 +195,35 @@ impl Preprocessor {
             tokie,
             false,
         )?;
-        let mut text = "\"".to_string();
+        let mut text = String::new();
         resChild.pop_back();
         resChild.pop_front();
 
-        while let Some(filePreTokPosMatchArm!(PreToken::Whitespace(_))) = resChild.back() {
-            resChild.pop_back();
-        }
-        while let Some(filePreTokPosMatchArm!(PreToken::Whitespace(_))) = resChild.front() {
-            resChild.pop_front();
-        }
-
         for el in resChild.iter() {
-            if filePreTokPosMatches!(el, PreToken::StringLiteral(_)) {
-                text.push_str(
-                    el.tokPos
-                        .tok
-                        .to_str()
-                        .replace('\\', "\\\\")
-                        .replace('\"', "\\\"")
-                        .as_str(),
-                );
-            } else {
-                text.push_str(el.tokPos.tok.to_str());
+            match el {
+                filePreTokPosMatchArm!(PreToken::StringLiteral(_)) => {
+                    text.push_str(
+                        el.tokPos
+                            .tok
+                            .to_str()
+                            .replace('\\', "\\\\")
+                            .replace('\"', "\\\"")
+                            .as_str(),
+                    );
+                }
+                filePreTokPosMatchArm!(PreToken::Newline)
+                | filePreTokPosMatchArm!(PreToken::Whitespace(_)) => {
+                    text.push(' ');
+                }
+                _ => {
+                    text.push_str(el.tokPos.tok.to_str());
+                }
             }
-            log::debug!("CURRENT TEXT: {} WITH TOKEN: {:?}", text, el);
         }
+        text = text.trim().to_string();
+        text.insert(0, '"');
         text.push('"');
+
         result.push_back(FilePreTokPos::new_meta_c(
             PreToken::RawStringLiteral(text),
             pos,
@@ -218,10 +259,12 @@ impl Preprocessor {
                 right,
                 false,
             )?;
+
             expR.pop_back();
             expR.pop_front();
 
-            if expR.is_empty() {
+            if !Self::anyNonMetaToken(&expR) {
+                result.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, pos));
                 return Ok(result);
             }
 
@@ -239,7 +282,7 @@ impl Preprocessor {
                 variadic,
                 astId,
                 left,
-                false,
+                true,
             )?;
             expL.pop_back();
             expL.pop_front();
@@ -251,16 +294,21 @@ impl Preprocessor {
                 variadic,
                 astId,
                 right,
-                false,
+                true,
             )?;
             expR.pop_back();
             expR.pop_front();
+            println!(
+                "L: {:?}\nR: {:?}",
+                expL.iter().map(|x| x.tokString()).collect::<Vec<_>>(),
+                expR.iter().map(|x| x.tokString()).collect::<Vec<_>>(),
+            );
 
             // We remove the whitespace to the ## operator
             while !expL.is_empty() {
                 if expL
                     .back()
-                    .is_some_and(|x| filePreTokPosMatches!(x, PreToken::Whitespace(_)))
+                    .is_some_and(|x| filePreTokPosMatches!(x, PreToken::ValidNop))
                 {
                     expL.pop_back();
                 } else {
@@ -271,7 +319,7 @@ impl Preprocessor {
             while !expR.is_empty() {
                 if expR
                     .front()
-                    .is_some_and(|x| filePreTokPosMatches!(x, PreToken::Whitespace(_)))
+                    .is_some_and(|x| filePreTokPosMatches!(x, PreToken::ValidNop))
                 {
                     expR.pop_front();
                 } else {
@@ -281,26 +329,17 @@ impl Preprocessor {
 
             // And we merge them. Note that the resulting token may not be valid
             if !expL.is_empty() && !expR.is_empty() {
-                let leftTok = expL.pop_back().unwrap();
-                let rightTok = expR.pop_front().unwrap();
-                let expectedStr =
-                    leftTok.tokPos.tok.to_str().to_string() + rightTok.tokPos.tok.to_str();
-                let receivedTok = PreLexer::new(expectedStr.clone()).next().unwrap();
-
-                if receivedTok.tok.to_str().len() == expectedStr.len() {
-                    result.append(&mut expL);
-                    result.push_back(FilePreTokPos::new_meta_c(receivedTok.tok, pos));
-                    result.append(&mut expR);
-                } else {
-                    return Err(CompileError::from_preTo(
-                        format!("During macro expansion, I couldn't create a valid preprocessing token with \"{}\" and \"{}\".\nThe resulting token \"{}\" is not valid. Maybe the ## operator is unecessary?",
-                            leftTok.tokPos.tok.to_str(),
-                            rightTok.tokPos.tok.to_str(),
-                            expectedStr,
-                        ),
-                            pos
-                    ));
+                let mut expectedStr = String::new();
+                for ele in expL {
+                    expectedStr += ele.tokPos.tok.to_str();
                 }
+                for ele in expR {
+                    expectedStr += ele.tokPos.tok.to_str();
+                }
+                let receivedTok = PreLexer::new(expectedStr.clone()).collect::<Vec<_>>();
+                receivedTok.into_iter().for_each(|x| {
+                    result.push_back(FilePreTokPos::new_meta_c(x.tok, pos));
+                });
             } else if !expL.is_empty() || !expR.is_empty() {
                 // One of the sides is empty. We just append them
                 result.append(&mut expL);
@@ -343,6 +382,7 @@ impl Preprocessor {
                         | PreToken::Newline
                         | PreToken::EnableMacro(_)
                         | PreToken::DisableMacro(_)
+                        | PreToken::ValidNop
                 )
             })
         });
@@ -359,7 +399,17 @@ impl Preprocessor {
             )?;
             res.pop_back();
             res.pop_front();
-            result.append(&mut res);
+
+            if Self::anyNonMetaToken(&res) {
+                result.append(
+                    &mut res
+                        .into_iter()
+                        .filter(|x| !filePreTokPosMatches!(x, PreToken::ValidNop))
+                        .collect(),
+                );
+            } else {
+                result.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, pos));
+            }
         }
         return Ok(result);
     }
@@ -375,10 +425,6 @@ impl Preprocessor {
         expandArg: bool,
     ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
         let mut result = VecDeque::new();
-        result.push_back(FilePreTokPos::new_meta(PreToken::DisableMacro(
-            astId.clone(),
-        )));
-
         for tok in replacement {
             match tok {
                 PreTokenDefine::Normal(t) => {
@@ -449,6 +495,9 @@ impl Preprocessor {
                 }
             }
         }
+        result.push_front(FilePreTokPos::new_meta(PreToken::DisableMacro(
+            astId.clone(),
+        )));
         result.push_back(FilePreTokPos::new_meta(PreToken::EnableMacro(
             astId.clone(),
         )));
