@@ -51,8 +51,8 @@ impl Preprocessor {
     fn undefineMacro(&mut self, preToken: FilePreTokPos<PreToken>) {
         let vecPrepro = Iterator::take_while(&mut self.multilexer, |pre| {
             pre.tokPos.tok != PreToken::Newline
-        })
-        .collect::<Vec<FilePreTokPos<PreToken>>>();
+        });
+
         match vecPrepro.into_iter().find(|e| !e.tokPos.tok.isWhitespace()) {
             None => {
                 self.errors.push_back(CompileError::from_preTo(
@@ -323,12 +323,7 @@ impl Preprocessor {
                                 break;
                             }
                             PreToken::Ident(_) => {
-                                let toks = Self::macroExpand(
-                                    &self.definitions,
-                                    &mut self.disabledMacros,
-                                    &mut self.multilexer,
-                                    newToken,
-                                );
+                                let toks = self.macroExpand(newToken);
                                 match toks {
                                     Ok(toks) => {
                                         self.generated.append(

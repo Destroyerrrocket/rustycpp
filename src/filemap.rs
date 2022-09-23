@@ -26,7 +26,7 @@ impl<'a> FileMap {
             if !path.ends_with(".cpp") && !path.ends_with(".hpp") {
                 log::error!("Unsuported file type: {}", path);
             }
-            let mut file: File = match File::open(&path) {
+            let mut file: File = match File::open(path) {
                 Ok(it) => it,
                 Err(err) => {
                     panic!(

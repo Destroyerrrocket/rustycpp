@@ -14,6 +14,18 @@ use crate::{
 
 use super::{multilexer::MultiLexer, Preprocessor};
 
+#[derive(Debug, Clone)]
+struct ExpandData<'a> {
+    definitions: &'a HashMap<String, DefineAst>,
+    disabledMacros: &'a HashMultiSet<String>,
+    lexer: &'a MultiLexer,
+    namedArgs: &'a HashMap<String, Vec<FilePreTokPos<PreToken>>>,
+    variadic: &'a Vec<Vec<FilePreTokPos<PreToken>>>,
+    astId: &'a String,
+    replacement: &'a Vec<PreTokenDefine>,
+    expandArg: bool,
+}
+
 impl Preprocessor {
     fn anyNonMetaToken(toks: &VecDeque<FilePreTokPos<PreToken>>) -> bool {
         for tok in toks {
@@ -37,17 +49,13 @@ impl Preprocessor {
 
     fn expandArg(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
-        definitions: &HashMap<String, DefineAst>,
-        disabledMacros: &HashMultiSet<String>,
-        lexer: &MultiLexer,
-        namedArgs: &HashMap<String, Vec<FilePreTokPos<PreToken>>>,
-        expandArg: bool,
+        expandData: ExpandData,
         a: &FilePreTokPos<String>,
     ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
-        if expandArg {
-            let mut paramLexer = MultiLexer::new_def(lexer.fileMapping());
-            let mut paramDisabledMacros = disabledMacros.clone();
-            paramLexer.pushTokensVec(namedArgs.get(&a.tokPos.tok).unwrap().clone());
+        if expandData.expandArg {
+            let mut paramLexer = MultiLexer::new_def(expandData.lexer.fileMapping());
+            let mut paramDisabledMacros = expandData.disabledMacros.clone();
+            paramLexer.pushTokensVec(expandData.namedArgs.get(&a.tokPos.tok).unwrap().clone());
             let mut preproTokie = VecDeque::new();
             while let Some(tok) = paramLexer.next() {
                 match &tok {
@@ -60,8 +68,8 @@ impl Preprocessor {
                         preproTokie.push_back(tok.clone());
                     }
                     filePreTokPosMatchArm!(PreToken::Ident(_)) => {
-                        let toks = Self::macroExpand(
-                            definitions,
+                        let toks = Self::macroExpandInternal(
+                            expandData.definitions,
                             &paramDisabledMacros,
                             &mut paramLexer,
                             tok,
@@ -141,13 +149,14 @@ impl Preprocessor {
             }
             result.append(&mut preproTokie);
         } else {
-            namedArgs
+            expandData
+                .namedArgs
                 .get(&a.tokPos.tok)
                 .unwrap()
                 .clone()
                 .into_iter()
                 .collect_into(&mut result);
-            if namedArgs.get(&a.tokPos.tok).unwrap().is_empty() {
+            if expandData.namedArgs.get(&a.tokPos.tok).unwrap().is_empty() {
                 FilePreTokPos::new_meta_c(PreToken::ValidNop, a);
             }
         }
@@ -156,25 +165,21 @@ impl Preprocessor {
 
     fn expandVariadicArg(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
-        definitions: &HashMap<String, DefineAst>,
-        disabledMacros: &HashMultiSet<String>,
-        lexer: &MultiLexer,
-        variadic: &Vec<Vec<FilePreTokPos<PreToken>>>,
-        expandArg: bool,
+        expandData: ExpandData,
         vaTok: &FilePreTokPos<()>,
     ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
-        if expandArg {
+        if expandData.expandArg {
             let mut tempResult = VecDeque::new();
-            for posVariadic in 0..variadic.len() {
-                let mut paramLexer = MultiLexer::new_def(lexer.fileMapping());
-                paramLexer.pushTokensVec(variadic[posVariadic].clone());
+            for posVariadic in 0..expandData.variadic.len() {
+                let mut paramLexer = MultiLexer::new_def(expandData.lexer.fileMapping());
+                paramLexer.pushTokensVec(expandData.variadic[posVariadic].clone());
                 let mut preproTokie = VecDeque::new();
                 while let Some(tok) = paramLexer.next() {
                     match &tok {
                         filePreTokPosMatchArm!(PreToken::Ident(_)) => {
-                            let toks = Self::macroExpand(
-                                definitions,
-                                disabledMacros,
+                            let toks = Self::macroExpandInternal(
+                                expandData.definitions,
+                                expandData.disabledMacros,
                                 &mut paramLexer,
                                 tok,
                             )?;
@@ -190,7 +195,7 @@ impl Preprocessor {
                 }
                 tempResult.append(&mut preproTokie);
 
-                if posVariadic + 1 != variadic.len() {
+                if posVariadic + 1 != expandData.variadic.len() {
                     tempResult.push_back(FilePreTokPos::new_meta_c(
                         PreToken::OperatorPunctuator(","),
                         vaTok,
@@ -208,18 +213,18 @@ impl Preprocessor {
             }
             result.append(&mut tempResult);
         } else {
-            for posVariadic in 0..variadic.len() {
-                for v in variadic[posVariadic].iter() {
+            for posVariadic in 0..expandData.variadic.len() {
+                for v in expandData.variadic[posVariadic].iter() {
                     result.push_back(v.clone());
                 }
-                if posVariadic + 1 != variadic.len() {
+                if posVariadic + 1 != expandData.variadic.len() {
                     result.push_back(FilePreTokPos::new_meta_c(
                         PreToken::OperatorPunctuator(","),
                         vaTok,
                     ))
                 }
             }
-            if variadic.is_empty() {
+            if expandData.variadic.is_empty() {
                 result.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, vaTok));
             }
         }
@@ -228,25 +233,20 @@ impl Preprocessor {
 
     fn expandHash(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
-        definitions: &HashMap<String, DefineAst>,
-        disabledMacros: &HashMultiSet<String>,
-        lexer: &MultiLexer,
-        namedArgs: &HashMap<String, Vec<FilePreTokPos<PreToken>>>,
-        variadic: &Vec<Vec<FilePreTokPos<PreToken>>>,
-        astId: &String,
+        expandData: ExpandData,
         pos: &FilePreTokPos<()>,
         tokie: &Vec<PreTokenDefine>,
     ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
-        let mut resChild = Self::expand(
-            definitions,
-            disabledMacros,
-            lexer,
-            namedArgs,
-            variadic,
-            astId,
-            tokie,
-            false,
-        )?;
+        let mut resChild = Self::expand(ExpandData {
+            definitions: expandData.definitions,
+            disabledMacros: expandData.disabledMacros,
+            lexer: expandData.lexer,
+            namedArgs: expandData.namedArgs,
+            variadic: expandData.variadic,
+            astId: expandData.astId,
+            replacement: tokie,
+            expandArg: false,
+        })?;
         let mut text = String::new();
         resChild.pop_back();
         resChild.pop_front();
@@ -298,12 +298,7 @@ impl Preprocessor {
 
     fn expandHashHash(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
-        _definitions: &HashMap<String, DefineAst>,
-        _disabledMacros: &HashMultiSet<String>,
-        lexer: &MultiLexer,
-        namedArgs: &HashMap<String, Vec<FilePreTokPos<PreToken>>>,
-        variadic: &Vec<Vec<FilePreTokPos<PreToken>>>,
-        astId: &String,
+        expandData: ExpandData,
         pos: &FilePreTokPos<()>,
         left: &Vec<PreTokenDefine>,
         right: &Vec<PreTokenDefine>,
@@ -314,16 +309,16 @@ impl Preprocessor {
             PreTokenDefine::Normal(filePreTokPosMatchArm!(PreToken::OperatorPunctuator(",")))
         ) && matches!(right.first().unwrap(), PreTokenDefine::VariadicArg(_))
         {
-            let mut expR = Self::expand(
-                &HashMap::new(),
-                &HashMultiSet::new(),
-                lexer,
-                namedArgs,
-                variadic,
-                astId,
-                right,
-                true,
-            )?;
+            let mut expR = Self::expand(ExpandData {
+                definitions: &HashMap::new(),
+                disabledMacros: &HashMultiSet::new(),
+                lexer: expandData.lexer,
+                namedArgs: expandData.namedArgs,
+                variadic: expandData.variadic,
+                astId: expandData.astId,
+                replacement: right,
+                expandArg: true,
+            })?;
 
             expR.pop_back();
             expR.pop_front();
@@ -339,28 +334,28 @@ impl Preprocessor {
             }
         } else {
             // We extract the contents of the left and right side
-            let mut expL = Self::expand(
-                &HashMap::new(),
-                &HashMultiSet::new(),
-                lexer,
-                namedArgs,
-                variadic,
-                astId,
-                left,
-                true,
-            )?;
+            let mut expL = Self::expand(ExpandData {
+                definitions: &HashMap::new(),
+                disabledMacros: &HashMultiSet::new(),
+                lexer: expandData.lexer,
+                namedArgs: expandData.namedArgs,
+                variadic: expandData.variadic,
+                astId: expandData.astId,
+                replacement: left,
+                expandArg: true,
+            })?;
             expL.pop_back();
             expL.pop_front();
-            let mut expR = Self::expand(
-                &HashMap::new(),
-                &HashMultiSet::new(),
-                lexer,
-                namedArgs,
-                variadic,
-                astId,
-                right,
-                true,
-            )?;
+            let mut expR = Self::expand(ExpandData {
+                definitions: &HashMap::new(),
+                disabledMacros: &HashMultiSet::new(),
+                lexer: expandData.lexer,
+                namedArgs: expandData.namedArgs,
+                variadic: expandData.variadic,
+                astId: expandData.astId,
+                replacement: right,
+                expandArg: true,
+            })?;
             expR.pop_back();
             expR.pop_front();
             log::trace!(
@@ -393,26 +388,20 @@ impl Preprocessor {
 
     fn expandVariadicOpt(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
-        definitions: &HashMap<String, DefineAst>,
-        disabledMacros: &HashMultiSet<String>,
-        lexer: &MultiLexer,
-        namedArgs: &HashMap<String, Vec<FilePreTokPos<PreToken>>>,
-        variadic: &Vec<Vec<FilePreTokPos<PreToken>>>,
-        astId: &String,
-        expandArg: bool,
+        expandData: ExpandData,
         pos: &FilePreTokPos<()>,
         tokies: &Vec<PreTokenDefine>,
     ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
-        let vaOptEnabled = Self::expand(
-            definitions,
-            disabledMacros,
-            lexer,
-            namedArgs,
-            variadic,
-            astId,
-            &vec![PreTokenDefine::VariadicArg(pos.clone())],
-            true,
-        )
+        let vaOptEnabled = Self::expand(ExpandData {
+            definitions: expandData.definitions,
+            disabledMacros: expandData.disabledMacros,
+            lexer: expandData.lexer,
+            namedArgs: expandData.namedArgs,
+            variadic: expandData.variadic,
+            astId: expandData.astId,
+            replacement: &vec![PreTokenDefine::VariadicArg(pos.clone())],
+            expandArg: true,
+        })
         .is_ok_and(|x| {
             x.iter().any(|x| -> bool {
                 !filePreTokPosMatches!(
@@ -426,16 +415,16 @@ impl Preprocessor {
             })
         });
         if vaOptEnabled {
-            let mut res = Self::expand(
-                definitions,
-                disabledMacros,
-                lexer,
-                namedArgs,
-                variadic,
-                astId,
-                tokies,
-                expandArg,
-            )?;
+            let mut res = Self::expand(ExpandData {
+                definitions: expandData.definitions,
+                disabledMacros: expandData.disabledMacros,
+                lexer: expandData.lexer,
+                namedArgs: expandData.namedArgs,
+                variadic: expandData.variadic,
+                astId: expandData.astId,
+                replacement: tokies,
+                expandArg: expandData.expandArg,
+            })?;
             res.pop_back();
             res.pop_front();
 
@@ -453,108 +442,58 @@ impl Preprocessor {
         return Ok(result);
     }
 
-    fn expand(
-        definitions: &HashMap<String, DefineAst>,
-        disabledMacros: &HashMultiSet<String>,
-        lexer: &MultiLexer,
-        namedArgs: &HashMap<String, Vec<FilePreTokPos<PreToken>>>,
-        variadic: &Vec<Vec<FilePreTokPos<PreToken>>>,
-        astId: &String,
-        replacement: &Vec<PreTokenDefine>,
-        expandArg: bool,
-    ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+    fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
         let mut result = VecDeque::new();
-        for tok in replacement {
+        for tok in expandData.replacement {
             match tok {
                 PreTokenDefine::Normal(t) => {
                     result = Self::expandNormal(result, t)?;
                 }
                 PreTokenDefine::Arg(a) => {
-                    result = Self::expandArg(
-                        result,
-                        definitions,
-                        disabledMacros,
-                        lexer,
-                        namedArgs,
-                        expandArg,
-                        a,
-                    )?;
+                    result = Self::expandArg(result, expandData.clone(), a)?;
                 }
                 PreTokenDefine::VariadicArg(vaTok) => {
-                    result = Self::expandVariadicArg(
-                        result,
-                        definitions,
-                        disabledMacros,
-                        lexer,
-                        variadic,
-                        expandArg,
-                        vaTok,
-                    )?;
+                    result = Self::expandVariadicArg(result, expandData.clone(), vaTok)?;
                 }
                 PreTokenDefine::Hash(pos, tokie) => {
-                    result = Self::expandHash(
-                        result,
-                        definitions,
-                        disabledMacros,
-                        lexer,
-                        namedArgs,
-                        variadic,
-                        astId,
-                        pos,
-                        tokie,
-                    )?;
+                    result = Self::expandHash(result, expandData.clone(), pos, tokie)?;
                 }
                 PreTokenDefine::HashHash(pos, left, right) => {
-                    result = Self::expandHashHash(
-                        result,
-                        definitions,
-                        disabledMacros,
-                        lexer,
-                        namedArgs,
-                        variadic,
-                        astId,
-                        pos,
-                        left,
-                        right,
-                    )?;
+                    result = Self::expandHashHash(result, expandData.clone(), pos, left, right)?;
                 }
                 PreTokenDefine::VariadicOpt(pos, tokies) => {
-                    result = Self::expandVariadicOpt(
-                        result,
-                        definitions,
-                        disabledMacros,
-                        lexer,
-                        namedArgs,
-                        variadic,
-                        astId,
-                        expandArg,
-                        pos,
-                        tokies,
-                    )?;
+                    result = Self::expandVariadicOpt(result, expandData.clone(), pos, tokies)?;
                 }
             }
         }
         result.push_front(FilePreTokPos::new_meta(PreToken::DisableMacro(
-            astId.clone(),
+            expandData.astId.clone(),
         )));
         result.push_back(FilePreTokPos::new_meta(PreToken::EnableMacro(
-            astId.clone(),
+            expandData.astId.clone(),
         )));
         return Ok(result);
     }
+}
 
+struct ParamMapResult {
+    namedParameters: HashMap<String, Vec<FilePreTokPos<PreToken>>>,
+    varadicParameters: Vec<Vec<FilePreTokPos<PreToken>>>,
+}
+
+impl Preprocessor {
     fn generateParamMap(
         mut paramRes: Vec<Vec<FilePreTokPos<PreToken>>>,
         params: &Vec<String>,
-    ) -> (
-        HashMap<String, Vec<FilePreTokPos<PreToken>>>,
-        Vec<Vec<FilePreTokPos<PreToken>>>,
-    ) {
+    ) -> ParamMapResult {
         let mut named = HashMap::new();
         for param in params {
             named.insert(param.clone(), paramRes.remove(0));
         }
-        return (named, paramRes);
+        return ParamMapResult {
+            namedParameters: named,
+            varadicParameters: paramRes,
+        };
     }
 
     fn hasMatchingClosingParen(lexer: &mut MultiLexer) -> bool {
@@ -696,7 +635,7 @@ impl Preprocessor {
         }
     }
 
-    pub fn macroExpand(
+    fn macroExpandInternal(
         definitions: &HashMap<String, DefineAst>,
         disabledMacros: &HashMultiSet<String>,
         lexer: &mut MultiLexer,
@@ -744,17 +683,20 @@ impl Preprocessor {
                     }
 
                     let paramsRes = Self::parseParams(lexer, min, max, tokParen)?;
-                    let (namedArgs, variadic) = Self::generateParamMap(paramsRes, params);
-                    let success = Self::expand(
+                    let ParamMapResult {
+                        namedParameters: namedArgs,
+                        varadicParameters: variadic,
+                    } = Self::generateParamMap(paramsRes, params);
+                    let success = Self::expand(ExpandData {
                         definitions,
                         disabledMacros,
                         lexer,
-                        &namedArgs,
-                        &variadic,
-                        &macroAst.id,
-                        &macroAst.replacement,
-                        true,
-                    )?;
+                        namedArgs: &namedArgs,
+                        variadic: &variadic,
+                        astId: &macroAst.id,
+                        replacement: &macroAst.replacement,
+                        expandArg: true,
+                    })?;
 
                     log::debug!(
                         "Macro expansion success: {:?}",
@@ -780,16 +722,16 @@ impl Preprocessor {
 
                     return Ok(vec![]);
                 } else {
-                    let success = Self::expand(
+                    let success = Self::expand(ExpandData {
                         definitions,
                         disabledMacros,
                         lexer,
-                        &HashMap::new(),
-                        &vec![],
-                        &macroAst.id,
-                        &macroAst.replacement,
-                        true,
-                    )?;
+                        namedArgs: &HashMap::new(),
+                        variadic: &vec![],
+                        astId: &macroAst.id,
+                        replacement: &macroAst.replacement,
+                        expandArg: true,
+                    })?;
                     log::debug!(
                         "Macro expansion success: {:?}",
                         success
@@ -804,5 +746,17 @@ impl Preprocessor {
             }
         }
         return Ok(vec![newToken]);
+    }
+
+    pub fn macroExpand(
+        &mut self,
+        newToken: FilePreTokPos<PreToken>,
+    ) -> Result<Vec<FilePreTokPos<PreToken>>, CompileMsg> {
+        Self::macroExpandInternal(
+            &self.definitions,
+            &self.disabledMacros,
+            &mut self.multilexer,
+            newToken,
+        )
     }
 }

@@ -53,7 +53,7 @@ fn getToksPreprocessedNoWs(files: &[(&'static str, &'static str)]) -> Vec<PreTok
 
 fn toksToString(toks: &[PreToken]) -> String {
     let mut res = String::new();
-    for s in toks.iter().filter_map /*TODO: FILTER NOPS?*/ (|x| Some(x.to_str())) {
+    for s in toks.iter().map /*TODO: FILTER NOPS?*/ (|x| x.to_str()) {
         res.push_str(s);
         res.push(' ');
     }
