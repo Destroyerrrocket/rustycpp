@@ -590,8 +590,6 @@ impl Preprocessor {
     }
 
     fn parseParams(
-        _definitions: &HashMap<String, DefineAst>,
-        _disabledMacros: &HashMultiSet<String>,
         lexer: &mut MultiLexer,
         min: usize,
         max: usize,
@@ -745,8 +743,7 @@ impl Preprocessor {
                         return Ok(vec![newToken]);
                     }
 
-                    let paramsRes =
-                        Self::parseParams(definitions, disabledMacros, lexer, min, max, tokParen)?;
+                    let paramsRes = Self::parseParams(lexer, min, max, tokParen)?;
                     let (namedArgs, variadic) = Self::generateParamMap(paramsRes, params);
                     let success = Self::expand(
                         definitions,
