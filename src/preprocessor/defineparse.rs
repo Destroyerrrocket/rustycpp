@@ -160,6 +160,7 @@ impl Preprocessor {
             param: None,
             variadic: IsVariadic::False,
             replacement: vec![],
+            expandFunc: &Self::expand,
         };
         let mut ntok = tokens
             .into_iter()

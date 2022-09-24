@@ -1,5 +1,9 @@
+use std::collections::VecDeque;
 use std::fmt::Debug;
+use std::marker::Send;
 
+use crate::preprocessor::structs::ExpandData;
+use crate::utils::structs::CompileMsg;
 use crate::utils::{pretoken::PreToken, structs::FilePreTokPos};
 
 #[derive(Debug, Clone)]
@@ -38,11 +42,25 @@ pub enum PreTokenDefine {
     HashHash(FilePreTokPos<()>, Vec<PreTokenDefine>, Vec<PreTokenDefine>),
     VariadicOpt(FilePreTokPos<()>, Vec<PreTokenDefine>),
 }
-
-#[derive(Debug, Clone)]
+type DefineExpansionFunc =
+    dyn Fn(ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg>;
+#[derive(Clone)]
 pub struct DefineAst {
     pub id: String,
     pub param: Option<Vec<String>>,
     pub variadic: IsVariadic,
     pub replacement: Vec<PreTokenDefine>,
+    pub expandFunc: &'static DefineExpansionFunc,
 }
+
+impl Debug for DefineAst {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DefineAst")
+            .field("id", &self.id)
+            .field("param", &self.param)
+            .field("variadic", &self.variadic)
+            .field("replacement", &self.replacement)
+            .finish()
+    }
+}
+unsafe impl Send for DefineAst {}

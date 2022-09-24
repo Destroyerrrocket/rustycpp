@@ -12,19 +12,7 @@ use crate::{
     },
 };
 
-use super::{multilexer::MultiLexer, Preprocessor};
-
-#[derive(Debug, Clone)]
-struct ExpandData<'a> {
-    definitions: &'a HashMap<String, DefineAst>,
-    disabledMacros: &'a HashMultiSet<String>,
-    lexer: &'a MultiLexer,
-    namedArgs: &'a HashMap<String, Vec<FilePreTokPos<PreToken>>>,
-    variadic: &'a Vec<Vec<FilePreTokPos<PreToken>>>,
-    astId: &'a String,
-    replacement: &'a Vec<PreTokenDefine>,
-    expandArg: bool,
-}
+use super::{multilexer::MultiLexer, structs::ExpandData, Preprocessor};
 
 impl Preprocessor {
     fn anyNonMetaToken(toks: &VecDeque<FilePreTokPos<PreToken>>) -> bool {
@@ -246,6 +234,7 @@ impl Preprocessor {
             astId: expandData.astId,
             replacement: tokie,
             expandArg: false,
+            newToken: expandData.newToken,
         })?;
         let mut text = String::new();
         resChild.pop_back();
@@ -318,6 +307,7 @@ impl Preprocessor {
                 astId: expandData.astId,
                 replacement: right,
                 expandArg: true,
+                newToken: expandData.newToken,
             })?;
 
             expR.pop_back();
@@ -343,6 +333,7 @@ impl Preprocessor {
                 astId: expandData.astId,
                 replacement: left,
                 expandArg: true,
+                newToken: expandData.newToken,
             })?;
             expL.pop_back();
             expL.pop_front();
@@ -355,6 +346,7 @@ impl Preprocessor {
                 astId: expandData.astId,
                 replacement: right,
                 expandArg: true,
+                newToken: expandData.newToken,
             })?;
             expR.pop_back();
             expR.pop_front();
@@ -401,6 +393,7 @@ impl Preprocessor {
             astId: expandData.astId,
             replacement: &vec![PreTokenDefine::VariadicArg(pos.clone())],
             expandArg: true,
+            newToken: expandData.newToken,
         })
         .is_ok_and(|x| {
             x.iter().any(|x| -> bool {
@@ -424,6 +417,7 @@ impl Preprocessor {
                 astId: expandData.astId,
                 replacement: tokies,
                 expandArg: expandData.expandArg,
+                newToken: expandData.newToken,
             })?;
             res.pop_back();
             res.pop_front();
@@ -442,7 +436,7 @@ impl Preprocessor {
         return Ok(result);
     }
 
-    fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+    pub fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
         let mut result = VecDeque::new();
         for tok in expandData.replacement {
             match tok {
@@ -696,6 +690,7 @@ impl Preprocessor {
                         astId: &macroAst.id,
                         replacement: &macroAst.replacement,
                         expandArg: true,
+                        newToken: &newToken,
                     })?;
 
                     log::debug!(
@@ -722,7 +717,7 @@ impl Preprocessor {
 
                     return Ok(vec![]);
                 } else {
-                    let success = Self::expand(ExpandData {
+                    let success = (macroAst.expandFunc)(ExpandData {
                         definitions,
                         disabledMacros,
                         lexer,
@@ -731,6 +726,7 @@ impl Preprocessor {
                         astId: &macroAst.id,
                         replacement: &macroAst.replacement,
                         expandArg: true,
+                        newToken: &newToken,
                     })?;
                     log::debug!(
                         "Macro expansion success: {:?}",

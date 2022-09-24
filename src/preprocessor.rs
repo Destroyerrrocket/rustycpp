@@ -20,9 +20,11 @@ enum ScopeStatus {
     AlreadySucceeded,
 }
 
+mod custommacros;
 mod defineparse;
 mod macroexpand;
 mod multilexer;
+pub mod structs;
 
 #[derive(Debug)]
 pub struct Preprocessor {
@@ -46,6 +48,7 @@ impl Preprocessor {
             disabledMacros: HashMultiSet::new(),
             atStartLine: true,
         }
+        .initCustomMacros()
     }
 
     fn undefineMacro(&mut self, preToken: FilePreTokPos<PreToken>) {
@@ -237,6 +240,26 @@ impl Preprocessor {
                         self.scope.pop();
                     }
                     self.reachNl(); // TODO: Check empty
+                }
+                "error" => {
+                    let mut msg = String::new();
+                    for t in Iterator::take_while(&mut self.multilexer, |pre| {
+                        pre.tokPos.tok != PreToken::Newline
+                    }) {
+                        msg.push_str(t.tokPos.tok.to_str());
+                    }
+                    self.errors
+                        .push_back(CompileError::from_preTo(msg, &operation));
+                }
+                "warning" => {
+                    let mut msg = String::new();
+                    for t in Iterator::take_while(&mut self.multilexer, |pre| {
+                        pre.tokPos.tok != PreToken::Newline
+                    }) {
+                        msg.push_str(t.tokPos.tok.to_str());
+                    }
+                    self.errors
+                        .push_back(CompileWarning::from_preTo(msg, &operation));
                 }
                 _ => {
                     self.errors.push_back(CompileError::from_preTo(

@@ -741,3 +741,21 @@ fn standard_15_6_4_1_6() {
     );
     assert_eq!(res, expected);
 }
+
+#[test]
+fn mandatoryDefinedMacros() {
+    let macros = vec![
+        "__cplusplus",
+        "__DATE__",
+        "__FILE__",
+        "__LINE__",
+        "__STDC_HOSTED__",
+        "__STDCPP_DEFAULT_NEW_ALIGNMENT__",
+        "__TIME__",
+    ];
+    for m in macros {
+        let res = toksToString(&getToksPreprocessedNoWs(&[("test", m)]));
+        log::debug!("{}", res);
+        assert!(!res.is_empty());
+    }
+}
