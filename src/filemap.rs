@@ -1,15 +1,17 @@
-use std::{collections::HashMap, fs::File, io::Read, sync::Arc};
+use std::{collections::HashMap, fs::File, fs::OpenOptions, io::Read, sync::Arc};
 
 use crate::utils::structs::CompileFile;
 
 #[derive(Debug)]
 pub struct FileMap {
+    openedButNotRead: HashMap<String, File>,
     files: HashMap<String, Arc<CompileFile>>,
 }
 
 impl<'a> FileMap {
     pub fn new() -> FileMap {
         FileMap {
+            openedButNotRead: HashMap::new(),
             files: HashMap::new(),
         }
     }
@@ -22,11 +24,12 @@ impl<'a> FileMap {
     }
 
     pub fn getAddFile(&'a mut self, path: &str) -> Arc<CompileFile> {
-        if !self.files.contains_key(path) {
+        if self.files.contains_key(path) {
+        } else if !self.openedButNotRead.contains_key(path) {
             if !path.ends_with(".cpp") && !path.ends_with(".hpp") {
                 log::error!("Unsuported file type: {}", path);
             }
-            let mut file: File = match File::open(path) {
+            let file: File = match OpenOptions::new().read(true).open(path) {
                 Ok(it) => it,
                 Err(err) => {
                     panic!(
@@ -36,8 +39,15 @@ impl<'a> FileMap {
                     );
                 }
             };
+            self.openedButNotRead.insert(path.to_string(), file);
+        } else {
             let mut filecontents: String = String::new();
-            if let Err(err) = file.read_to_string(&mut filecontents) {
+            if let Err(err) = self
+                .openedButNotRead
+                .get(path)
+                .unwrap()
+                .read_to_string(&mut filecontents)
+            {
                 panic!(
                     "Error reading {file}. Error: {error}",
                     file = path,
@@ -50,6 +60,23 @@ impl<'a> FileMap {
             );
         }
         return self.files.get(path).unwrap().clone();
+    }
+
+    pub fn hasFileAccess(&mut self, path: &str) -> bool {
+        if self.files.contains_key(path) || self.openedButNotRead.contains_key(path) {
+        } else {
+            if !path.ends_with(".cpp") && !path.ends_with(".hpp") {
+                log::error!("Unsuported file type: {}", path);
+            }
+            let file: File = match OpenOptions::new().read(true).open(path) {
+                Ok(it) => it,
+                Err(_) => {
+                    return false;
+                }
+            };
+            self.openedButNotRead.insert(path.to_string(), file);
+        }
+        return true;
     }
 
     pub fn getCurrPaths(&self) -> Vec<String> {

@@ -86,6 +86,10 @@ impl MultiLexer {
     pub fn fileMapping(&self) -> Arc<Mutex<FileMap>> {
         self.fileMapping.clone()
     }
+
+    pub fn hasFileAccess(&self, file: &str) -> bool {
+        self.fileMapping.lock().unwrap().hasFileAccess(file)
+    }
 }
 
 impl Iterator for MultiLexer {

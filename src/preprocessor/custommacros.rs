@@ -4,12 +4,14 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 
 use crate::grammars::defineast::{DefineAst, IsVariadic};
+use crate::prelexer::PreLexer;
 use crate::utils::pretoken::PreToken;
 use crate::utils::structs::{CompileMsg, FilePreTokPos};
 
 use chrono::Local;
 use lazy_static::lazy_static;
 
+use super::multilexer::MultiLexer;
 use super::structs::ExpandData;
 use super::Preprocessor;
 
@@ -61,6 +63,117 @@ declCMVar! {__STDC_HOSTED__, |_| "1"}
 declCMVar! {__STDCPP_DEFAULT_NEW_ALIGNMENT__, |_| "1"}
 declCMVar! {__TIME__, |_| Local::now().format("%H:%M:%S")}
 
+struct __has_include {}
+
+impl __has_include {
+    fn checkForInclude(toks: &[FilePreTokPos<PreToken>]) -> Option<String> {
+        let mut res = String::new();
+        for s in toks.iter().map(|x| x.tokPos.tok.to_str().to_owned()) {
+            res.push_str(&s);
+        }
+        let mut lexer = PreLexer::new(res);
+        lexer.expectHeader();
+        if let Some(PreToken::HeaderName(pathWithSurroundingChars)) = lexer.next().map(|x| x.tok) {
+            let mut chars = pathWithSurroundingChars.chars();
+            chars.next();
+            chars.next_back();
+            Some(chars.as_str().to_owned())
+        } else {
+            None
+        }
+    }
+    fn checkForIncludeDec(toks: &VecDeque<FilePreTokPos<PreToken>>) -> Option<String> {
+        Self::checkForInclude(&toks.iter().cloned().collect::<Vec<_>>())
+    }
+}
+
+impl CustomMacro for __has_include {
+    fn macroInfo() -> DefineAst {
+        DefineAst {
+            id: stringify!(__has_include).to_string(),
+            param: Some(vec!["file".into()]),
+            variadic: IsVariadic::False,
+            replacement: vec![],
+            expandFunc: &__has_include::expand,
+        }
+    }
+
+    fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+        let mut res = VecDeque::new();
+        res.push_back(FilePreTokPos::new_meta_c(
+            PreToken::DisableMacro(stringify!(__has_include).to_string()),
+            expandData.newToken,
+        ));
+
+        let mut path = String::new();
+        if let Some(newPath) = Self::checkForInclude(expandData.namedArgs.get("file").unwrap()) {
+            path = newPath;
+        }
+
+        let mut paramLexer = MultiLexer::new_def(expandData.lexer.fileMapping());
+        paramLexer.pushTokensVec(expandData.namedArgs.get("file").unwrap().clone());
+        let toks = Preprocessor::expandASequenceOfTokens(
+            paramLexer,
+            expandData.definitions,
+            expandData.disabledMacros,
+        )?;
+
+        if let Some(newPath) = Self::checkForIncludeDec(&toks) {
+            path = newPath;
+        } else {
+            for s in toks.into_iter().map(|t| t.tokPos.tok.to_str().to_owned()) {
+                path.push_str(&s);
+            }
+        }
+
+        res.push_back(FilePreTokPos::new_meta_c(
+            PreToken::PPNumber(if expandData.lexer.hasFileAccess(&path) {
+                "1".to_owned()
+            } else {
+                "0".to_owned()
+            }),
+            expandData.newToken,
+        ));
+        res.push_back(FilePreTokPos::new_meta_c(
+            PreToken::EnableMacro(stringify!(__has_include).to_string()),
+            expandData.newToken,
+        ));
+        Ok(res)
+    }
+}
+
+struct __has_cpp_attribute {}
+
+impl CustomMacro for __has_cpp_attribute {
+    fn macroInfo() -> DefineAst {
+        DefineAst {
+            id: stringify!(__has_include).to_string(),
+            param: Some(vec!["file".into()]),
+            variadic: IsVariadic::False,
+            replacement: vec![],
+            expandFunc: &__has_include::expand,
+        }
+    }
+
+    fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+        let mut res = VecDeque::new();
+        res.push_back(FilePreTokPos::new_meta_c(
+            PreToken::DisableMacro(stringify!(__has_include).to_string()),
+            expandData.newToken,
+        ));
+
+        res.push_back(FilePreTokPos::new_meta_c(
+            PreToken::PPNumber("0".to_owned()),
+            expandData.newToken,
+        ));
+        res.push_back(FilePreTokPos::new_meta_c(
+            PreToken::EnableMacro(stringify!(__has_include).to_string()),
+            expandData.newToken,
+        ));
+        Ok(res)
+    }
+}
+
 macro_rules! registerMacro_ {
     ($hashMap:ident) => {};
     ($hashMap:ident, $x:ty) => {{
@@ -88,7 +201,9 @@ impl Preprocessor {
             __LINE__,
             __STDC_HOSTED__,
             __STDCPP_DEFAULT_NEW_ALIGNMENT__,
-            __TIME__
+            __TIME__,
+            __has_include,
+            __has_cpp_attribute
         )
     }
 
@@ -104,6 +219,9 @@ impl Preprocessor {
                 .iter()
                 .map(|(k, v)| (k.clone(), v.clone())),
         );
+        self.disabledMacros.insert("__has_include".to_string());
+        self.disabledMacros
+            .insert("__has_cpp_attribute".to_string());
         self
     }
 }

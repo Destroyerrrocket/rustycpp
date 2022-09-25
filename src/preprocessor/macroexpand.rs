@@ -27,6 +27,41 @@ impl Preprocessor {
         false
     }
 
+    pub fn expandASequenceOfTokens(
+        mut selfContainedLexer: MultiLexer,
+        macros: &HashMap<String, DefineAst>,
+        disabledMacros: &HashMultiSet<String>,
+    ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+        let mut paramDisabledMacros = disabledMacros.clone();
+        let mut preproTokie = VecDeque::new();
+        while let Some(tok) = selfContainedLexer.next() {
+            match &tok {
+                filePreTokPosMatchArm!(PreToken::EnableMacro(nameMacro)) => {
+                    paramDisabledMacros.remove(nameMacro);
+                    preproTokie.push_back(tok.clone());
+                }
+                filePreTokPosMatchArm!(PreToken::DisableMacro(nameMacro)) => {
+                    paramDisabledMacros.insert(nameMacro.clone());
+                    preproTokie.push_back(tok.clone());
+                }
+                filePreTokPosMatchArm!(PreToken::Ident(_)) => {
+                    let toks = Self::macroExpandInternal(
+                        macros,
+                        &paramDisabledMacros,
+                        &mut selfContainedLexer,
+                        tok,
+                    )?;
+                    toks.into_iter()
+                        .collect_into::<VecDeque<FilePreTokPos<PreToken>>>(&mut preproTokie);
+                }
+                _ => {
+                    preproTokie.push_back(tok);
+                }
+            }
+        }
+        Ok(preproTokie)
+    }
+
     fn expandNormal(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
         t: &FilePreTokPos<PreToken>,
@@ -42,34 +77,12 @@ impl Preprocessor {
     ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
         if expandData.expandArg {
             let mut paramLexer = MultiLexer::new_def(expandData.lexer.fileMapping());
-            let mut paramDisabledMacros = expandData.disabledMacros.clone();
             paramLexer.pushTokensVec(expandData.namedArgs.get(&a.tokPos.tok).unwrap().clone());
-            let mut preproTokie = VecDeque::new();
-            while let Some(tok) = paramLexer.next() {
-                match &tok {
-                    filePreTokPosMatchArm!(PreToken::EnableMacro(nameMacro)) => {
-                        paramDisabledMacros.remove(nameMacro);
-                        preproTokie.push_back(tok.clone());
-                    }
-                    filePreTokPosMatchArm!(PreToken::DisableMacro(nameMacro)) => {
-                        paramDisabledMacros.insert(nameMacro.clone());
-                        preproTokie.push_back(tok.clone());
-                    }
-                    filePreTokPosMatchArm!(PreToken::Ident(_)) => {
-                        let toks = Self::macroExpandInternal(
-                            expandData.definitions,
-                            &paramDisabledMacros,
-                            &mut paramLexer,
-                            tok,
-                        )?;
-                        toks.into_iter()
-                            .collect_into::<VecDeque<FilePreTokPos<PreToken>>>(&mut preproTokie);
-                    }
-                    _ => {
-                        preproTokie.push_back(tok);
-                    }
-                }
-            }
+            let mut preproTokie = Self::expandASequenceOfTokens(
+                paramLexer,
+                expandData.definitions,
+                expandData.disabledMacros,
+            )?;
             log::debug!(
                 "EXPANDED INTO: {:?}",
                 preproTokie
@@ -105,33 +118,6 @@ impl Preprocessor {
                 }
             }
 
-            {
-                let mut moded = true;
-                let mut metas = VecDeque::new();
-                while moded {
-                    moded = false;
-                    if let Some(filePreTokPosMatchArm!(PreToken::Whitespace(_))) =
-                        preproTokie.back()
-                    {
-                        moded = true;
-                        preproTokie.pop_back();
-                    } else if let Some(
-                        filePreTokPosMatchArm!(
-                            PreToken::ValidNop
-                                | PreToken::EnableMacro(_)
-                                | PreToken::DisableMacro(_)
-                        ),
-                    ) = preproTokie.back()
-                    {
-                        moded = true;
-                        metas.push_front(preproTokie.pop_back().unwrap());
-                    }
-                }
-                for meta in metas {
-                    preproTokie.push_back(meta);
-                }
-            }
-
             if preproTokie.is_empty() {
                 preproTokie.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, a));
             }
@@ -161,26 +147,11 @@ impl Preprocessor {
             for posVariadic in 0..expandData.variadic.len() {
                 let mut paramLexer = MultiLexer::new_def(expandData.lexer.fileMapping());
                 paramLexer.pushTokensVec(expandData.variadic[posVariadic].clone());
-                let mut preproTokie = VecDeque::new();
-                while let Some(tok) = paramLexer.next() {
-                    match &tok {
-                        filePreTokPosMatchArm!(PreToken::Ident(_)) => {
-                            let toks = Self::macroExpandInternal(
-                                expandData.definitions,
-                                expandData.disabledMacros,
-                                &mut paramLexer,
-                                tok,
-                            )?;
-                            toks.into_iter()
-                                .collect_into::<VecDeque<FilePreTokPos<PreToken>>>(
-                                    &mut preproTokie,
-                                );
-                        }
-                        _ => {
-                            preproTokie.push_back(tok);
-                        }
-                    }
-                }
+                let mut preproTokie = Self::expandASequenceOfTokens(
+                    paramLexer,
+                    expandData.definitions,
+                    expandData.disabledMacros,
+                )?;
                 tempResult.append(&mut preproTokie);
 
                 if posVariadic + 1 != expandData.variadic.len() {
@@ -584,29 +555,6 @@ impl Preprocessor {
 
         let len = tokies.len();
         if min <= len && len <= max {
-            /*
-            let mut preproTokies = vec![];
-
-            for tokie in tokies {
-                let mut paramLexer = MultiLexer::new_def(lexer.fileMapping());
-                paramLexer.pushTokensVec(tokie);
-                let mut preproTokie = vec![];
-                loop {
-                    if let Some(tok) = paramLexer.next() {
-                        match &tok {
-                            filePreTokPosMatch!(PreToken::Ident(_)) => {
-                                let mut toks = Self::macroExpand(definitions, disabledMacros,&mut paramLexer, tok)?;
-                                preproTokie.append(&mut toks);
-                            }
-                            _ => {
-                                preproTokie.push(tok);
-                            }
-                        }
-                    } else {break;}
-                }
-                preproTokies.push(preproTokie);
-            }
-            */
             return Ok(tokies);
         }
 
@@ -629,7 +577,7 @@ impl Preprocessor {
         }
     }
 
-    fn macroExpandInternal(
+    pub fn macroExpandInternal(
         definitions: &HashMap<String, DefineAst>,
         disabledMacros: &HashMultiSet<String>,
         lexer: &mut MultiLexer,
