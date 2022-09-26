@@ -31,7 +31,8 @@ pub enum PreTokenLexer {
     #[token(r".*")]
     #[token(r"->")]
     #[token(r"->*")]
-    #[token(r"~!")]
+    #[token(r"~")]
+    #[token(r"!")]
     #[token(r"+")]
     #[token(r"-")]
     #[token(r"*")]
@@ -263,7 +264,8 @@ impl PreToken {
                 r".*" => r".*",
                 r"->" => r"->",
                 r"->*" => r"->*",
-                r"~!" => r"~!",
+                r"~" => r"~",
+                r"!" => r"!",
                 r"+" => r"+",
                 r"-" => r"-",
                 r"*" => r"*",

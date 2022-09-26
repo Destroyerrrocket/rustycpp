@@ -1,5 +1,10 @@
 use std::collections::VecDeque;
 
+use lalrpop_util::ParseError;
+
+use crate::grammars::macrointconstantexpression;
+use crate::grammars::macrointconstantexpressionast::PreTokenIf;
+use crate::utils::lalrpoplexerwrapper::LalrPopLexerWrapper;
 use crate::utils::pretoken::PreToken;
 use crate::utils::structs::{CompileError, CompileMsg, FilePreTokPos, PreTokPos};
 use crate::{filePreTokPosMatchArm, filePreTokPosMatches};
@@ -195,13 +200,151 @@ impl Preprocessor {
                         | PreToken::Newline
                 )
             })
+            .filter_map(|x| match x {
+                filePreTokPosMatchArm!(
+                    PreToken::ValidNop
+                        | PreToken::EnableMacro(_)
+                        | PreToken::DisableMacro(_)
+                        | PreToken::Whitespace(_)
+                        | PreToken::Newline
+                ) => None,
+                filePreTokPosMatchArm!(PreToken::CharLiteral(ref char)) => {
+                    // TODO: THIS IS NOT CORRECT. We need to evaluate the escape sequences! I'm ignoring this for now
+                    let mut chars = char.chars();
+                    chars.next();
+                    let mut buffer = [0; 4];
+                    chars.next().unwrap_or('\0').encode_utf8(&mut buffer);
+                    Some(FilePreTokPos::new_meta_c(
+                        PreToken::PPNumber(buffer[0].to_string()),
+                        &x,
+                    ))
+                }
+                filePreTokPosMatchArm!(PreToken::Keyword(key)) if key == "true" => Some(
+                    FilePreTokPos::new_meta_c(PreToken::PPNumber("1".to_owned()), &x),
+                ),
+                filePreTokPosMatchArm!(PreToken::Keyword(_) | PreToken::Ident(_)) => Some(
+                    FilePreTokPos::new_meta_c(PreToken::PPNumber("0".to_owned()), &x),
+                ),
+                _ => Some(x),
+            })
             .collect())
     }
 
-    pub fn evalIfScope(sequence: VecDeque<FilePreTokPos<PreToken>>) -> bool {
-        sequence.front().is_some_and(|x| {
-            filePreTokPosMatches!(x, PreToken::PPNumber(_))
-                && (x.tokPos.tok.to_str().parse::<i128>().is_ok_and(|x| *x != 0))
-        })
+    pub fn evalIfScope(
+        sequence: VecDeque<FilePreTokPos<PreToken>>,
+    ) -> Result<bool, Vec<CompileMsg>> {
+        let mut errors = vec![];
+        for invalid in sequence.iter().filter(|x| {
+            !filePreTokPosMatches!(x, PreToken::PPNumber(_) | PreToken::OperatorPunctuator(_))
+                || filePreTokPosMatches!(
+                    x,
+                    PreToken::OperatorPunctuator(
+                        r"{" | r"}"
+                            | r"["
+                            | r"]"
+                            | r"<:"
+                            | r":>"
+                            | r"<%"
+                            | r"%>"
+                            | r";"
+                            | r"..."
+                            | r"::"
+                            | r"."
+                            | r".*"
+                            | r"->"
+                            | r"->*"
+                            | r"="
+                            | r"+="
+                            | r"-="
+                            | r"*="
+                            | r"/="
+                            | r"%="
+                            | r"^="
+                            | r"&="
+                            | r"|="
+                            | r"<<="
+                            | r">>="
+                    )
+                )
+        }) {
+            errors.push(CompileError::from_preTo(
+                format!(
+                    "Invalid token in if eval scope: {}",
+                    invalid.tokPos.tok.to_str()
+                ),
+                invalid,
+            ));
+        }
+
+        // TODO: THIS IS NOT CORRECT. We should evaluate the pretocens to full tokens, but I'll wait for the lexer to be done
+        let mut intconstantValues = vec![];
+        for token in sequence {
+            match token {
+                filePreTokPosMatchArm!(PreToken::PPNumber(ref num)) => match num.parse::<i128>() {
+                    Ok(num) => {
+                        intconstantValues
+                            .push(FilePreTokPos::new_meta_c(PreTokenIf::Num(num), &token));
+                    }
+                    Err(err) => errors.push(CompileError::from_preTo(
+                        format!("Invalid number in if eval scope: {}", err),
+                        &token,
+                    )),
+                },
+                filePreTokPosMatchArm!(PreToken::OperatorPunctuator(_)) => {
+                    intconstantValues.push(FilePreTokPos::new_meta_c(
+                        PreTokenIf::Operation(token.tokPos.tok.clone()),
+                        &token,
+                    ));
+                }
+                _ => {}
+            }
+        }
+
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
+        let lexer = LalrPopLexerWrapper::new(intconstantValues.as_slice());
+        let res = macrointconstantexpression::ConstantIntParser::new().parse(lexer);
+        return res
+            .map_err(|err| match err {
+                ParseError::ExtraToken { token } => vec![CompileError::from_at(
+                    format!(
+                        "Found token {:?} when I wasn't expecting any other tokens",
+                        token.1
+                    ),
+                    (token.0).1.clone(),
+                    (token.0).0,
+                    Some((token.2).0),
+                )],
+                ParseError::InvalidToken { location } => vec![CompileError::from_at(
+                    "Found invalid token".to_string(),
+                    (location.1).clone(),
+                    location.0,
+                    None,
+                )],
+                ParseError::UnrecognizedEOF { location, expected } => vec![CompileError::from_at(
+                    format!(
+                        "Found early end of file while expecting to find: {:?}",
+                        expected
+                    ),
+                    (location.1).clone(),
+                    location.0,
+                    None,
+                )],
+                ParseError::UnrecognizedToken { token, expected } => vec![CompileError::from_at(
+                    format!(
+                        "Found {:?} while expecting to find: {:?}",
+                        token.1, expected
+                    ),
+                    (token.0).1.clone(),
+                    (token.0).0,
+                    Some((token.2).0),
+                )],
+                ParseError::User { .. } => {
+                    unreachable!("I haven't defined a custom parsing error. This is odd")
+                }
+            })
+            .map(|num| num != 0);
     }
 }

@@ -191,13 +191,17 @@ impl Preprocessor {
                         Err(err) => {
                             self.errors.push_back(err);
                         }
-                        Ok(sequenceToEval) => {
-                            self.scope.push(if Self::evalIfScope(sequenceToEval) {
-                                ScopeStatus::Success
-                            } else {
-                                ScopeStatus::Failure
-                            });
-                        }
+                        Ok(sequenceToEval) => match Self::evalIfScope(sequenceToEval) {
+                            Ok(true) => {
+                                self.scope.push(ScopeStatus::Success);
+                            }
+                            Ok(false) => {
+                                self.scope.push(ScopeStatus::Failure);
+                            }
+                            Err(err) => {
+                                self.errors.extend(err);
+                            }
+                        },
                     }
                 }
                 "ifdef" => {
@@ -283,10 +287,16 @@ impl Preprocessor {
                             self.errors.push_back(err);
                         }
                         Ok(sequenceToEval) => {
-                            if Self::evalIfScope(sequenceToEval) {
-                                let scope = self.scope.last_mut().unwrap();
-                                *scope = ScopeStatus::Success;
-                            }
+                            match Self::evalIfScope(sequenceToEval) {
+                                Ok(true) => {
+                                    let scope = self.scope.last_mut().unwrap();
+                                    *scope = ScopeStatus::Success;
+                                }
+                                Ok(false) => {}
+                                Err(err) => {
+                                    self.errors.extend(err);
+                                }
+                            };
                         }
                     }
                 }
