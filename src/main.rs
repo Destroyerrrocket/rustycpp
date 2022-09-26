@@ -1,11 +1,33 @@
-#![feature(option_result_contains)]
-#![feature(iter_collect_into)]
-#![feature(is_some_with)]
-#![feature(new_uninit)]
-#![feature(unwrap_infallible)]
-#![allow(non_snake_case)]
-#![allow(dead_code)]
-#![allow(clippy::needless_return)]
+#![feature(
+    option_result_contains,
+    iter_collect_into,
+    is_some_with,
+    unwrap_infallible,
+    new_uninit
+)]
+#![warn(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::cargo,
+    clippy::verbose_file_reads,
+    clippy::unneeded_field_pattern,
+    clippy::unnecessary_self_imports,
+    clippy::unimplemented,
+    clippy::string_to_string,
+    clippy::if_then_some_else_none,
+    clippy::empty_structs_with_brackets
+)]
+#![allow(
+    non_snake_case,
+    dead_code,
+    clippy::needless_return,
+    clippy::redundant_else,
+    clippy::manual_assert,
+    clippy::needless_pass_by_value
+)]
+// These ones should be re-enabled, and possibly selectively disabled
+#![allow(clippy::too_many_lines)]
 
 mod compiler;
 mod filemap;
@@ -18,7 +40,7 @@ mod utils;
 use crate::filemap::FileMap;
 use clap::Parser;
 use compiler::Compiler;
-use std::{fs::File, io::Read};
+use std::fs;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -38,30 +60,25 @@ fn main() {
         log::error!("File list not specified!");
         return;
     }
-    let mut file: File = match File::open(&args.files) {
+    let filecontents: String = match fs::read_to_string(&args.files) {
         Ok(it) => it,
         Err(err) => {
             log::error!(
-                "Could not open {file}. Error: {error}",
+                "Could not open & read {file}. Error: {error}",
                 file = args.files,
                 error = err
             );
             return;
         }
     };
-    let mut filecontents: String = String::new();
-    if let Err(err) = file.read_to_string(&mut filecontents) {
-        log::error!(
-            "Error reading {file}. Error: {error}",
-            file = args.files,
-            error = err
-        );
-        return;
-    }
 
     let mut compileFiles = FileMap::new();
     for line in filecontents.lines() {
-        if !line.ends_with(".cpp") {
+        let filename = std::path::Path::new(line);
+        if !filename
+            .extension()
+            .map_or(false, |ext| !ext.eq_ignore_ascii_case(".cpp"))
+        {
             log::error!("Unsuported file type: {file}", file = line);
             return;
         }

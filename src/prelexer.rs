@@ -19,8 +19,8 @@ pub struct PreLexer {
     lastNl: bool,
 }
 impl PreLexer {
-    pub fn new(content: String) -> PreLexer {
-        PreLexer {
+    pub fn new(content: String) -> Self {
+        Self {
             enableHeader: 0,
             currentNonSpliced: content.clone(),
             current: content,
@@ -48,10 +48,12 @@ impl PreLexer {
             the "\", then we splice and try again.
         */
         let mut maybe_remove: Option<usize> = None;
-        if Some("\n") == regex_find!(r"[\n]", &self.current) {
-            let salt_pos: usize = self.current.chars().position(|x: char| x == '\n').unwrap();
-            if salt_pos > 0 && self.current.chars().nth(salt_pos - 1) == Some('\\') {
-                maybe_remove = Some(salt_pos - 1);
+        match self.current.chars().position(|x: char| x == '\n') {
+            None => return None,
+            Some(salt_pos) => {
+                if salt_pos > 0 && self.current.chars().nth(salt_pos - 1) == Some('\\') {
+                    maybe_remove = Some(salt_pos - 1);
+                }
             }
         }
         return maybe_remove;
@@ -63,9 +65,9 @@ impl PreLexer {
                 return (Some(PreToken::HeaderName(res.to_string())), res.len());
             }
         }
-        let mut lex = PreTokenLexer::lexer(&self.current);
-        if let Some(idxLex) = lex.next() {
-            let content = lex.slice().to_string();
+        let mut lexer = PreTokenLexer::lexer(&self.current);
+        if let Some(idxLex) = lexer.next() {
+            let content = lexer.slice().to_string();
             let len = content.len();
             match idxLex {
                 PreTokenLexer::RawStringLiteral => {
@@ -83,7 +85,7 @@ impl PreLexer {
                     }
                 }
                 PreTokenLexer::Error => {
-                    let errContent = lex.slice().to_string();
+                    let errContent = lexer.slice().to_string();
                     let len = errContent.len();
                     return (Some(PreToken::Unknown(errContent)), len);
                 }
@@ -102,11 +104,12 @@ impl PreLexer {
 
     fn getNextTokenData(&mut self) -> (Option<PreToken>, usize, usize) {
         let (mut kind, mut idx, mut splices) = (None, 0, 0);
-        let prevCurrent = self.current.to_string();
+        let prevCurrent = self.current.clone();
         loop {
             if self.current.is_empty() {
                 break;
-            } else if regex_find!(r#"^<::[^:>]"#, &self.current).is_some() {
+            }
+            if regex_find!(r#"^<::[^:>]"#, &self.current).is_some() {
                 (kind, idx) = (
                     Some(PreToken::new(
                         PreTokenLexer::OperatorPunctuator,
@@ -115,35 +118,32 @@ impl PreLexer {
                     1,
                 );
                 break;
-            } else {
+            }
+            let splice_point_slash_nl = self.spliceNewlinePosition();
+            (kind, idx) = self.getNextTokenNonSpliced();
+            if splice_point_slash_nl.contains(&idx)
+                || (matches!(kind, Some(PreToken::Unknown(_))) && splice_point_slash_nl.is_some())
+            {
+                self.applySplice(splice_point_slash_nl.unwrap());
+                splices += 1;
+                continue;
+            } else if matches!(kind, Some(PreToken::Unknown(_))) {
+                self.current = prevCurrent;
+                splices = 0;
                 let splice_point_slash_nl = self.spliceNewlinePosition();
-                (kind, idx) = self.getNextTokenNonSpliced();
-                if splice_point_slash_nl.contains(&idx)
-                    || (matches!(kind, Some(PreToken::Unknown(_)))
-                        && splice_point_slash_nl.is_some())
-                {
+                if splice_point_slash_nl.contains(&idx) {
                     self.applySplice(splice_point_slash_nl.unwrap());
                     splices += 1;
-                    continue;
-                } else if matches!(kind, Some(PreToken::Unknown(_))) {
-                    self.current = prevCurrent;
-                    splices = 0;
-                    let splice_point_slash_nl = self.spliceNewlinePosition();
-                    if splice_point_slash_nl.contains(&idx) {
-                        self.applySplice(splice_point_slash_nl.unwrap());
-                        splices += 1;
-                    }
-                    break;
-                } else if kind.is_some() {
-                    break;
-                } else {
-                    eprintln!(
-                        "Encountered unmachable preprocessing token at: {} {}",
-                        self.line, self.column
-                    );
-                    return (None, 0, 0);
                 }
+                break;
+            } else if kind.is_some() {
+                break;
             }
+            eprintln!(
+                "Encountered unmachable preprocessing token at: {} {}",
+                self.line, self.column
+            );
+            return (None, 0, 0);
         }
         return (kind, idx, splices);
     }
@@ -156,7 +156,7 @@ impl PreLexer {
             if let PreToken::Whitespace(WhiteCom::Comment(comment)) = &mut kind {
                 if comment.ends_with('\n') {
                     comment.pop();
-                    idx = idx.checked_sub(1).unwrap();
+                    idx = idx.checked_sub(1)?;
                 }
             }
 
@@ -203,18 +203,19 @@ impl Iterator for PreLexer {
         if res.is_some_and(|x| matches!(x.tok, PreToken::Newline)) {
             self.lastNl = true;
             return res;
-        } else if res.is_some() {
+        }
+        if res.is_some() {
             self.lastNl = false;
             return res;
-        } else if !self.lastNl {
+        }
+        if !self.lastNl {
             self.lastNl = true;
             return Some(PreTokPos {
                 start: self.diff,
                 tok: PreToken::Newline,
                 end: self.diff + 1,
             });
-        } else {
-            return None;
         }
+        return None;
     }
 }

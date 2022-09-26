@@ -20,7 +20,7 @@ Elem: PreTokenDefine = {
 
 NoWhiteSp: PreTokenDefine = {
 	<MaybeHashHash> => <>,
-	<l:@L> <h:Hash> <r:@R> Whitespace* <a:MaybeHashHash> => {
+	<l:@L> Hash <r:@R> Whitespace* <a:MaybeHashHash> => {
 		PreTokenDefine::Hash(
 			FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: (), end: r.0}},
 			vec![a])
@@ -30,17 +30,17 @@ NoWhiteSp: PreTokenDefine = {
 MaybeHashHash: PreTokenDefine = {
 	<ArgMVar> => <>,
 	<ReTokNoWhiteSp> => <>,
-	<to:MaybeHashHash> <l:@L> <hh:HashHash> <r:@R> Whitespace* <arg: ArgMVar> => {
+	<to:MaybeHashHash> <l:@L> HashHash <r:@R> Whitespace* <arg: ArgMVar> => {
 		PreTokenDefine::HashHash(
 			FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: (), end: r.0}},
 			vec!(to), vec!(arg))
 	},
-	<to:MaybeHashHash> <l:@L> <hh:HashHash> <r:@R> Whitespace* <arg: ReTokNoWhiteSp> => {
+	<to:MaybeHashHash> <l:@L> HashHash <r:@R> Whitespace* <arg: ReTokNoWhiteSp> => {
 		PreTokenDefine::HashHash(
 			FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: (), end: r.0}},
 			vec!(to), vec!(arg))
 	},
-	<to:Hash> <l:@L> <hh:HashHash> <r:@R> Whitespace* <arg: Hash> => {
+	Hash <l:@L> HashHash <r:@R> Whitespace* Hash => {
 		PreTokenDefine::HashHash(
 			FilePreTokPos{file: l.1.clone(), tokPos: PreTokPos {start: l.0, tok: (), end: r.0}},
 				vec!(PreTokenDefine::Normal(
@@ -59,8 +59,8 @@ MaybeHashHash: PreTokenDefine = {
 
 ArgMVar: PreTokenDefine = {
 	<l:@L> <a:Arg> <r:@R> => PreTokenDefine::Arg(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: a, end: r.0}}),
-	<l:@L> <v:VariadicArg> <r:@R> => PreTokenDefine::VariadicArg(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: (), end: r.0}}),
-	<l:@L> <va:VariadicOpt> <r:@R> Whitespace* VariadicOptParenL <d:Define> VariadicOptParenR => {
+	<l:@L> VariadicArg <r:@R> => PreTokenDefine::VariadicArg(FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: (), end: r.0}}),
+	<l:@L> VariadicOpt <r:@R> Whitespace* VariadicOptParenL <d:Define> VariadicOptParenR => {
 		PreTokenDefine::VariadicOpt(
 			FilePreTokPos{file: l.1, tokPos: PreTokPos {start: l.0, tok: (), end: r.0}},
 			d.into_iter().collect::<Vec<PreTokenDefine>>())

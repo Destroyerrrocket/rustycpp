@@ -2,12 +2,15 @@ use lalrpop_util::ParseError;
 
 use crate::{
     filePreTokPosMatchArm,
-    grammars::{define, defineast::*},
+    grammars::{
+        define,
+        defineast::{DefineAst, IsVariadic, PreTokenDefine, PreTokenDefinePreParse},
+    },
     utils::{
         funcs::all_unique_elements,
         lalrpoplexerwrapper::LalrPopLexerWrapper,
         pretoken::{PreToken, PreprocessingOperator},
-        structs::*,
+        structs::{CompileError, CompileMsg, CompileWarning, FilePreTokPos, PreTokPos},
     },
 };
 
@@ -15,8 +18,6 @@ use super::Preprocessor;
 
 impl Preprocessor {
     fn parseReplList(
-        &mut self,
-        _preToken: &FilePreTokPos<PreToken>,
         parse: &DefineAst,
         tokens: Vec<FilePreTokPos<PreToken>>,
     ) -> Result<Vec<PreTokenDefine>, CompileMsg> {
@@ -59,12 +60,10 @@ impl Preprocessor {
                         }
 
                         PreToken::OperatorPunctuator(")") => {
-                            let shouldMut = if let Some(pars) = vaOptExpectParen.last_mut() {
+                            let shouldMut = vaOptExpectParen.last_mut().map_or(false, |pars| {
                                 *pars -= 1;
                                 *pars == -1
-                            } else {
-                                false
-                            };
+                            });
                             if shouldMut {
                                 vaOptExpectParen.pop();
                                 PreTokenDefinePreParse::VariadicOptParenR
@@ -144,19 +143,18 @@ impl Preprocessor {
                 (token.0).0,
                 Some((token.2).0),
             ),
-            ParseError::User { error: _ } => {
+            ParseError::User { .. } => {
                 unreachable!("I haven't defined a custom parsing error. This is odd")
             }
         });
     }
 
     fn getAstMacro(
-        &mut self,
         initialToken: &FilePreTokPos<PreToken>,
         tokens: Vec<FilePreTokPos<PreToken>>,
     ) -> Result<DefineAst, CompileMsg> {
         let mut res = DefineAst {
-            id: "".to_string(),
+            id: String::new(),
             param: None,
             variadic: IsVariadic::False,
             replacement: vec![],
@@ -198,7 +196,7 @@ impl Preprocessor {
                             !matches!(tok.tokPos.tok, PreToken::OperatorPunctuator(")"))
                         })
                         .filter(|tok| !tok.tokPos.tok.isWhitespace());
-                    res.param = Some(vec![]);
+                    let mut param = vec![];
                     loop {
                         let paramData = paren
                             .by_ref()
@@ -215,7 +213,7 @@ impl Preprocessor {
                                 break;
                             }
                             [PreToken::OperatorPunctuator("...")] => {
-                                res.variadic = IsVariadic::True("".to_string());
+                                res.variadic = IsVariadic::True(String::new());
                                 break;
                             }
                             [PreToken::Ident(id), PreToken::OperatorPunctuator("...")]
@@ -224,7 +222,7 @@ impl Preprocessor {
                                 break;
                             }
                             [PreToken::Ident(id)] => {
-                                res.param.as_mut().unwrap().push(id.to_string());
+                                param.push(id.to_string());
                             }
                             _ => {
                                 return Err(CompileError::from_preTo(
@@ -232,18 +230,19 @@ impl Preprocessor {
                                         "Non-valid parameter to function-like macro: {:?}",
                                         identParamTokens
                                     ),
-                                    paramData.first().unwrap(),
+                                    initialToken,
                                 ));
                             }
                         }
                     }
+
                     if let Some(prepro) = paren.next() {
                         return Err(CompileError::from_preTo(
                             "Unparsable extra token in macro parameter",
                             &prepro,
                         ));
                     }
-                    if !all_unique_elements(res.param.as_ref().unwrap()) {
+                    if !all_unique_elements(&param) {
                         return Err(CompileError::from_preTo(
                             "Repeated identifiers in parameters",
                             &tokLParen,
@@ -253,6 +252,8 @@ impl Preprocessor {
                     rlt = ntok
                         .skip_while(|tok| tok.tokPos.tok.isWhitespace())
                         .collect::<Vec<FilePreTokPos<PreToken>>>();
+
+                    res.param = Some(param);
                 }
                 _ => {
                     // We have a replacement macro, but the first token is not whitespace. This is technically an extension
@@ -261,7 +262,7 @@ impl Preprocessor {
                 }
             }
 
-            let mut rl = self.parseReplList(initialToken, &res, rlt)?;
+            let mut rl = Self::parseReplList(&res, rlt)?;
             while rl.last().is_some_and(|tok| {
                 matches!(
                     tok,
@@ -302,7 +303,7 @@ impl Preprocessor {
         preToken: &FilePreTokPos<PreToken>,
     ) -> Result<(), CompileMsg> {
         let def = {
-            match self.getAstMacro(preToken, vecPrepro) {
+            match Self::getAstMacro(preToken, vecPrepro) {
                 Err(err) => {
                     return Err(err);
                 }
@@ -316,7 +317,7 @@ impl Preprocessor {
                 return Err(CompileWarning::from_preTo("Redefining macro", preToken));
             }
             None => {
-                self.definitions.insert(def.id.to_string(), def);
+                self.definitions.insert(def.id.clone(), def);
             }
         }
         return Ok(());
@@ -334,7 +335,7 @@ impl Preprocessor {
             };
         }
         log::debug!("Macros:");
-        for (_, defi) in self.definitions.iter() {
+        for defi in self.definitions.values() {
             log::debug!("{:?}", defi);
         }
     }

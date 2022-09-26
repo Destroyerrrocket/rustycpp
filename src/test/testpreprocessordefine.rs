@@ -11,7 +11,7 @@ fn generateFileMap(files: &[(&'static str, &'static str)]) -> (Arc<Mutex<FileMap
         fileMap
             .lock()
             .unwrap()
-            .addTestFile(filePath.to_string(), fileContents.to_string());
+            .addTestFile((*filePath).to_string(), (*fileContents).to_string());
     }
     return (fileMap, testFile);
 }
@@ -20,12 +20,13 @@ fn getToksPreprocessed(files: &[(&'static str, &'static str)]) -> Vec<PreToken> 
     let prep = Preprocessor::new(generateFileMap(files));
     return prep
         .filter_map(|x| {
-            if let Some(err) = x.as_ref().err() {
-                log::error!("{}", err.to_string());
-                None
-            } else {
-                x.ok()
-            }
+            x.map_or_else(
+                |err| {
+                    log::error!("{}", err.to_string());
+                    None
+                },
+                Some,
+            )
         })
         .map(|x| x.tokPos.tok)
         .collect::<Vec<PreToken>>();
@@ -33,7 +34,7 @@ fn getToksPreprocessed(files: &[(&'static str, &'static str)]) -> Vec<PreToken> 
 
 fn getErrsPreprocessed(files: &[(&'static str, &'static str)]) -> Vec<CompileMsg> {
     let prep = Preprocessor::new(generateFileMap(files));
-    return prep.filter_map(|x| x.err()).collect::<Vec<CompileMsg>>();
+    return prep.filter_map(Result::err).collect::<Vec<CompileMsg>>();
 }
 
 fn getToksPreprocessedNoWs(files: &[(&'static str, &'static str)]) -> Vec<PreToken> {
@@ -53,7 +54,7 @@ fn getToksPreprocessedNoWs(files: &[(&'static str, &'static str)]) -> Vec<PreTok
 
 fn toksToString(toks: &[PreToken]) -> String {
     let mut res = String::new();
-    for s in toks.iter().map /*TODO: FILTER NOPS?*/ (|x| x.to_str()) {
+    for s in toks.iter().map /*TODO: FILTER NOPS?*/ (PreToken::to_str) {
         res.push_str(s);
         res.push(' ');
     }

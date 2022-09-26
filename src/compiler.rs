@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex};
 
 use crate::filemap::FileMap;
-use crate::preprocessor::*;
-use crate::utils::structs::*;
+use crate::preprocessor::Preprocessor;
+use crate::utils::structs::CompileMsgKind;
 
 type TranslationUnit = String;
 #[derive(Debug)]
@@ -12,9 +12,9 @@ pub struct Compiler {
 }
 
 impl Compiler {
-    pub fn new(compileFiles: FileMap) -> Compiler {
+    pub fn new(compileFiles: FileMap) -> Self {
         let mainTranslationUnits = compileFiles.getCurrPaths();
-        Compiler {
+        Self {
             compileFiles: Arc::new(Mutex::new(compileFiles)),
             mainTranslationUnits,
         }

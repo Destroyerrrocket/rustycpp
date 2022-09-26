@@ -23,21 +23,21 @@ pub struct MultiLexer {
 }
 
 impl MultiLexer {
-    pub fn new_def(files: Arc<Mutex<FileMap>>) -> MultiLexer {
-        MultiLexer {
+    pub fn new_def(files: Arc<Mutex<FileMap>>) -> Self {
+        Self {
             fileMapping: files,
             files: vec![],
             pushedTokens: VecDeque::new(),
         }
     }
 
-    pub fn new((files, file): (Arc<Mutex<FileMap>>, &str)) -> MultiLexer {
+    pub fn new((files, file): (Arc<Mutex<FileMap>>, &str)) -> Self {
         let lexer = {
             let currFile = files.lock().unwrap().getFile(file);
             PreLexer::new(currFile.content().clone())
         };
 
-        MultiLexer {
+        Self {
             fileMapping: files,
             files: vec![FileLexer {
                 compFile: file.to_string(),
@@ -105,7 +105,10 @@ impl Iterator for MultiLexer {
                     None => {}
                     Some(tok) => {
                         return Some(FilePreTokPos::new(
-                            self.fileMapping.lock().unwrap().getFile(&lexer.compFile),
+                            self.fileMapping
+                                .lock()
+                                .expect("Thread panic")
+                                .getFile(&lexer.compFile),
                             tok,
                         ));
                     }

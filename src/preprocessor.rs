@@ -5,8 +5,11 @@ use std::{
 
 use crate::{
     filemap::FileMap,
-    grammars::defineast::*,
-    utils::{pretoken::*, structs::*},
+    grammars::defineast::DefineAst,
+    utils::{
+        pretoken::{PreToken, PreprocessingOperator},
+        structs::{CompileError, CompileMsg, CompileWarning, FilePreTokPos},
+    },
 };
 
 use multiset::HashMultiSet;
@@ -23,6 +26,7 @@ enum ScopeStatus {
 mod custommacros;
 mod defineparse;
 mod macroexpand;
+mod macroexpression;
 mod multilexer;
 pub mod structs;
 
@@ -38,8 +42,8 @@ pub struct Preprocessor {
 }
 
 impl Preprocessor {
-    pub fn new(data: (Arc<Mutex<FileMap>>, &str)) -> Preprocessor {
-        Preprocessor {
+    pub fn new(data: (Arc<Mutex<FileMap>>, &str)) -> Self {
+        Self {
             multilexer: MultiLexer::new(data),
             generated: VecDeque::new(),
             errors: VecDeque::new(),
@@ -81,17 +85,17 @@ impl Preprocessor {
             },
         }
         log::debug!("Macros:");
-        for (_, defi) in self.definitions.iter() {
+        for defi in self.definitions.values() {
             log::debug!("{:?}", defi);
         }
         return;
     }
 
-    fn includeFile(&mut self, _file: Option<String>) {
+    fn includeFile(_file: Option<String>) {
         todo!("Implement including");
     }
 
-    fn consumeMacroInclude(&mut self, _PreToken: FilePreTokPos<PreToken>) -> Option<String> {
+    fn consumeMacroInclude(_PreToken: FilePreTokPos<PreToken>) -> Option<String> {
         todo!("Implement header extraction");
     }
 
@@ -140,13 +144,6 @@ impl Preprocessor {
             }
         }
     }
-    fn consumeMacroExpr(&mut self, _preToken: FilePreTokPos<PreToken>) {
-        todo!();
-    }
-
-    fn evalIfScope(&self, _tree: ()) -> bool {
-        todo!();
-    }
 
     fn evalIfDef(&self, def: Option<String>) -> bool {
         if let Some(macroName) = def {
@@ -179,8 +176,8 @@ impl Preprocessor {
             match operation.tokPos.tok.to_str() {
                 "include" => {
                     self.multilexer.expectHeader();
-                    let t = self.consumeMacroInclude(operation);
-                    self.includeFile(t);
+                    let t = Self::consumeMacroInclude(operation);
+                    Self::includeFile(t);
                 }
                 "define" => {
                     self.defineMacro(operation);
@@ -189,29 +186,34 @@ impl Preprocessor {
                     self.undefineMacro(operation);
                 }
                 "if" => {
-                    let t = self.consumeMacroExpr(operation);
-                    let t2 = if self.evalIfScope(t) {
-                        ScopeStatus::Success
-                    } else {
-                        ScopeStatus::Failure
-                    };
-                    self.scope.push(t2);
+                    let sequenceToEval = self.consumeMacroExpr();
+                    match sequenceToEval {
+                        Err(err) => {
+                            self.errors.push_back(err);
+                        }
+                        Ok(sequenceToEval) => {
+                            self.scope.push(if Self::evalIfScope(sequenceToEval) {
+                                ScopeStatus::Success
+                            } else {
+                                ScopeStatus::Failure
+                            });
+                        }
+                    }
                 }
                 "ifdef" => {
-                    let t = { self.consumeMacroDef(operation) };
-                    let t2 = if self.evalIfDef(t) {
+                    let t = self.consumeMacroDef(operation);
+                    self.scope.push(if self.evalIfDef(t) {
                         ScopeStatus::Success
                     } else {
                         ScopeStatus::Failure
-                    };
-                    self.scope.push(t2);
+                    });
                 }
                 "ifndef" => {
                     let t = self.consumeMacroDef(operation);
-                    let t2 = if !self.evalIfDef(t) {
-                        ScopeStatus::Success
-                    } else {
+                    let t2 = if self.evalIfDef(t) {
                         ScopeStatus::Failure
+                    } else {
+                        ScopeStatus::Success
                     };
                     self.scope.push(t2);
                 }
@@ -275,10 +277,17 @@ impl Preprocessor {
                     self.scope.push(ScopeStatus::AlreadySucceeded);
                 }
                 "elif" => {
-                    let macroExpr = self.consumeMacroExpr(operation);
-                    if self.evalIfScope(macroExpr) {
-                        let scope = self.scope.last_mut().unwrap();
-                        *scope = ScopeStatus::Success
+                    let sequenceToEval = self.consumeMacroExpr();
+                    match sequenceToEval {
+                        Err(err) => {
+                            self.errors.push_back(err);
+                        }
+                        Ok(sequenceToEval) => {
+                            if Self::evalIfScope(sequenceToEval) {
+                                let scope = self.scope.last_mut().unwrap();
+                                *scope = ScopeStatus::Success;
+                            }
+                        }
                     }
                 }
                 "else" => {

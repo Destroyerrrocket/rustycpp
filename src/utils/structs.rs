@@ -13,9 +13,9 @@ pub struct CompileFile {
 }
 
 impl CompileFile {
-    pub fn new(path: String, content: String) -> CompileFile {
+    pub fn new(path: String, content: String) -> Self {
         let contentFile = Arc::new(content.replace("\r\n", "\n"));
-        CompileFile {
+        Self {
             path,
             content: contentFile.clone(),
             newlines: contentFile
@@ -26,7 +26,7 @@ impl CompileFile {
         }
     }
 
-    pub fn path(&self) -> &String {
+    pub const fn path(&self) -> &String {
         &self.path
     }
     pub fn content(&self) -> &String {
@@ -61,10 +61,10 @@ pub enum CompileMsgKind {
 impl ToString for CompileMsgKind {
     fn to_string(&self) -> String {
         match self {
-            CompileMsgKind::Notice => "Notice".bright_blue().to_string(),
-            CompileMsgKind::Warning => "Warning".bright_yellow().to_string(),
-            CompileMsgKind::Error => "Error".bright_red().to_string(),
-            CompileMsgKind::FatalError => "Error".bright_red().to_string(),
+            Self::Notice => "Notice".bright_blue().to_string(),
+            Self::Warning => "Warning".bright_yellow().to_string(),
+            Self::Error => "Error".bright_red().to_string(),
+            Self::FatalError => "Fatal error".bright_red().to_string(),
         }
     }
 }
@@ -83,7 +83,7 @@ impl CompileMsg {
         self.file.getLocStr(self.at)
     }
 
-    pub fn severity(&self) -> CompileMsgKind {
+    pub const fn severity(&self) -> CompileMsgKind {
         self.kind
     }
 }
@@ -99,7 +99,7 @@ impl ToString for CompileMsg {
     }
 }
 
-pub struct CompileError {}
+pub struct CompileError;
 
 impl CompileError {
     pub fn from_preTo<T: ToString, Tok: Clone + Debug>(
@@ -131,7 +131,7 @@ impl CompileError {
     }
 }
 
-pub struct CompileWarning {}
+pub struct CompileWarning;
 impl CompileWarning {
     pub fn from_preTo<T: ToString>(msg: T, preToken: &FilePreTokPos<PreToken>) -> CompileMsg {
         CompileMsg {
@@ -166,7 +166,7 @@ pub struct PreTokPos<T: Clone + Debug> {
     pub end: usize,
 }
 impl<T: Clone + Debug> PreTokPos<T> {
-    pub fn tokString(&self) -> String {
+    pub fn tokStringDebug(&self) -> String {
         format!("{:?}", self.tok)
     }
 }
@@ -178,15 +178,12 @@ pub struct FilePreTokPos<T: Clone + Debug> {
 }
 
 impl<T: Clone + Debug> FilePreTokPos<T> {
-    pub fn new(file: Arc<CompileFile>, tok: PreTokPos<T>) -> FilePreTokPos<T> {
-        FilePreTokPos {
-            file,
-            tokPos: tok,
-        }
+    pub fn new(file: Arc<CompileFile>, tok: PreTokPos<T>) -> Self {
+        Self { file, tokPos: tok }
     }
 
-    pub fn new_meta(tok: T) -> FilePreTokPos<T> {
-        FilePreTokPos {
+    pub fn new_meta(tok: T) -> Self {
+        Self {
             file: Arc::new(CompileFile::default()),
             tokPos: PreTokPos {
                 start: 0,
@@ -196,8 +193,8 @@ impl<T: Clone + Debug> FilePreTokPos<T> {
         }
     }
 
-    pub fn new_meta_c<U: Clone + Debug>(tok: T, other: &FilePreTokPos<U>) -> FilePreTokPos<T> {
-        FilePreTokPos {
+    pub fn new_meta_c<U: Clone + Debug>(tok: T, other: &FilePreTokPos<U>) -> Self {
+        Self {
             file: other.file.clone(),
             tokPos: PreTokPos {
                 start: other.tokPos.start,
@@ -207,8 +204,8 @@ impl<T: Clone + Debug> FilePreTokPos<T> {
         }
     }
 
-    pub fn tokString(&self) -> String {
-        self.tokPos.tokString()
+    pub fn tokStringDebug(&self) -> String {
+        self.tokPos.tokStringDebug()
     }
 }
 
@@ -216,12 +213,8 @@ impl<T: Clone + Debug> FilePreTokPos<T> {
 macro_rules! filePreTokPosMatchArm {
     ( $x:pat ) => {
         FilePreTokPos {
-            file: _,
-            tokPos: PreTokPos {
-                start: _,
-                tok: $x,
-                end: _,
-            },
+            tokPos: PreTokPos { tok: $x, .. },
+            ..
         }
     };
 }
@@ -232,12 +225,8 @@ macro_rules! filePreTokPosMatches {
         matches!(
             $file,
             FilePreTokPos {
-                file: _,
-                tokPos: PreTokPos {
-                    start: _,
-                    tok: $x,
-                    end: _,
-                },
+                tokPos: PreTokPos { tok: $x, .. },
+                ..
             }
         )
     };

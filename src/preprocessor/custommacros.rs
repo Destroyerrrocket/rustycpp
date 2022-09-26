@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types)]
+#![allow(non_camel_case_types, clippy::string_to_string)]
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use crate::grammars::defineast::{DefineAst, IsVariadic};
 use crate::prelexer::PreLexer;
 use crate::utils::pretoken::PreToken;
-use crate::utils::structs::{CompileMsg, FilePreTokPos};
+use crate::utils::structs::{CompileError, CompileMsg, FilePreTokPos};
 
 use chrono::Local;
 use lazy_static::lazy_static;
@@ -30,7 +30,7 @@ macro_rules! declCMVar {
                     param: None,
                     variadic: IsVariadic::False,
                     replacement: vec![],
-                    expandFunc: &$x::expand,
+                    expandFunc: &Self::expand,
                 }
             }
             fn expand(
@@ -63,10 +63,10 @@ declCMVar! {__STDC_HOSTED__, |_| "1"}
 declCMVar! {__STDCPP_DEFAULT_NEW_ALIGNMENT__, |_| "1"}
 declCMVar! {__TIME__, |_| Local::now().format("%H:%M:%S")}
 
-struct __has_include {}
+struct __has_include;
 
 impl __has_include {
-    fn checkForInclude(toks: &[FilePreTokPos<PreToken>]) -> Option<String> {
+    fn checkForInclude(toks: &VecDeque<FilePreTokPos<PreToken>>) -> Option<String> {
         let mut res = String::new();
         for s in toks.iter().map(|x| x.tokPos.tok.to_str().to_owned()) {
             res.push_str(&s);
@@ -82,19 +82,16 @@ impl __has_include {
             None
         }
     }
-    fn checkForIncludeDec(toks: &VecDeque<FilePreTokPos<PreToken>>) -> Option<String> {
-        Self::checkForInclude(&toks.iter().cloned().collect::<Vec<_>>())
-    }
 }
 
 impl CustomMacro for __has_include {
     fn macroInfo() -> DefineAst {
         DefineAst {
             id: stringify!(__has_include).to_string(),
-            param: Some(vec!["file".into()]),
-            variadic: IsVariadic::False,
+            param: Some(vec![]),
+            variadic: IsVariadic::True(String::new()),
             replacement: vec![],
-            expandFunc: &__has_include::expand,
+            expandFunc: &Self::expand,
         }
     }
 
@@ -106,19 +103,39 @@ impl CustomMacro for __has_include {
         ));
 
         let mut path = String::new();
-        if let Some(newPath) = Self::checkForInclude(expandData.namedArgs.get("file").unwrap()) {
+        let mut result = VecDeque::new();
+        for posVariadic in 0..expandData.variadic.len() {
+            for v in &expandData.variadic[posVariadic] {
+                result.push_back(v.clone());
+            }
+            if posVariadic + 1 != expandData.variadic.len() {
+                result.push_back(FilePreTokPos::new_meta_c(
+                    PreToken::OperatorPunctuator(","),
+                    expandData.newToken,
+                ));
+            }
+        }
+
+        if result.is_empty() {
+            return Err(CompileError::from_preTo(
+                "The empty path can't be opened",
+                expandData.newToken,
+            ));
+        }
+
+        if let Some(newPath) = Self::checkForInclude(&result) {
             path = newPath;
         }
 
         let mut paramLexer = MultiLexer::new_def(expandData.lexer.fileMapping());
-        paramLexer.pushTokensVec(expandData.namedArgs.get("file").unwrap().clone());
+        paramLexer.pushTokensDec(result);
         let toks = Preprocessor::expandASequenceOfTokens(
             paramLexer,
             expandData.definitions,
             expandData.disabledMacros,
         )?;
 
-        if let Some(newPath) = Self::checkForIncludeDec(&toks) {
+        if let Some(newPath) = Self::checkForInclude(&toks) {
             path = newPath;
         } else {
             for s in toks.into_iter().map(|t| t.tokPos.tok.to_str().to_owned()) {
@@ -142,14 +159,14 @@ impl CustomMacro for __has_include {
     }
 }
 
-struct __has_cpp_attribute {}
+struct __has_cpp_attribute;
 
 impl CustomMacro for __has_cpp_attribute {
     fn macroInfo() -> DefineAst {
         DefineAst {
             id: stringify!(__has_include).to_string(),
-            param: Some(vec!["file".into()]),
-            variadic: IsVariadic::False,
+            param: Some(vec![]),
+            variadic: IsVariadic::True(String::new()),
             replacement: vec![],
             expandFunc: &__has_include::expand,
         }

@@ -9,8 +9,8 @@ pub struct FileMap {
 }
 
 impl<'a> FileMap {
-    pub fn new() -> FileMap {
-        FileMap {
+    pub fn new() -> Self {
+        Self {
             openedButNotRead: HashMap::new(),
             files: HashMap::new(),
         }
@@ -26,7 +26,10 @@ impl<'a> FileMap {
     pub fn getAddFile(&'a mut self, path: &str) -> Arc<CompileFile> {
         if self.files.contains_key(path) {
         } else if !self.openedButNotRead.contains_key(path) {
-            if !path.ends_with(".cpp") && !path.ends_with(".hpp") {
+            let filename = std::path::Path::new(path);
+            if filename.extension().map_or(false, |ext| {
+                !ext.eq_ignore_ascii_case(".cpp") && !ext.eq_ignore_ascii_case(".hpp")
+            }) {
                 log::error!("Unsuported file type: {}", path);
             }
             let file: File = match OpenOptions::new().read(true).open(path) {
@@ -65,7 +68,10 @@ impl<'a> FileMap {
     pub fn hasFileAccess(&mut self, path: &str) -> bool {
         if self.files.contains_key(path) || self.openedButNotRead.contains_key(path) {
         } else {
-            if !path.ends_with(".cpp") && !path.ends_with(".hpp") {
+            let filename = std::path::Path::new(path);
+            if filename.extension().map_or(false, |ext| {
+                !ext.eq_ignore_ascii_case(".cpp") && !ext.eq_ignore_ascii_case(".hpp")
+            }) {
                 log::error!("Unsuported file type: {}", path);
             }
             let file: File = match OpenOptions::new().read(true).open(path) {
@@ -90,7 +96,7 @@ impl<'a> FileMap {
     #[allow(dead_code)]
     pub fn addTestFile(&mut self, path: String, content: String) {
         self.files
-            .insert(path.to_string(), Arc::new(CompileFile::new(path, content)));
+            .insert(path.clone(), Arc::new(CompileFile::new(path, content)));
     }
 }
 

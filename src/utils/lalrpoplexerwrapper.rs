@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use super::structs::{CompileFile, FilePreTokPos};
 
-// Unsoported. Haven't removed it as it may be useful someday
+// Unsuported. Haven't removed it as it may be useful someday
 #[derive(Debug)]
 pub enum LalrPopLexerWrapperState {
     Normal,
@@ -19,7 +19,7 @@ pub struct LalrPopLexerWrapper<'slice, T: Clone + Debug> {
 }
 
 impl<'slice, T: Clone + Debug> LalrPopLexerWrapper<'slice, T> {
-    pub fn new(tokens: &'slice [FilePreTokPos<T>]) -> LalrPopLexerWrapper<T> {
+    pub const fn new(tokens: &'slice [FilePreTokPos<T>]) -> LalrPopLexerWrapper<T> {
         LalrPopLexerWrapper {
             tokens,
             state: LalrPopLexerWrapperState::Normal,

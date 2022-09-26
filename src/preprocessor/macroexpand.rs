@@ -51,8 +51,7 @@ impl Preprocessor {
                         &mut selfContainedLexer,
                         tok,
                     )?;
-                    toks.into_iter()
-                        .collect_into::<VecDeque<FilePreTokPos<PreToken>>>(&mut preproTokie);
+                    preproTokie.extend(toks);
                 }
                 _ => {
                     preproTokie.push_back(tok);
@@ -65,9 +64,9 @@ impl Preprocessor {
     fn expandNormal(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
         t: &FilePreTokPos<PreToken>,
-    ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+    ) -> VecDeque<FilePreTokPos<PreToken>> {
         result.push_back(t.clone());
-        return Ok(result);
+        return result;
     }
 
     fn expandArg(
@@ -87,7 +86,7 @@ impl Preprocessor {
                 "EXPANDED INTO: {:?}",
                 preproTokie
                     .iter()
-                    .map(|x| x.tokString())
+                    .map(FilePreTokPos::tokStringDebug)
                     .collect::<Vec<_>>()
             );
 
@@ -158,7 +157,7 @@ impl Preprocessor {
                     tempResult.push_back(FilePreTokPos::new_meta_c(
                         PreToken::OperatorPunctuator(","),
                         vaTok,
-                    ))
+                    ));
                 }
             }
             while let Some(filePreTokPosMatchArm!(PreToken::Whitespace(_))) = tempResult.front() {
@@ -173,14 +172,14 @@ impl Preprocessor {
             result.append(&mut tempResult);
         } else {
             for posVariadic in 0..expandData.variadic.len() {
-                for v in expandData.variadic[posVariadic].iter() {
+                for v in &expandData.variadic[posVariadic] {
                     result.push_back(v.clone());
                 }
                 if posVariadic + 1 != expandData.variadic.len() {
                     result.push_back(FilePreTokPos::new_meta_c(
                         PreToken::OperatorPunctuator(","),
                         vaTok,
-                    ))
+                    ));
                 }
             }
             if expandData.variadic.is_empty() {
@@ -213,12 +212,14 @@ impl Preprocessor {
 
         {
             let mut lastTokenWasWhitespace = false;
-            for el in resChild.iter() {
+            for el in &resChild {
                 match el {
-                    filePreTokPosMatchArm!(PreToken::StringLiteral(_))
-                    | filePreTokPosMatchArm!(PreToken::UdStringLiteral(_))
-                    | filePreTokPosMatchArm!(PreToken::CharLiteral(_))
-                    | filePreTokPosMatchArm!(PreToken::UdCharLiteral(_)) => {
+                    filePreTokPosMatchArm!(
+                        PreToken::StringLiteral(_)
+                            | PreToken::UdStringLiteral(_)
+                            | PreToken::CharLiteral(_)
+                            | PreToken::UdCharLiteral(_)
+                    ) => {
                         text.push_str(
                             el.tokPos
                                 .tok
@@ -229,8 +230,7 @@ impl Preprocessor {
                         );
                         lastTokenWasWhitespace = false;
                     }
-                    filePreTokPosMatchArm!(PreToken::Newline)
-                    | filePreTokPosMatchArm!(PreToken::Whitespace(_)) => {
+                    filePreTokPosMatchArm!(PreToken::Newline | PreToken::Whitespace(_)) => {
                         if lastTokenWasWhitespace {
                             continue;
                         }
@@ -323,8 +323,12 @@ impl Preprocessor {
             expR.pop_front();
             log::trace!(
                 "L: {:?}\nR: {:?}",
-                expL.iter().map(|x| x.tokString()).collect::<Vec<_>>(),
-                expR.iter().map(|x| x.tokString()).collect::<Vec<_>>(),
+                expL.iter()
+                    .map(FilePreTokPos::tokStringDebug)
+                    .collect::<Vec<_>>(),
+                expR.iter()
+                    .map(FilePreTokPos::tokStringDebug)
+                    .collect::<Vec<_>>(),
             );
 
             // And we merge them. Note that the resulting token may not be valid
@@ -338,9 +342,9 @@ impl Preprocessor {
                 }
                 let mut receivedTok = PreLexer::new(expectedStr.clone()).collect::<Vec<_>>();
                 receivedTok.pop();
-                receivedTok.into_iter().for_each(|x| {
+                for x in receivedTok {
                     result.push_back(FilePreTokPos::new_meta_c(x.tok, pos));
-                });
+                }
             } else {
                 // Both sides are empty. We add a ValidNop token
                 result.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, pos));
@@ -412,7 +416,7 @@ impl Preprocessor {
         for tok in expandData.replacement {
             match tok {
                 PreTokenDefine::Normal(t) => {
-                    result = Self::expandNormal(result, t)?;
+                    result = Self::expandNormal(result, t);
                 }
                 PreTokenDefine::Arg(a) => {
                     result = Self::expandArg(result, expandData.clone(), a)?;
@@ -526,13 +530,9 @@ impl Preprocessor {
                     tokies.last_mut().unwrap().push(tok.unwrap());
                     openParens += 1;
                 }
-                (_, Some(filePreTokPosMatchArm!(PreToken::Whitespace(_))))
-                | (_, Some(filePreTokPosMatchArm!(PreToken::Newline))) => {
+                (_, Some(filePreTokPosMatchArm!(PreToken::Whitespace(_) | PreToken::Newline))) => {
                     let tokie = tokies.last_mut().unwrap();
                     tokie.push(tok.unwrap());
-                    /*if !tokie.is_empty() {
-                        tokie.push(tok.unwrap());
-                    }*/
                 }
                 _ => {
                     tokies.last_mut().unwrap().push(tok.unwrap());
@@ -540,7 +540,7 @@ impl Preprocessor {
             };
         };
 
-        for tokie in tokies.iter_mut() {
+        for tokie in &mut tokies {
             while tokie
                 .last()
                 .is_some_and(|x| filePreTokPosMatches!(x, PreToken::Whitespace(_)))
@@ -662,8 +662,6 @@ impl Preprocessor {
                             })
                             .collect(),
                     );
-
-                    return Ok(vec![]);
                 } else {
                     let success = (macroAst.expandFunc)(ExpandData {
                         definitions,
@@ -685,8 +683,8 @@ impl Preprocessor {
                             .collect::<Vec<_>>()
                     );
                     lexer.pushTokensDec(success);
-                    return Ok(vec![]);
                 }
+                return Ok(vec![]);
             }
         }
         return Ok(vec![newToken]);

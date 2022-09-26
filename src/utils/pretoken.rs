@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::use_self)]
 use logos::Logos;
 
 #[derive(PartialEq, Eq, Debug, Logos)]
@@ -202,10 +204,10 @@ pub enum PreprocessingOperator {
     HashHash,
 }
 impl PreprocessingOperator {
-    fn as_str(&self) -> &str {
+    const fn as_str(&self) -> &str {
         match self {
-            PreprocessingOperator::Hash => "#",
-            PreprocessingOperator::HashHash => "##",
+            Self::Hash => "#",
+            Self::HashHash => "##",
         }
     }
 }
@@ -232,87 +234,85 @@ pub enum PreToken {
 }
 
 impl PreToken {
-    pub fn new(tok: PreTokenLexer, content: String) -> PreToken {
+    pub fn new(tok: PreTokenLexer, content: String) -> Self {
         match tok {
-            PreTokenLexer::Ident => PreToken::Ident(content),
+            PreTokenLexer::Ident => Self::Ident(content),
             PreTokenLexer::PreprocessingOperatorHash => {
-                PreToken::PreprocessingOperator(PreprocessingOperator::Hash)
+                Self::PreprocessingOperator(PreprocessingOperator::Hash)
             }
             PreTokenLexer::PreprocessingOperatorHashHash => {
-                PreToken::PreprocessingOperator(PreprocessingOperator::HashHash)
+                Self::PreprocessingOperator(PreprocessingOperator::HashHash)
             }
-            PreTokenLexer::OperatorPunctuator => {
-                PreToken::OperatorPunctuator(match content.as_str() {
-                    r"{" => r"{",
-                    r"}" => r"}",
-                    r"[" => r"[",
-                    r"]" => r"]",
-                    r"(" => r"(",
-                    r")" => r")",
-                    r"<:" => r"<:",
-                    r":>" => r":>",
-                    r"<%" => r"<%",
-                    r"%>" => r"%>",
-                    r";" => r";",
-                    r":" => r":",
-                    r"..." => r"...",
-                    r"?" => r"?",
-                    r"::" => r"::",
-                    r"." => r".",
-                    r".*" => r".*",
-                    r"->" => r"->",
-                    r"->*" => r"->*",
-                    r"~!" => r"~!",
-                    r"+" => r"+",
-                    r"-" => r"-",
-                    r"*" => r"*",
-                    r"/" => r"/",
-                    r"%" => r"%",
-                    r"^" => r"^",
-                    r"&" => r"&",
-                    r"|" => r"|",
-                    r"=" => r"=",
-                    r"+=" => r"+=",
-                    r"-=" => r"-=",
-                    r"*=" => r"*=",
-                    r"/=" => r"/=",
-                    r"%=" => r"%=",
-                    r"^=" => r"^=",
-                    r"&=" => r"&=",
-                    r"|=" => r"|=",
-                    r"==" => r"==",
-                    r"!=" => r"!=",
-                    r"<" => r"<",
-                    r">" => r">",
-                    r"<=" => r"<=",
-                    r">=" => r">=",
-                    r"<=>" => r"<=>",
-                    r"&&" => r"&&",
-                    r"||" => r"||",
-                    r"<<" => r"<<",
-                    r">>" => r">>",
-                    r"<<=" => r"<<=",
-                    r">>=" => r">>=",
-                    r"++" => r"++",
-                    r"--" => r"--",
-                    r"," => r",",
-                    r"and" => r"and",
-                    r"or" => r"or",
-                    r"xor" => r"xor",
-                    r"not" => r"not",
-                    r"bitand" => r"bitand",
-                    r"bitor" => r"bitor",
-                    r"compl" => r"compl",
-                    r"and_eq" => r"and_eq",
-                    r"or_eq" => r"or_eq",
-                    r"xor_eq" => r"xor_eq",
-                    r"not_eq" => r"not_eq",
-                    _ => {
-                        panic!("How did you manage to get an operator not in my list")
-                    }
-                })
-            }
-            PreTokenLexer::Keyword => PreToken::Keyword(match content.as_str() {
+            PreTokenLexer::OperatorPunctuator => Self::OperatorPunctuator(match content.as_str() {
+                r"{" => r"{",
+                r"}" => r"}",
+                r"[" => r"[",
+                r"]" => r"]",
+                r"(" => r"(",
+                r")" => r")",
+                r"<:" => r"<:",
+                r":>" => r":>",
+                r"<%" => r"<%",
+                r"%>" => r"%>",
+                r";" => r";",
+                r":" => r":",
+                r"..." => r"...",
+                r"?" => r"?",
+                r"::" => r"::",
+                r"." => r".",
+                r".*" => r".*",
+                r"->" => r"->",
+                r"->*" => r"->*",
+                r"~!" => r"~!",
+                r"+" => r"+",
+                r"-" => r"-",
+                r"*" => r"*",
+                r"/" => r"/",
+                r"%" => r"%",
+                r"^" => r"^",
+                r"&" => r"&",
+                r"|" => r"|",
+                r"=" => r"=",
+                r"+=" => r"+=",
+                r"-=" => r"-=",
+                r"*=" => r"*=",
+                r"/=" => r"/=",
+                r"%=" => r"%=",
+                r"^=" => r"^=",
+                r"&=" => r"&=",
+                r"|=" => r"|=",
+                r"==" => r"==",
+                r"!=" => r"!=",
+                r"<" => r"<",
+                r">" => r">",
+                r"<=" => r"<=",
+                r">=" => r">=",
+                r"<=>" => r"<=>",
+                r"&&" => r"&&",
+                r"||" => r"||",
+                r"<<" => r"<<",
+                r">>" => r">>",
+                r"<<=" => r"<<=",
+                r">>=" => r">>=",
+                r"++" => r"++",
+                r"--" => r"--",
+                r"," => r",",
+                r"and" => r"and",
+                r"or" => r"or",
+                r"xor" => r"xor",
+                r"not" => r"not",
+                r"bitand" => r"bitand",
+                r"bitor" => r"bitor",
+                r"compl" => r"compl",
+                r"and_eq" => r"and_eq",
+                r"or_eq" => r"or_eq",
+                r"xor_eq" => r"xor_eq",
+                r"not_eq" => r"not_eq",
+                _ => {
+                    panic!("How did you manage to get an operator not in my list")
+                }
+            }),
+            PreTokenLexer::Keyword => Self::Keyword(match content.as_str() {
                 r"alignas" => r"alignas",
                 r"alignof" => r"alignof",
                 r"asm" => r"asm",
@@ -398,9 +398,9 @@ impl PreToken {
                     panic!("How did you manage to get a keyword not in my list");
                 }
             }),
-            PreTokenLexer::Newline => PreToken::Newline,
+            PreTokenLexer::Newline => Self::Newline,
             PreTokenLexer::Whitespace => {
-                PreToken::Whitespace(WhiteCom::Whitespace(match content.as_str() {
+                Self::Whitespace(WhiteCom::Whitespace(match content.as_str() {
                     "\t" => "\t",
                     " " => " ",
                     "\x0B" => "\x0B",
@@ -410,35 +410,35 @@ impl PreToken {
                     }
                 }))
             }
-            PreTokenLexer::Comment => PreToken::Whitespace(WhiteCom::Comment(content)),
-            PreTokenLexer::StringLiteral => PreToken::StringLiteral(content),
-            PreTokenLexer::UdStringLiteral => PreToken::UdStringLiteral(content),
-            PreTokenLexer::RawStringLiteral => PreToken::RawStringLiteral(content),
-            PreTokenLexer::CharLiteral => PreToken::CharLiteral(content),
-            PreTokenLexer::UdCharLiteral => PreToken::UdCharLiteral(content),
-            PreTokenLexer::PPNumber => PreToken::PPNumber(content),
-            PreTokenLexer::Error => PreToken::Unknown(content),
+            PreTokenLexer::Comment => Self::Whitespace(WhiteCom::Comment(content)),
+            PreTokenLexer::StringLiteral => Self::StringLiteral(content),
+            PreTokenLexer::UdStringLiteral => Self::UdStringLiteral(content),
+            PreTokenLexer::RawStringLiteral => Self::RawStringLiteral(content),
+            PreTokenLexer::CharLiteral => Self::CharLiteral(content),
+            PreTokenLexer::UdCharLiteral => Self::UdCharLiteral(content),
+            PreTokenLexer::PPNumber => Self::PPNumber(content),
+            PreTokenLexer::Error => Self::Unknown(content),
         }
     }
     pub fn to_str(&self) -> &str {
         return match self {
-            PreToken::Unknown(string)
-            | PreToken::PPNumber(string)
-            | PreToken::HeaderName(string)
-            | PreToken::Ident(string)
-            | PreToken::StringLiteral(string)
-            | PreToken::UdStringLiteral(string)
-            | PreToken::RawStringLiteral(string)
-            | PreToken::CharLiteral(string)
-            | PreToken::UdCharLiteral(string) => string.as_str(),
-            PreToken::Whitespace(string) => string.as_str(),
-            PreToken::PreprocessingOperator(op) => op.as_str(),
-            PreToken::OperatorPunctuator(string) | PreToken::Keyword(string) => string,
-            PreToken::Newline => "\n",
-            PreToken::DisableMacro(_) | PreToken::EnableMacro(_) | PreToken::ValidNop => "",
+            Self::Unknown(string)
+            | Self::PPNumber(string)
+            | Self::HeaderName(string)
+            | Self::Ident(string)
+            | Self::StringLiteral(string)
+            | Self::UdStringLiteral(string)
+            | Self::RawStringLiteral(string)
+            | Self::CharLiteral(string)
+            | Self::UdCharLiteral(string) => string.as_str(),
+            Self::Whitespace(string) => string.as_str(),
+            Self::PreprocessingOperator(op) => op.as_str(),
+            Self::OperatorPunctuator(string) | Self::Keyword(string) => string,
+            Self::Newline => "\n",
+            Self::DisableMacro(_) | Self::EnableMacro(_) | Self::ValidNop => "",
         };
     }
-    pub fn isWhitespace(&self) -> bool {
-        matches!(self, PreToken::Whitespace(_))
+    pub const fn isWhitespace(&self) -> bool {
+        matches!(self, Self::Whitespace(_))
     }
 }
