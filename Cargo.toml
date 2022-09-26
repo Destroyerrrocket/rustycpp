@@ -13,17 +13,17 @@ description = "An attempt to implement the C++20 standard. This is mostly to hav
 lalrpop = {version = "0.19.8", path = "../lalrpop/lalrpop"}
 
 [dependencies]
-clap = { version = "3.2.5", features = ["derive"] }
+clap = { version = "3.2.0", features = ["derive"] }
 lazy-regex = "2.3.0"
 subslice_index = "0.5.0"
 regex = "1.0.0"
 onig = "6"
 lazy_static = "1.4.0"
-logos = "0.12.1"
+logos = "0.12.0"
 colored = "2.0.0"
 lalrpop-util = {version = "0.19.8", path = "../lalrpop/lalrpop-util"}
 log = "0.4.17"
-env_logger = "0.9.0"
+env_logger = "0.9.1"
 test-log = "0.2.10"
 multiset = "0.0.5"
 chrono = "0.4"
