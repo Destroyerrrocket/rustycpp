@@ -1,5 +1,7 @@
 # C++20ish preprocessor lexer written in Rust
 
+## Currently, a custom build of lalrpop is needed. I'll find a proper solution to this...
+
 This is a very simple and most certainly wrong lexer for preprocessing tokens of C++. This was not done with any major intents, it was simply to test Rust and its capabilities (I find learning by doing a lot more useful than just following tutorials).
 
 As a rust novice, I do not claim this to be of any quality.
