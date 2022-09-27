@@ -1,13 +1,12 @@
 use std::collections::VecDeque;
 
-use lalrpop_util::ParseError;
-
-use crate::grammars::macrointconstantexpression;
-use crate::grammars::macrointconstantexpressionast::PreTokenIf;
-use crate::utils::lalrpoplexerwrapper::LalrPopLexerWrapper;
+use crate::grammars::generated::macrointconstantexpressionastparser;
+use crate::grammars::macrointconstantexpressionast::{PreTokenIf, VisitorEvaluator};
+use crate::utils::antlrlexerwrapper::AntlrLexerWrapper;
 use crate::utils::pretoken::PreToken;
 use crate::utils::structs::{CompileError, CompileMsg, FilePreTokPos, PreTokPos};
 use crate::{filePreTokPosMatchArm, filePreTokPosMatches};
+use antlr_rust::common_token_stream::CommonTokenStream;
 
 use super::multilexer::MultiLexer;
 use super::Preprocessor;
@@ -230,9 +229,10 @@ impl Preprocessor {
             .collect())
     }
 
-    pub fn evalIfScope(
-        sequence: VecDeque<FilePreTokPos<PreToken>>,
-    ) -> Result<bool, Vec<CompileMsg>> {
+    fn transformToParserTokens(
+        sequence: &VecDeque<FilePreTokPos<PreToken>>,
+        token: &FilePreTokPos<PreToken>,
+    ) -> Result<VecDeque<FilePreTokPos<PreTokenIf>>, Vec<CompileMsg>> {
         let mut errors = vec![];
         for invalid in sequence.iter().filter(|x| {
             !filePreTokPosMatches!(x, PreToken::PPNumber(_) | PreToken::OperatorPunctuator(_))
@@ -264,6 +264,10 @@ impl Preprocessor {
                             | r"|="
                             | r"<<="
                             | r">>="
+                            | r"and_eq"
+                            | r"or_eq"
+                            | r"xor_eq"
+                            | r"not_eq"
                     )
                 )
         }) {
@@ -277,23 +281,27 @@ impl Preprocessor {
         }
 
         // TODO: THIS IS NOT CORRECT. We should evaluate the pretocens to full tokens, but I'll wait for the lexer to be done
-        let mut intconstantValues = vec![];
+        let mut intconstantValues: VecDeque<FilePreTokPos<_>> = VecDeque::new();
         for token in sequence {
             match token {
-                filePreTokPosMatchArm!(PreToken::PPNumber(ref num)) => match num.parse::<i128>() {
-                    Ok(num) => {
-                        intconstantValues
-                            .push(FilePreTokPos::new_meta_c(PreTokenIf::Num(num), &token));
+                filePreTokPosMatchArm!(PreToken::PPNumber(ref num)) => {
+                    let mut numClone = num.clone();
+                    numClone.retain(char::is_numeric);
+                    match numClone.parse::<i128>() {
+                        Ok(num) => {
+                            intconstantValues
+                                .push_back(FilePreTokPos::new_meta_c(PreTokenIf::Num(num), token));
+                        }
+                        Err(err) => errors.push(CompileError::from_preTo(
+                            format!("Invalid number in if eval scope: {}", err),
+                            token,
+                        )),
                     }
-                    Err(err) => errors.push(CompileError::from_preTo(
-                        format!("Invalid number in if eval scope: {}", err),
-                        &token,
-                    )),
-                },
-                filePreTokPosMatchArm!(PreToken::OperatorPunctuator(_)) => {
-                    intconstantValues.push(FilePreTokPos::new_meta_c(
-                        PreTokenIf::Operation(token.tokPos.tok.clone()),
-                        &token,
+                }
+                filePreTokPosMatchArm!(PreToken::OperatorPunctuator(s)) => {
+                    intconstantValues.push_back(FilePreTokPos::new_meta_c(
+                        PreTokenIf::stringToPreTokenIfOperator(s),
+                        token,
                     ));
                 }
                 _ => {}
@@ -304,47 +312,29 @@ impl Preprocessor {
             return Err(errors);
         }
 
-        let lexer = LalrPopLexerWrapper::new(intconstantValues.as_slice());
-        let res = macrointconstantexpression::ConstantIntParser::new().parse(lexer);
-        return res
-            .map_err(|err| match err {
-                ParseError::ExtraToken { token } => vec![CompileError::from_at(
-                    format!(
-                        "Found token {:?} when I wasn't expecting any other tokens",
-                        token.1
-                    ),
-                    (token.0).1.clone(),
-                    (token.0).0,
-                    Some((token.2).0),
-                )],
-                ParseError::InvalidToken { location } => vec![CompileError::from_at(
-                    "Found invalid token".to_string(),
-                    (location.1).clone(),
-                    location.0,
-                    None,
-                )],
-                ParseError::UnrecognizedEOF { location, expected } => vec![CompileError::from_at(
-                    format!(
-                        "Found early end of file while expecting to find: {:?}",
-                        expected
-                    ),
-                    (location.1).clone(),
-                    location.0,
-                    None,
-                )],
-                ParseError::UnrecognizedToken { token, expected } => vec![CompileError::from_at(
-                    format!(
-                        "Found {:?} while expecting to find: {:?}",
-                        token.1, expected
-                    ),
-                    (token.0).1.clone(),
-                    (token.0).0,
-                    Some((token.2).0),
-                )],
-                ParseError::User { .. } => {
-                    unreachable!("I haven't defined a custom parsing error. This is odd")
-                }
-            })
-            .map(|num| num != 0);
+        if intconstantValues.front().is_none() {
+            return Err(vec![CompileError::from_preTo(
+                "Missing data for integer constant evaluation",
+                token,
+            )]);
+        }
+        return Ok(intconstantValues);
+    }
+
+    pub fn evalIfScope(
+        sequence: VecDeque<FilePreTokPos<PreToken>>,
+        token: &FilePreTokPos<PreToken>,
+    ) -> Result<bool, Vec<CompileMsg>> {
+        let numSequence = Self::transformToParserTokens(&sequence, token)?;
+        let tokenStream = CommonTokenStream::new(AntlrLexerWrapper::new(
+            numSequence,
+            token.file.path().clone(),
+        ));
+        let mut basicParser =
+            macrointconstantexpressionastparser::macrointconstantexpressionast::new(tokenStream);
+        let tree = basicParser.exprRes().unwrap();
+        let mut visitor = VisitorEvaluator::new();
+        visitor.visit_start(&tree);
+        return Ok(visitor.res() != 0);
     }
 }

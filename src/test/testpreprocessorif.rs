@@ -151,3 +151,30 @@ fn checkDefined6() {
 "##,
     );
 }
+
+#[test]
+fn checkSum() {
+    checkForCorrectEvalOfIfClause(
+        r##"
+        #if 1+2+3+4+5
+"##,
+    );
+}
+
+#[test]
+fn checkParen1() {
+    checkForCorrectEvalOfIfClause(
+        r##"
+        #if (1+1)+1*5 == 7
+"##,
+    );
+}
+
+#[test]
+fn checkStuff() {
+    checkForCorrectEvalOfIfClause(
+        r##"
+        #if __cplusplus / 100
+"##,
+    );
+}

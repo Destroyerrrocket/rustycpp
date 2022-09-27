@@ -2,3 +2,5 @@
 *.pdf
 Cargo.lock
 .vscode/*
+src/grammars/generated/*
+src/grammars/.antlr/*

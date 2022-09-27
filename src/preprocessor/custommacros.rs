@@ -55,7 +55,6 @@ macro_rules! declCMVar {
         }
     };
 }
-declCMVar! {__cplusplus, |_| "202002L"}
 declCMVar! {__DATE__, |_| Local::now().format("%b %e %y")}
 declCMVar! {__FILE__, |expandData: &ExpandData| expandData.newToken.file.path().to_string()}
 declCMVar! {__LINE__, |expandData: &ExpandData| expandData.newToken.file.getRowColumn(expandData.newToken.tokPos.start).0}
@@ -63,6 +62,37 @@ declCMVar! {__STDC_HOSTED__, |_| "1"}
 declCMVar! {__STDCPP_DEFAULT_NEW_ALIGNMENT__, |_| "1"}
 declCMVar! {__TIME__, |_| Local::now().format("%H:%M:%S")}
 
+struct __cplusplus;
+
+impl CustomMacro for __cplusplus {
+    fn macroInfo() -> DefineAst {
+        DefineAst {
+            id: stringify!(__cplusplus).to_string(),
+            param: None,
+            variadic: IsVariadic::False,
+            replacement: vec![],
+            expandFunc: &__cplusplus::expand,
+        }
+    }
+
+    fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+        let mut res = VecDeque::new();
+        res.push_back(FilePreTokPos::new_meta_c(
+            PreToken::DisableMacro(stringify!(__cplusplus).to_string()),
+            expandData.newToken,
+        ));
+
+        res.push_back(FilePreTokPos::new_meta_c(
+            PreToken::PPNumber("202002L".to_owned()),
+            expandData.newToken,
+        ));
+        res.push_back(FilePreTokPos::new_meta_c(
+            PreToken::EnableMacro(stringify!(__cplusplus).to_string()),
+            expandData.newToken,
+        ));
+        Ok(res)
+    }
+}
 struct __has_include;
 
 impl __has_include {

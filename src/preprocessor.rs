@@ -191,7 +191,7 @@ impl Preprocessor {
                         Err(err) => {
                             self.errors.push_back(err);
                         }
-                        Ok(sequenceToEval) => match Self::evalIfScope(sequenceToEval) {
+                        Ok(sequenceToEval) => match Self::evalIfScope(sequenceToEval, &operation) {
                             Ok(true) => {
                                 self.scope.push(ScopeStatus::Success);
                             }
@@ -287,7 +287,7 @@ impl Preprocessor {
                             self.errors.push_back(err);
                         }
                         Ok(sequenceToEval) => {
-                            match Self::evalIfScope(sequenceToEval) {
+                            match Self::evalIfScope(sequenceToEval, &operation) {
                                 Ok(true) => {
                                     let scope = self.scope.last_mut().unwrap();
                                     *scope = ScopeStatus::Success;
@@ -303,10 +303,10 @@ impl Preprocessor {
                 "else" => {
                     let scope = self.scope.last_mut().unwrap();
                     *scope = ScopeStatus::Success;
-                    self.reachNl(); // TODO: Check empty
+                    self.reachNl(); // TODO: Check it is empty
                 }
                 "endif" => {
-                    self.reachNl(); // TODO: Check empty
+                    self.reachNl(); // TODO: Check it is empty
                     self.scope.pop();
                 }
                 _ => {

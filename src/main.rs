@@ -3,7 +3,8 @@
     iter_collect_into,
     is_some_with,
     unwrap_infallible,
-    new_uninit
+    new_uninit,
+    arbitrary_enum_discriminant
 )]
 #![warn(
     clippy::all,
@@ -13,7 +14,6 @@
     clippy::verbose_file_reads,
     clippy::unneeded_field_pattern,
     clippy::unnecessary_self_imports,
-    clippy::unimplemented,
     clippy::string_to_string,
     clippy::if_then_some_else_none,
     clippy::empty_structs_with_brackets

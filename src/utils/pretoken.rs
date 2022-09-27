@@ -214,7 +214,9 @@ impl PreprocessingOperator {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[repr(isize)]
 pub enum PreToken {
+    Unknown(String) = 0,
     HeaderName(String),
     Ident(String),
     PreprocessingOperator(PreprocessingOperator),
@@ -228,7 +230,6 @@ pub enum PreToken {
     CharLiteral(String),
     UdCharLiteral(String),
     PPNumber(String),
-    Unknown(String),
     DisableMacro(String),
     EnableMacro(String),
     ValidNop,
