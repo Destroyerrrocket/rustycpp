@@ -3,11 +3,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{
-    filemap::FileMap,
-    prelexer::PreLexer,
-    utils::{pretoken::PreToken, structs::FilePreTokPos},
-};
+use crate::preprocessor::prelexer::PreLexer;
+use crate::utils::filemap::FileMap;
+use crate::utils::structs::FilePreTokPos;
+
+use super::pretoken::PreToken;
 
 #[derive(Debug)]
 struct FileLexer {

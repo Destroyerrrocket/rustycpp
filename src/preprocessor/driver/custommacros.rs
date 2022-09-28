@@ -4,17 +4,16 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 
 use crate::grammars::defineast::{DefineAst, IsVariadic};
-use crate::prelexer::PreLexer;
-use crate::utils::pretoken::PreToken;
+use crate::preprocessor::prelexer::PreLexer;
+use crate::preprocessor::pretoken::PreToken;
 use crate::utils::structs::{CompileError, CompileMsg, FilePreTokPos};
 
 use chrono::Local;
 use lazy_static::lazy_static;
 
-use super::multilexer::MultiLexer;
-use super::structs::ExpandData;
 use super::Preprocessor;
-
+use crate::preprocessor::multilexer::*;
+use crate::preprocessor::structs::*;
 trait CustomMacro {
     fn macroInfo() -> DefineAst;
     fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg>;
@@ -71,7 +70,7 @@ impl CustomMacro for __cplusplus {
             param: None,
             variadic: IsVariadic::False,
             replacement: vec![],
-            expandFunc: &__cplusplus::expand,
+            expandFunc: &Self::expand,
         }
     }
 

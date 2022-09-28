@@ -5,14 +5,13 @@ use multiset::HashMultiSet;
 use crate::{
     filePreTokPosMatchArm, filePreTokPosMatches,
     grammars::defineast::{DefineAst, IsVariadic, PreTokenDefine},
-    prelexer::PreLexer,
-    utils::{
-        pretoken::PreToken,
-        structs::{CompileError, CompileMsg, FilePreTokPos, PreTokPos},
+    preprocessor::{
+        multilexer::MultiLexer, prelexer::PreLexer, pretoken::PreToken, structs::ExpandData,
     },
+    utils::structs::{CompileError, CompileMsg, FilePreTokPos, PreTokPos},
 };
 
-use super::{multilexer::MultiLexer, structs::ExpandData, Preprocessor};
+use super::Preprocessor;
 
 impl Preprocessor {
     fn anyNonMetaToken(toks: &VecDeque<FilePreTokPos<PreToken>>) -> bool {

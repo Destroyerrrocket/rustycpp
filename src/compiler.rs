@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
-use crate::filemap::FileMap;
 use crate::preprocessor::Preprocessor;
+use crate::utils::filemap::FileMap;
 use crate::utils::structs::CompileMsgKind;
 
 type TranslationUnit = String;

@@ -1,10 +1,9 @@
 use lazy_regex::{regex_captures, regex_find};
 
-use crate::utils::{
-    pretoken::{PreToken, PreTokenLexer, WhiteCom},
-    structs::PreTokPos,
-};
+use crate::utils::structs::PreTokPos;
 use logos::Logos;
+
+use super::pretoken::{PreToken, PreTokenLexer, WhiteCom};
 
 // Control chars [ \n\x0B\t\x0C]
 

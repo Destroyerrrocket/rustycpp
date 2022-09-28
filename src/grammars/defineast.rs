@@ -2,9 +2,11 @@ use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::marker::Send;
 
+use crate::preprocessor::pretoken::PreToken;
 use crate::preprocessor::structs::ExpandData;
 use crate::utils::structs::CompileMsg;
-use crate::utils::{pretoken::PreToken, structs::FilePreTokPos};
+
+use crate::utils::structs::FilePreTokPos;
 
 #[derive(Debug, Clone)]
 pub enum IsVariadic {

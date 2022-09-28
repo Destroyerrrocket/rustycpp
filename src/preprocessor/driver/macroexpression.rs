@@ -2,13 +2,13 @@ use std::collections::VecDeque;
 
 use crate::grammars::generated::macrointconstantexpressionastparser;
 use crate::grammars::macrointconstantexpressionast::{PreTokenIf, VisitorEvaluator};
+use crate::preprocessor::multilexer::MultiLexer;
+use crate::preprocessor::pretoken::PreToken;
 use crate::utils::antlrlexerwrapper::AntlrLexerWrapper;
-use crate::utils::pretoken::PreToken;
 use crate::utils::structs::{CompileError, CompileMsg, FilePreTokPos, PreTokPos};
 use crate::{filePreTokPosMatchArm, filePreTokPosMatches};
 use antlr_rust::common_token_stream::CommonTokenStream;
 
-use super::multilexer::MultiLexer;
 use super::Preprocessor;
 
 impl Preprocessor {

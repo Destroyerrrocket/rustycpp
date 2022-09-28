@@ -1,7 +1,10 @@
 use std::sync::{Arc, Mutex};
 
+use crate::preprocessor::pretoken::PreToken;
+use crate::preprocessor::Preprocessor;
+use crate::utils::filemap::FileMap;
 use crate::utils::structs::CompileMsg;
-use crate::{filemap::FileMap, preprocessor::Preprocessor, utils::pretoken::PreToken};
+
 use test_log::test;
 
 fn generateFileMap(files: &[(&'static str, String)]) -> (Arc<Mutex<FileMap>>, &'static str) {
@@ -174,7 +177,7 @@ fn checkParen1() {
 fn checkStuff() {
     checkForCorrectEvalOfIfClause(
         r##"
-        #if __cplusplus / 100
+        #if __cplusplus / 100 >= 2011
 "##,
     );
 }

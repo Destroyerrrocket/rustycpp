@@ -53,11 +53,11 @@ impl<T: Clone + Debug + HasEOF + 'static> Token for AntlrToken<T> {
     }
 
     fn get_line(&self) -> isize {
-        self.data.file.getRowColumn(self.data.tokPos.start).0 as isize
+        isize::try_from(self.data.file.getRowColumn(self.data.tokPos.start).0).unwrap()
     }
 
     fn get_column(&self) -> isize {
-        self.data.file.getRowColumn(self.data.tokPos.start).1 as isize
+        isize::try_from(self.data.file.getRowColumn(self.data.tokPos.start).1).unwrap()
     }
 
     fn set_text(&mut self, _text: <Self::Data as ToOwned>::Owned) {
@@ -77,7 +77,7 @@ impl<T: Clone + Debug + HasEOF + 'static> Token for AntlrToken<T> {
     }
 
     fn get_token_type(&self) -> isize {
-        unsafe { *(&self.data.tokPos.tok as *const T as *const isize) }
+        unsafe { *std::ptr::addr_of!(self.data.tokPos.tok).cast::<isize>() }
     }
 
     fn get_text(&self) -> &Self::Data {

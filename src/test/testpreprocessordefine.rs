@@ -1,7 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use crate::utils::structs::CompileMsg;
-use crate::{filemap::FileMap, preprocessor::Preprocessor, utils::pretoken::PreToken};
+use crate::preprocessor::pretoken::PreToken;
+use crate::preprocessor::Preprocessor;
+use crate::utils::filemap::FileMap;
+use crate::utils::structs::{CompileMsg, FilePreTokPos};
 use test_log::test;
 
 fn generateFileMap(files: &[(&'static str, &'static str)]) -> (Arc<Mutex<FileMap>>, &'static str) {
@@ -19,7 +21,7 @@ fn generateFileMap(files: &[(&'static str, &'static str)]) -> (Arc<Mutex<FileMap
 fn getToksPreprocessed(files: &[(&'static str, &'static str)]) -> Vec<PreToken> {
     let prep = Preprocessor::new(generateFileMap(files));
     return prep
-        .filter_map(|x| {
+        .filter_map(|x: Result<FilePreTokPos<PreToken>, CompileMsg>| {
             x.map_or_else(
                 |err| {
                     log::error!("{}", err.to_string());

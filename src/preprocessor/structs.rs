@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use multiset::HashMultiSet;
 
 use crate::grammars::defineast::{DefineAst, PreTokenDefine};
-use crate::utils::pretoken::PreToken;
 use crate::utils::structs::FilePreTokPos;
 
 use super::multilexer::MultiLexer;
+use super::pretoken::PreToken;
 
 #[derive(Debug, Clone)]
 pub struct ExpandData<'a> {

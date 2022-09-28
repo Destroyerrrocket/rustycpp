@@ -30,17 +30,15 @@
 #![allow(clippy::too_many_lines)]
 
 mod compiler;
-mod filemap;
 mod grammars;
-mod prelexer;
 mod preprocessor;
 mod test;
 mod utils;
 
-use crate::filemap::FileMap;
 use clap::Parser;
 use compiler::Compiler;
 use std::fs;
+use utils::filemap::FileMap;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]

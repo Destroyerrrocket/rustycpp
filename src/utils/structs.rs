@@ -5,8 +5,6 @@ use std::sync::Arc;
 use antlr_rust::char_stream::InputData;
 use colored::Colorize;
 
-use super::pretoken::PreToken;
-
 #[derive(Debug, Default)]
 pub struct CompileFile {
     path: String,
@@ -135,7 +133,10 @@ impl CompileError {
 
 pub struct CompileWarning;
 impl CompileWarning {
-    pub fn from_preTo<T: ToString>(msg: T, preToken: &FilePreTokPos<PreToken>) -> CompileMsg {
+    pub fn from_preTo<T: ToString, U: Clone + Debug>(
+        msg: T,
+        preToken: &FilePreTokPos<U>,
+    ) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
             file: preToken.file.clone(),

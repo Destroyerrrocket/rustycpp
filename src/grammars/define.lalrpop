@@ -1,7 +1,6 @@
 use crate::grammars::defineast::{*};
 use crate::utils::structs::{*};
-use crate::utils::pretoken::{*};
-use crate::utils::pretoken::PreprocessingOperator;
+use crate::preprocessor::pretoken::{*};
 use std::sync::Arc;
 
 grammar;

@@ -6,10 +6,10 @@ use crate::{
         define,
         defineast::{DefineAst, IsVariadic, PreTokenDefine, PreTokenDefinePreParse},
     },
+    preprocessor::pretoken::{PreToken, PreprocessingOperator},
     utils::{
         funcs::all_unique_elements,
         lalrpoplexerwrapper::LalrPopLexerWrapper,
-        pretoken::{PreToken, PreprocessingOperator},
         structs::{CompileError, CompileMsg, CompileWarning, FilePreTokPos, PreTokPos},
     },
 };
