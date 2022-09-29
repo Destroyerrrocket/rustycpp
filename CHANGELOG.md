@@ -1,6 +1,6 @@
 ### 0.1.2
 Features:
- - Finish all major features of the preprocessor
+ - Finish all critical features of the preprocessor
  - Implement conditional code inclussion
  - Implement header inclussion
 

@@ -26,9 +26,6 @@ fn gen_for_grammar(
     antlr_path: &str,
     additional_arg: &[&str],
 ) -> Result<(), Box<Error>> {
-    // let out_dir = env::var("OUT_DIR").unwrap();
-    // let dest_path = Path::new(&out_dir);
-
     let input = env::current_dir().unwrap().join("src/grammars");
     let file_name = grammar_file_name.to_owned() + ".g4";
 
@@ -56,9 +53,6 @@ fn gen_for_grammar(
     );
     fs::remove_file(&filepath)?;
     fs::write(&filepath, s)?;
-    // .unwrap()
-    // .stdout;
-    // eprintln!("xx{}",String::from_utf8(x).unwrap());
 
     println!("cargo:rerun-if-changed=src/grammars/{}", file_name);
     Ok(())
