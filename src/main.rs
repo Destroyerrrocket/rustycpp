@@ -37,15 +37,11 @@ mod utils;
 
 use clap::Parser;
 use compiler::Compiler;
-use std::fs;
-use utils::filemap::FileMap;
+use utils::parameters::Parameters;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// Print step 2 of compilation
-    #[clap(short, long, action)]
-    print_step2: bool,
     /// Filelist to compile
     #[clap(short, long, value_parser, default_value = "")]
     files: String,
@@ -58,31 +54,9 @@ fn main() {
         log::error!("File list not specified!");
         return;
     }
-    let filecontents: String = match fs::read_to_string(&args.files) {
-        Ok(it) => it,
-        Err(err) => {
-            log::error!(
-                "Could not open & read {file}. Error: {error}",
-                file = args.files,
-                error = err
-            );
-            return;
-        }
-    };
 
-    let mut compileFiles = FileMap::new();
-    for line in filecontents.lines() {
-        let filename = std::path::Path::new(line);
-        if !filename
-            .extension()
-            .map_or(false, |ext| !ext.eq_ignore_ascii_case(".cpp"))
-        {
-            log::error!("Unsuported file type: {file}", file = line);
-            return;
-        }
-        compileFiles.getAddFile(line);
-    }
+    let parameters = Parameters::new_file(&args.files).unwrap();
 
-    let mut compiler = Compiler::new(compileFiles);
+    let mut compiler = Compiler::new(parameters);
     compiler.print_preprocessor();
 }

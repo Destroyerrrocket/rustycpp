@@ -6,14 +6,14 @@ use std::sync::Mutex;
 use crate::grammars::defineast::{DefineAst, IsVariadic};
 use crate::preprocessor::prelexer::PreLexer;
 use crate::preprocessor::pretoken::PreToken;
-use crate::utils::structs::{CompileError, CompileMsg, FilePreTokPos};
+use crate::utils::structs::{CompileMsg, FilePreTokPos};
 
 use chrono::Local;
 use lazy_static::lazy_static;
 
 use super::Preprocessor;
-use crate::preprocessor::multilexer::*;
-use crate::preprocessor::structs::*;
+use crate::preprocessor::structs::ExpandData;
+
 trait CustomMacro {
     fn macroInfo() -> DefineAst;
     fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg>;
@@ -131,46 +131,26 @@ impl CustomMacro for __has_include {
             expandData.newToken,
         ));
 
-        let mut path = String::new();
-        let mut result = VecDeque::new();
+        let mut tokensPath = VecDeque::new();
         for posVariadic in 0..expandData.variadic.len() {
             for v in &expandData.variadic[posVariadic] {
-                result.push_back(v.clone());
+                tokensPath.push_back(v.clone());
             }
             if posVariadic + 1 != expandData.variadic.len() {
-                result.push_back(FilePreTokPos::new_meta_c(
+                tokensPath.push_back(FilePreTokPos::new_meta_c(
                     PreToken::OperatorPunctuator(","),
                     expandData.newToken,
                 ));
             }
         }
 
-        if result.is_empty() {
-            return Err(CompileError::from_preTo(
-                "The empty path can't be opened",
-                expandData.newToken,
-            ));
-        }
-
-        if let Some(newPath) = Self::checkForInclude(&result) {
-            path = newPath;
-        }
-
-        let mut paramLexer = MultiLexer::new_def(expandData.lexer.fileMapping());
-        paramLexer.pushTokensDec(result);
-        let toks = Preprocessor::expandASequenceOfTokens(
-            paramLexer,
+        let path = Preprocessor::tokensToValidIncludeablePath(
+            expandData.lexer,
             expandData.definitions,
             expandData.disabledMacros,
+            expandData.newToken,
+            tokensPath,
         )?;
-
-        if let Some(newPath) = Self::checkForInclude(&toks) {
-            path = newPath;
-        } else {
-            for s in toks.into_iter().map(|t| t.tokPos.tok.to_str().to_owned()) {
-                path.push_str(&s);
-            }
-        }
 
         res.push_back(FilePreTokPos::new_meta_c(
             PreToken::PPNumber(if expandData.lexer.hasFileAccess(&path) {

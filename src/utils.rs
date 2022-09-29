@@ -4,3 +4,4 @@ pub mod lalrpoplexerwrapper;
 pub mod structs;
 pub mod antlrlexerwrapper;
 pub mod filemap;
+pub mod parameters;

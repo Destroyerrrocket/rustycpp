@@ -7,6 +7,7 @@ use crate::{
     grammars::defineast::DefineAst,
     utils::{
         filemap::FileMap,
+        parameters::Parameters,
         structs::{CompileError, CompileMsg, CompileWarning, FilePreTokPos},
     },
 };
@@ -20,6 +21,7 @@ use super::{
 
 mod custommacros;
 mod defineparse;
+mod includer;
 mod macroexpand;
 mod macroexpression;
 
@@ -32,6 +34,7 @@ enum ScopeStatus {
 
 #[derive(Debug)]
 pub struct Preprocessor {
+    parameters: Arc<Parameters>,
     multilexer: MultiLexer,
     generated: VecDeque<FilePreTokPos<PreToken>>,
     errors: VecDeque<CompileMsg>,
@@ -42,9 +45,10 @@ pub struct Preprocessor {
 }
 
 impl Preprocessor {
-    pub fn new(data: (Arc<Mutex<FileMap>>, &str)) -> Self {
+    pub fn new(data: (Arc<Parameters>, Arc<Mutex<FileMap>>, &str)) -> Self {
         Self {
-            multilexer: MultiLexer::new(data),
+            parameters: data.0,
+            multilexer: MultiLexer::new((data.1, data.2)),
             generated: VecDeque::new(),
             errors: VecDeque::new(),
             scope: vec![],
@@ -89,14 +93,6 @@ impl Preprocessor {
             log::debug!("{:?}", defi);
         }
         return;
-    }
-
-    fn includeFile(_file: Option<String>) {
-        todo!("Implement including");
-    }
-
-    fn consumeMacroInclude(_PreToken: FilePreTokPos<PreToken>) -> Option<String> {
-        todo!("Implement header extraction");
     }
 
     fn consumeMacroDef(&mut self, _PreToken: FilePreTokPos<PreToken>) -> Option<String> {
@@ -176,8 +172,16 @@ impl Preprocessor {
             match operation.tokPos.tok.to_str() {
                 "include" => {
                     self.multilexer.expectHeader();
-                    let t = Self::consumeMacroInclude(operation);
-                    Self::includeFile(t);
+                    match self.consumeMacroInclude(&operation) {
+                        Ok(path) => {
+                            if let Err(err) = self.includeFile(&operation, path) {
+                                self.errors.push_back(err);
+                            }
+                        }
+                        Err(err) => {
+                            self.errors.push_back(err);
+                        }
+                    }
                 }
                 "define" => {
                     self.defineMacro(operation);

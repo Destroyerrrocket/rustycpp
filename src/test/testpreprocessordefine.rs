@@ -3,19 +3,24 @@ use std::sync::{Arc, Mutex};
 use crate::preprocessor::pretoken::PreToken;
 use crate::preprocessor::Preprocessor;
 use crate::utils::filemap::FileMap;
+use crate::utils::parameters::Parameters;
 use crate::utils::structs::{CompileMsg, FilePreTokPos};
 use test_log::test;
 
-fn generateFileMap(files: &[(&'static str, &'static str)]) -> (Arc<Mutex<FileMap>>, &'static str) {
+fn generateFileMap(
+    files: &[(&'static str, &'static str)],
+) -> (Arc<Parameters>, Arc<Mutex<FileMap>>, &'static str) {
     let testFile = files.first().unwrap().0;
-    let fileMap = Arc::new(Mutex::new(FileMap::new()));
+    let fileMap = Arc::new(Mutex::new(FileMap::new(Arc::new(Parameters::new()))));
+    let mut parameters = Parameters::new();
     for (filePath, fileContents) in files {
         fileMap
             .lock()
             .unwrap()
             .addTestFile((*filePath).to_string(), (*fileContents).to_string());
+        parameters.translationUnits.push((*filePath).to_string());
     }
-    return (fileMap, testFile);
+    return (Arc::new(parameters), fileMap, testFile);
 }
 
 fn getToksPreprocessed(files: &[(&'static str, &'static str)]) -> Vec<PreToken> {

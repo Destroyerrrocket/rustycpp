@@ -40,6 +40,8 @@ impl CompileFile {
         let part = self.newlines.as_slice().partition_point(|&x| x < diff);
         if part == self.newlines.len() {
             return (part + 1, diff - self.newlines.last().unwrap());
+        } else if part == 0 {
+            return (1, diff + 1);
         }
         return (part + 1, diff - self.newlines.get(part - 1).unwrap_or(&0));
     }

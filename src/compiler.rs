@@ -2,19 +2,27 @@ use std::sync::{Arc, Mutex};
 
 use crate::preprocessor::Preprocessor;
 use crate::utils::filemap::FileMap;
+use crate::utils::parameters::Parameters;
 use crate::utils::structs::CompileMsgKind;
 
 type TranslationUnit = String;
 #[derive(Debug)]
 pub struct Compiler {
+    parameters: Arc<Parameters>,
     compileFiles: Arc<Mutex<FileMap>>,
     mainTranslationUnits: Vec<TranslationUnit>,
 }
 
 impl Compiler {
-    pub fn new(compileFiles: FileMap) -> Self {
+    pub fn new(parameters: Parameters) -> Self {
+        let parameters = Arc::new(parameters);
+        let mut compileFiles = FileMap::new(parameters.clone());
+        for file in &parameters.translationUnits {
+            compileFiles.getAddFile(file);
+        }
         let mainTranslationUnits = compileFiles.getCurrPaths();
         Self {
+            parameters,
             compileFiles: Arc::new(Mutex::new(compileFiles)),
             mainTranslationUnits,
         }
@@ -23,7 +31,9 @@ impl Compiler {
     pub fn print_preprocessor(&mut self) {
         for compFile in &self.mainTranslationUnits {
             log::info!("Applying preprocessor to: {}", &compFile);
-            for prepro_token in Preprocessor::new((self.compileFiles.clone(), compFile)) {
+            for prepro_token in
+                Preprocessor::new((self.parameters.clone(), self.compileFiles.clone(), compFile))
+            {
                 match prepro_token {
                     Ok(tok) => {
                         log::info!("{}", tok.tokPos.tok.to_str());
