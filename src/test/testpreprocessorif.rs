@@ -60,6 +60,23 @@ fn checkForCorrectEvalOfIfClause(string: &'static str) {
     assert!(res, "The expression does not yield a trueish value");
 }
 
+fn checkForAnyEvalOfIfClause(string: &'static str) {
+    let info = &[(
+        "test",
+        string.to_string() + "\nSUCCESS\n#else\nSUCCESS\n#endif",
+    )];
+    let tokens = getToksPreprocessedNoWs(info);
+    let res = !tokens.iter().any(Result::is_err)
+        && tokens.iter().any(|x| {
+            if let Ok(PreToken::Ident(ref val)) = x {
+                val == "SUCCESS"
+            } else {
+                false
+            }
+        });
+    assert!(res, "The expression does not yield a trueish value");
+}
+
 fn checkForBorkenEvalOfIfClause(string: &'static str) {
     let info = &[("test", string.to_string() + "\nSUCCESS\n#endif")];
     let tokens = getToksPreprocessedNoWs(info);
@@ -183,6 +200,15 @@ fn checkStuff() {
     checkForCorrectEvalOfIfClause(
         r##"
         #if __cplusplus / 100 >= 2011
+"##,
+    );
+}
+
+#[test]
+fn checkHasInclude() {
+    checkForAnyEvalOfIfClause(
+        r##"
+        #if __has_include(<iostream>)
 "##,
     );
 }

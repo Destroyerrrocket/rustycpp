@@ -81,7 +81,7 @@ impl Preprocessor {
                 expandData.definitions,
                 expandData.disabledMacros,
             )?;
-            log::debug!(
+            log::trace!(
                 "EXPANDED INTO: {:?}",
                 preproTokie
                     .iter()
@@ -628,7 +628,7 @@ impl Preprocessor {
                         namedParameters: namedArgs,
                         varadicParameters: variadic,
                     } = Self::generateParamMap(paramsRes, params);
-                    let success = Self::expand(ExpandData {
+                    let success = (macroAst.expandFunc)(ExpandData {
                         definitions,
                         disabledMacros,
                         lexer,
@@ -640,7 +640,7 @@ impl Preprocessor {
                         newToken: &newToken,
                     })?;
 
-                    log::debug!(
+                    log::trace!(
                         "Macro expansion success: {:?}",
                         success
                             .clone()
@@ -673,7 +673,7 @@ impl Preprocessor {
                         expandArg: true,
                         newToken: &newToken,
                     })?;
-                    log::debug!(
+                    log::trace!(
                         "Macro expansion success: {:?}",
                         success
                             .clone()

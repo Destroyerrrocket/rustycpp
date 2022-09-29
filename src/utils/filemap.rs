@@ -73,8 +73,10 @@ impl<'a> FileMap {
         {
         } else {
             let filename = std::path::Path::new(absolutePath);
-            if filename.extension().map_or(false, |ext| {
-                !ext.eq_ignore_ascii_case(".cpp") && !ext.eq_ignore_ascii_case(".hpp")
+            if !filename.extension().map_or(false, |ext| {
+                ext.eq_ignore_ascii_case("cpp")
+                    || ext.eq_ignore_ascii_case("hpp")
+                    || ext.eq_ignore_ascii_case("h")
             }) {
                 log::error!("Unsuported file type: {}", absolutePath);
             }
@@ -143,6 +145,11 @@ impl<'a> FileMap {
                             )
                             .clone());
                     }
+                }
+                if !path.is_absolute() && path.exists() {
+                    return Ok(v
+                        .insert(path.canonicalize().unwrap().to_str().unwrap().to_string())
+                        .clone());
                 }
                 return Err(format!("Could not find file {}", pathStr));
             }

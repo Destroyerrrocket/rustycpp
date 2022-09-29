@@ -7,6 +7,7 @@ use std::process::Command;
 
 fn main() {
     lalrpop::process_root().unwrap();
+
     let grammars = vec!["macrointconstantexpressionast"];
     let additional_args = vec![&["-visitor"][..]];
     let antlr_path = "./antlr4-4.8-2-SNAPSHOT-complete.jar";

@@ -88,9 +88,9 @@ impl Preprocessor {
                 }
             },
         }
-        log::debug!("Macros:");
+        log::trace!("Macros:");
         for defi in self.definitions.values() {
-            log::debug!("{:?}", defi);
+            log::trace!("{:?}", defi);
         }
         return;
     }

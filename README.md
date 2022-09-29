@@ -15,3 +15,5 @@ So far, I'd say that the first 3 steps of the compilation process of C++ are don
 
 ### Update 26/09/2022:
 I took on the project again. The "compiler" is now able to perform macro expansions, but no proper conditional inclusion of code, and certainly not inclusion. For the time being, I do not plan to include any pragmas or useful extensions that other implementations provide :)
+
+### Update 30/09/2022
