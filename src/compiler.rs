@@ -31,12 +31,13 @@ impl Compiler {
     pub fn print_preprocessor(&mut self) {
         for compFile in &self.mainTranslationUnits {
             log::info!("Applying preprocessor to: {}", &compFile);
+            print!("// Entering {}", compFile);
             for prepro_token in
                 Preprocessor::new((self.parameters.clone(), self.compileFiles.clone(), compFile))
             {
                 match prepro_token {
                     Ok(tok) => {
-                        log::info!("{}", tok.tokPos.tok.to_str());
+                        print!("{}", tok.tokPos.tok.to_str());
                     }
                     Err(err) => {
                         log::info!("{}", err.to_string());

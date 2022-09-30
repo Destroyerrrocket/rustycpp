@@ -13,4 +13,6 @@ So far, the most rellevant missing things are:
 - QOL Features of preprocessors, like any pragma directive (none mandated by standard, but #pragma once is expected from any sensible implementation), or the `__FUNCTION__` macro (which requires the step 7 parser to be implemented in order to know such information)
 - Most test macros are kinda useless right now. `__has_cpp_attribute` is literally just hardcoded to 0
 
-So far, I'd say that the first 4 steps of the compilation process of C++ are done-ish! Time for preprocessing.
+I'd say that the first 4 steps of the compilation process of C++ are done-ish! Time for lexing.
+
+If you want more logs on what's going on, you can use the environment varaible `RUST_LOG`, like so: `RUST_LOG=debug`
