@@ -1,3 +1,5 @@
+//! handle the #include directive
+
 #![allow(non_camel_case_types, clippy::string_to_string)]
 
 use std::collections::{HashMap, VecDeque};
@@ -15,6 +17,7 @@ use super::Preprocessor;
 use crate::preprocessor::multilexer::MultiLexer;
 
 impl Preprocessor {
+    /// Include a file in the current position of the preprocessor
     pub fn includeFile(
         &mut self,
         preToken: &FilePreTokPos<PreToken>,
@@ -23,11 +26,15 @@ impl Preprocessor {
         if self.multilexer.hasFileAccess(&file) {
             self.multilexer.pushFile(file);
         } else {
-            return Err(CompileError::from_preTo("", preToken));
+            return Err(CompileError::from_preTo(
+                format!("Can't include the file in path: {}", file),
+                preToken,
+            ));
         }
         Ok(())
     }
 
+    /// Evaluates the #include directive. Finds a candidate and returns the file path
     pub fn consumeMacroInclude(
         &mut self,
         preToken: &FilePreTokPos<PreToken>,
@@ -45,6 +52,7 @@ impl Preprocessor {
         )
     }
 
+    /// Expands the tokens if necessary, and returns the path found, if any
     pub fn tokensToValidIncludeablePath(
         lexer: &MultiLexer,
         definitions: &HashMap<String, DefineAst>,
@@ -80,6 +88,7 @@ impl Preprocessor {
         Ok(path)
     }
 
+    /// Is the current tokens a valid include path token? Re-lexes them if necessary
     fn checkForInclude(mut toks: VecDeque<FilePreTokPos<PreToken>>) -> Option<String> {
         let mut res = String::new();
 

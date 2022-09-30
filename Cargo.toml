@@ -1,8 +1,8 @@
 [package]
-name = "rcpp"
+name = "rustycpp"
 version = "0.1.3"
 edition = "2021"
-repository = "https://github.com/Destroyerrrocket/rcpp"
+repository = "https://github.com/Destroyerrrocket/rustycpp"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 keywords = ["compiler", "C++"]

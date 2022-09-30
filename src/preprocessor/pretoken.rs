@@ -1,8 +1,13 @@
+//! Pretokens for the preprocessor. Parses very laxly
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::use_self)]
+#![allow(clippy::missing_docs_in_private_items)]
+
 use logos::Logos;
 
 #[derive(PartialEq, Eq, Debug, Logos)]
+/// The actual token generator. This efficiently tests out all regexes at the
+/// same time and grabs the largest one.
 pub enum PreTokenLexer {
     #[regex(r"[a-zA-Z_[^\x00-\x7F]][a-zA-Z0-9_[^\x00-\x7F]]*")]
     Ident,

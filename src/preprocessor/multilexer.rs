@@ -1,3 +1,6 @@
+//! An aggregation of lexers that can be used to represent the preprocessor
+//! state of file inclussions.
+
 use std::{
     collections::VecDeque,
     sync::{Arc, Mutex},
@@ -10,19 +13,26 @@ use crate::utils::structs::FilePreTokPos;
 use super::pretoken::PreToken;
 
 #[derive(Debug)]
+#[doc(hidden)]
 struct FileLexer {
     pub compFile: String,
     pub lexer: PreLexer,
 }
 
 #[derive(Debug)]
+/// An aggregation of lexers that can be used to represent the preprocessor
+/// state of file inclussions.
 pub struct MultiLexer {
+    /// The current files opened by the hole compiler
     fileMapping: Arc<Mutex<FileMap>>,
+    /// Files in the order they were opened
     files: Vec<FileLexer>,
+    /// Pushed tokens to return back. This is specially useful when reevaluating an expanded macro
     pushedTokens: VecDeque<FilePreTokPos<PreToken>>,
 }
 
 impl MultiLexer {
+    /// Creates a new empty multilexer
     pub fn new_def(files: Arc<Mutex<FileMap>>) -> Self {
         Self {
             fileMapping: files,
@@ -31,6 +41,7 @@ impl MultiLexer {
         }
     }
 
+    /// Creates a new multilexer with the starting file
     pub fn new((files, file): (Arc<Mutex<FileMap>>, &str)) -> Self {
         let lexer = {
             let currFile = files.lock().unwrap().getFile(file);
@@ -47,22 +58,27 @@ impl MultiLexer {
         }
     }
 
+    /// Push tokens to be returned back
     pub fn pushTokensDec(&mut self, toks: VecDeque<FilePreTokPos<PreToken>>) {
         for i in toks.into_iter().rev() {
             self.pushedTokens.push_front(i);
         }
     }
 
+    /// Push tokens to be returned back
     pub fn pushTokensVec(&mut self, toks: Vec<FilePreTokPos<PreToken>>) {
         for i in toks.into_iter().rev() {
             self.pushedTokens.push_front(i);
         }
     }
 
+    /// Push token to be returned back
     pub fn pushToken(&mut self, tok: FilePreTokPos<PreToken>) {
         self.pushedTokens.push_back(tok);
     }
 
+    /// Push a new file. Please be careful when you're doing this, as the pushed
+    /// tokens will still be returned first!
     pub fn pushFile(&mut self, path: String) {
         self.files.push(FileLexer {
             compFile: path.clone(),
@@ -77,16 +93,21 @@ impl MultiLexer {
         });
     }
 
+    /// Push a new file. Please be careful when you're doing this, as the pushed
+    /// tokens will still be returned first!
     pub fn expectHeader(&mut self) {
         if let Some(lex) = self.files.last_mut() {
             lex.lexer.expectHeader();
         }
     }
 
+    /// Current mapping of files.
     pub fn fileMapping(&self) -> Arc<Mutex<FileMap>> {
         self.fileMapping.clone()
     }
 
+    /// Can this multilexer access the file? It does not need to be previously
+    /// oppened.
     pub fn hasFileAccess(&self, file: &str) -> bool {
         self.fileMapping.lock().unwrap().hasFileAccess(file)
     }

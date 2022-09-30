@@ -1,3 +1,8 @@
+//! A C++ compiler (on the works).
+//!
+//! Please see the readme at [github](https://github.com/Destroyerrrocket/rustycpp)
+//! for more information.
+//!
 #![feature(
     option_result_contains,
     iter_collect_into,
@@ -7,6 +12,7 @@
     arbitrary_enum_discriminant
 )]
 #![warn(
+    missing_docs,
     clippy::all,
     clippy::pedantic,
     clippy::nursery,
@@ -16,7 +22,8 @@
     clippy::unnecessary_self_imports,
     clippy::string_to_string,
     clippy::if_then_some_else_none,
-    clippy::empty_structs_with_brackets
+    clippy::empty_structs_with_brackets,
+    clippy::missing_docs_in_private_items
 )]
 #![allow(
     non_snake_case,
@@ -41,6 +48,7 @@ use utils::parameters::Parameters;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
+#[doc(hidden)]
 struct Args {
     /// Filelist to compile
     #[clap(short, long, value_parser, default_value = "")]

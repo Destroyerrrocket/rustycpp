@@ -1,3 +1,5 @@
+//! Wrapper over a token collection for antlr consumption.
+
 use antlr_rust::token::Token;
 use antlr_rust::token_factory::TokenFactory;
 use antlr_rust::{TidAble, TokenSource};
@@ -11,18 +13,25 @@ use std::sync::Arc;
 
 use super::structs::FilePreTokPos;
 
+/// A token type that goes into antlr must have EOF and Invalid variants
 pub trait HasEOF {
+    /// The EOF variant
     fn getEOF() -> Self;
+    /// The Invalid variant
     fn getInvalid() -> Self;
 }
 
 #[derive(Debug, Clone)]
+/// Wrapper over a token, so we also store its index
 pub struct AntlrToken<T: Clone + Debug + HasEOF> {
+    /// The token
     data: FilePreTokPos<T>,
+    /// The index of the token
     index: Arc<AtomicIsize>,
 }
 
 impl<T: Clone + Debug + HasEOF> AntlrToken<T> {
+    /// new token with index
     pub fn new(data: FilePreTokPos<T>, index: isize) -> Self {
         Self {
             data,
@@ -86,7 +95,10 @@ impl<T: Clone + Debug + HasEOF + 'static> Token for AntlrToken<T> {
 }
 
 #[derive(Debug)]
+/// A fake factory of tokens. Never actually used in our code, but it is refered
+/// in antlr code generated so it knows the token type, and `create_invalid` sometimes is called.
 pub struct AntlrLexerWrapperFactory<'a, U: Clone + Debug + HasEOF> {
+    /// Fake a lifetime need.
     _phantom: &'a PhantomData<U>,
 }
 
@@ -135,14 +147,20 @@ unsafe impl<'a, T: Clone + Debug + HasEOF + 'static> TidAble<'a>
 }
 
 #[derive(Debug)]
+/// A wrapper over a token list, intended for use as input to antlr.
 pub struct AntlrLexerWrapper<'a, T: Clone + Debug + HasEOF> {
+    /// Fake a lifetime need.
     pd: &'a PhantomData<AntlrToken<T>>,
+    /// The tokens to input.
     tokens: VecDeque<FilePreTokPos<T>>,
+    /// Index of the current token.
     idx: isize,
+    /// File name of the soure of tokens.
     file: String,
 }
 
 impl<'a, T: Clone + Debug + HasEOF> AntlrLexerWrapper<'a, T> {
+    /// Create a new wrapper.
     pub const fn new(tokens: VecDeque<FilePreTokPos<T>>, file: String) -> Self {
         Self {
             pd: &PhantomData,

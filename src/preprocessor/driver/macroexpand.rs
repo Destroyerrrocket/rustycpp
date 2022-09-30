@@ -1,3 +1,4 @@
+//! Macro expansion functionality.
 use std::collections::{HashMap, VecDeque};
 
 use multiset::HashMultiSet;
@@ -14,6 +15,7 @@ use crate::{
 use super::Preprocessor;
 
 impl Preprocessor {
+    /// Is there a meta token?
     fn anyNonMetaToken(toks: &VecDeque<FilePreTokPos<PreToken>>) -> bool {
         for tok in toks {
             if !matches!(
@@ -26,6 +28,7 @@ impl Preprocessor {
         false
     }
 
+    /// Expands a sequence of self contained tokens. Won't affect the state of the parser.
     pub fn expandASequenceOfTokens(
         mut selfContainedLexer: MultiLexer,
         macros: &HashMap<String, DefineAst>,
@@ -60,6 +63,7 @@ impl Preprocessor {
         Ok(preproTokie)
     }
 
+    /// Expand a [`PreTokenDefine::Normal`]
     fn expandNormal(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
         t: &FilePreTokPos<PreToken>,
@@ -68,6 +72,7 @@ impl Preprocessor {
         return result;
     }
 
+    /// Expand a [`PreTokenDefine::Arg`]
     fn expandArg(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
         expandData: ExpandData,
@@ -135,6 +140,7 @@ impl Preprocessor {
         return Ok(result);
     }
 
+    /// Expand a [`PreTokenDefine::VariadicArg`]
     fn expandVariadicArg(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
         expandData: ExpandData,
@@ -188,6 +194,7 @@ impl Preprocessor {
         return Ok(result);
     }
 
+    /// Expand a [`PreTokenDefine::Hash`]
     fn expandHash(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
         expandData: ExpandData,
@@ -255,6 +262,7 @@ impl Preprocessor {
         return Ok(result);
     }
 
+    /// Expand a [`PreTokenDefine::HashHash`]
     fn expandHashHash(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
         expandData: ExpandData,
@@ -352,6 +360,7 @@ impl Preprocessor {
         return Ok(result);
     }
 
+    /// Expand a [`PreTokenDefine::VariadicOpt`]
     fn expandVariadicOpt(
         mut result: VecDeque<FilePreTokPos<PreToken>>,
         expandData: ExpandData,
@@ -410,6 +419,7 @@ impl Preprocessor {
         return Ok(result);
     }
 
+    /// Expand the given macro, with the necessary invocation data
     pub fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
         let mut result = VecDeque::new();
         for tok in expandData.replacement {
@@ -444,12 +454,14 @@ impl Preprocessor {
     }
 }
 
+#[doc(hidden)]
 struct ParamMapResult {
     namedParameters: HashMap<String, Vec<FilePreTokPos<PreToken>>>,
     varadicParameters: Vec<Vec<FilePreTokPos<PreToken>>>,
 }
 
 impl Preprocessor {
+    /// Parse the parameters of a macro invocation
     fn generateParamMap(
         mut paramRes: Vec<Vec<FilePreTokPos<PreToken>>>,
         params: &Vec<String>,
@@ -464,6 +476,7 @@ impl Preprocessor {
         };
     }
 
+    /// Check that the macro function invocation has a matching closing parenthesis
     fn hasMatchingClosingParen(lexer: &mut MultiLexer) -> bool {
         let mut openParens: usize = 0;
 
@@ -496,6 +509,7 @@ impl Preprocessor {
         }
     }
 
+    /// Parse the parameters of a macro invocation, without mapping them to named arguments.
     fn parseParams(
         lexer: &mut MultiLexer,
         min: usize,
@@ -576,6 +590,7 @@ impl Preprocessor {
         }
     }
 
+    /// Internal function to expand a macro invocation. See `Preprocessor::macroExpand` for more information.
     pub fn macroExpandInternal(
         definitions: &HashMap<String, DefineAst>,
         disabledMacros: &HashMultiSet<String>,
@@ -689,6 +704,11 @@ impl Preprocessor {
         return Ok(vec![newToken]);
     }
 
+    /// Macro invocation. It will return a vector of generated tokens in case
+    /// that the macro could *NOT* be expanded (or error if any is found).
+    /// Otherwise, it will return an empty vector. The reason for this is that
+    /// the resulting tokens are inserted into the lexer so they are
+    /// re-examined. This is done to allow for "infinite" macro evaluation.
     pub fn macroExpand(
         &mut self,
         newToken: FilePreTokPos<PreToken>,

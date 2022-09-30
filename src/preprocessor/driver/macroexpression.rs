@@ -1,3 +1,4 @@
+//! Macro constant integer expression evaluation
 use std::collections::VecDeque;
 
 use crate::grammars::generated::macrointconstantexpressionastparser;
@@ -12,6 +13,14 @@ use antlr_rust::common_token_stream::CommonTokenStream;
 use super::Preprocessor;
 
 impl Preprocessor {
+    /// Finds the macro name in a `defined` clause. It is treated separatedly
+    /// because it can be either:
+    ///
+    /// `defined(MACRO)` or `defined MACRO`
+    ///
+    /// as such, it is not a viable macro definition. Given that we want to
+    /// prevent macro expansions in the macro name, it can't be left to the
+    /// parser, as at that point the macros are all expanded.
     fn getDefinedName(
         lexer: &mut MultiLexer,
         definedToken: &FilePreTokPos<PreToken>,
@@ -123,6 +132,9 @@ impl Preprocessor {
         }
     }
 
+    /// Consumes all the tokens until the next newline, and returns the exanded
+    /// version of them. Takes special care of the `defined` operator. It also
+    /// makes some minor transformations to handle char literals.
     pub fn consumeMacroExpr(&mut self) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
         let mut paramDisabledMacros = self.disabledMacros.clone();
         paramDisabledMacros.remove(&"__has_include".to_owned());
@@ -229,6 +241,7 @@ impl Preprocessor {
             .collect())
     }
 
+    /// Transforms preprocessor tokens to tokens for [`PreTokenIf`] for the If evaluator
     fn transformToParserTokens(
         sequence: &VecDeque<FilePreTokPos<PreToken>>,
         token: &FilePreTokPos<PreToken>,
@@ -321,6 +334,7 @@ impl Preprocessor {
         return Ok(intconstantValues);
     }
 
+    /// Evaluates an if statement expression, returning the evaluation result. Does not alter the state of the preprocessor
     pub fn evalIfScope(
         sequence: VecDeque<FilePreTokPos<PreToken>>,
         token: &FilePreTokPos<PreToken>,

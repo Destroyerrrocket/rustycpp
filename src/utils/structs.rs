@@ -1,3 +1,4 @@
+//! A varitety of structs used throughout the compiler.
 use std::fmt::Debug;
 use std::ops::{Index, Range, RangeFrom};
 use std::sync::Arc;
@@ -6,13 +7,18 @@ use antlr_rust::char_stream::InputData;
 use colored::Colorize;
 
 #[derive(Debug, Default)]
+/// A file to be compiled
 pub struct CompileFile {
+    /// Path to the file
     path: String,
+    /// Contents of the file
     content: Arc<String>,
+    /// Offsets to the newlines of the file
     newlines: Vec<usize>,
 }
 
 impl CompileFile {
+    /// A file to be compiled
     pub fn new(path: String, content: String) -> Self {
         let contentFile = Arc::new(content.replace("\r\n", "\n"));
         Self {
@@ -26,13 +32,17 @@ impl CompileFile {
         }
     }
 
+    /// Get the path to the file
     pub const fn path(&self) -> &String {
         &self.path
     }
+
+    /// Get the content of the file
     pub fn content(&self) -> &String {
         &self.content
     }
 
+    /// Get the row and column of a position
     pub fn getRowColumn(&self, diff: usize) -> (usize, usize) {
         if self.newlines.is_empty() {
             return (1, diff + 1);
@@ -46,6 +56,7 @@ impl CompileFile {
         return (part + 1, diff - self.newlines.get(part - 1).unwrap_or(&0));
     }
 
+    /// Get the location of a position as a string
     pub fn getLocStr(&self, diff: usize) -> String {
         let (r, c) = self.getRowColumn(diff);
         format!("{}:{}:{}", self.path(), r, c)
@@ -53,6 +64,8 @@ impl CompileFile {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Kind of compile message
+#[doc(hidden)]
 pub enum CompileMsgKind {
     Notice,
     Warning,
@@ -72,6 +85,8 @@ impl ToString for CompileMsgKind {
 }
 
 #[derive(Debug, Clone)]
+/// A compile message
+#[doc(hidden)]
 pub struct CompileMsg {
     kind: CompileMsgKind,
     msg: String,
@@ -81,10 +96,12 @@ pub struct CompileMsg {
 }
 
 impl CompileMsg {
+    /// Location of the message
     pub fn errorLocStr(&self) -> String {
         self.file.getLocStr(self.at)
     }
 
+    /// Severity of the message
     pub const fn severity(&self) -> CompileMsgKind {
         self.kind
     }
@@ -101,8 +118,10 @@ impl ToString for CompileMsg {
     }
 }
 
+#[doc(hidden)]
 pub struct CompileError;
 
+#[doc(hidden)]
 impl CompileError {
     pub fn from_preTo<T: ToString, Tok: Clone + Debug>(
         msg: T,
@@ -133,7 +152,9 @@ impl CompileError {
     }
 }
 
+#[doc(hidden)]
 pub struct CompileWarning;
+#[doc(hidden)]
 impl CompileWarning {
     pub fn from_preTo<T: ToString, U: Clone + Debug>(
         msg: T,
@@ -165,28 +186,38 @@ impl CompileWarning {
 }
 
 #[derive(Debug, Clone)]
+/// A token and its possition in a file
 pub struct PreTokPos<T: Clone + Debug> {
+    /// Start of the token in the file
     pub start: usize,
+    /// The token
     pub tok: T,
+    /// End of the token in the file
     pub end: usize,
 }
 impl<T: Clone + Debug> PreTokPos<T> {
+    /// Token to string. Use the debug impl
     pub fn tokStringDebug(&self) -> String {
         format!("{:?}", self.tok)
     }
 }
 
 #[derive(Debug, Clone)]
+/// A token position and its file
 pub struct FilePreTokPos<T: Clone + Debug> {
+    /// file of the token
     pub file: Arc<CompileFile>,
+    /// token + position
     pub tokPos: PreTokPos<T>,
 }
 
 impl<T: Clone + Debug> FilePreTokPos<T> {
+    /// New token
     pub fn new(file: Arc<CompileFile>, tok: PreTokPos<T>) -> Self {
         Self { file, tokPos: tok }
     }
 
+    /// New meta token. It is not located anywhere
     pub fn new_meta(tok: T) -> Self {
         Self {
             file: Arc::new(CompileFile::default()),
@@ -198,6 +229,8 @@ impl<T: Clone + Debug> FilePreTokPos<T> {
         }
     }
 
+    /// New meta token. It copies its location from another token, even if it is
+    /// not located anywhere. Allows for better diagnostics
     pub fn new_meta_c<U: Clone + Debug>(tok: T, other: &FilePreTokPos<U>) -> Self {
         Self {
             file: other.file.clone(),
@@ -209,6 +242,7 @@ impl<T: Clone + Debug> FilePreTokPos<T> {
         }
     }
 
+    /// Token to string. Use the debug impl
     pub fn tokStringDebug(&self) -> String {
         self.tokPos.tokStringDebug()
     }
@@ -258,6 +292,9 @@ impl<T: Clone + Debug> Index<RangeFrom<usize>> for FilePreTokPos<T> {
     }
 }
 
+/// generate boilerplate for the left side of a match statement, where the
+/// matched element is a [`FilePreTokPos`]. Most of the time, the file, start
+/// and end of a token are not relevant at all.
 #[macro_export]
 macro_rules! filePreTokPosMatchArm {
     ( $x:pat ) => {
@@ -268,6 +305,9 @@ macro_rules! filePreTokPosMatchArm {
     };
 }
 
+/// generate boilerplate for a matches! macro, where the matched element is a
+/// [`FilePreTokPos`]. Most of the time, the file, start and end of a token are
+/// not relevant at all.
 #[macro_export]
 macro_rules! filePreTokPosMatches {
     ( $file:expr, $x:pat ) => {

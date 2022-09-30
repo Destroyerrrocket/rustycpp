@@ -1,3 +1,4 @@
+//! Map of paths to files
 use std::path::Path;
 use std::{collections::HashMap, fs::File, fs::OpenOptions, io::Read, sync::Arc};
 
@@ -6,14 +7,20 @@ use crate::utils::structs::CompileFile;
 use super::parameters::Parameters;
 
 #[derive(Debug)]
+/// A map of all the files that are being used. This is used to avoid opening the same file twice.
 pub struct FileMap {
+    /// Parameters of the compilation
     params: Arc<Parameters>,
+    /// Files opened, but not read yet
     openedButNotRead: HashMap<String, File>,
+    /// Files opened
     files: HashMap<String, Arc<CompileFile>>,
+    /// Resolved paths
     resolvedPaths: HashMap<String, String>,
 }
 
 impl<'a> FileMap {
+    /// New file map.
     pub fn new(params: Arc<Parameters>) -> Self {
         Self {
             params,
@@ -23,6 +30,7 @@ impl<'a> FileMap {
         }
     }
 
+    /// Get an already opened file. On error, crash.
     pub fn getFile(&mut self, path: &str) -> Arc<CompileFile> {
         let path = self.getPath(path).unwrap();
         if let Some(v) = self.files.get(&path) {
@@ -31,6 +39,7 @@ impl<'a> FileMap {
         panic!("File not found in visited files: {}", path);
     }
 
+    /// Get file. If not present, open it. On error, crash.
     pub fn getAddFile(&'a mut self, path: &str) -> Arc<CompileFile> {
         let path = &self.getPath(path).unwrap();
         if self.files.contains_key(path) {
@@ -63,11 +72,13 @@ impl<'a> FileMap {
         return self.files.get(path).unwrap().clone();
     }
 
+    /// Can it access the file? Does not need to be previously opened.
     pub fn hasFileAccess(&mut self, path: &str) -> bool {
         let absolutePath = self.getPath(path);
         return absolutePath.is_ok() && self.hasFileAccessImpl(&absolutePath.unwrap()).is_ok();
     }
 
+    /// Impl for `hasFileAccess`. Path is resolved here.
     fn hasFileAccessImpl(&mut self, absolutePath: &str) -> Result<(), String> {
         if self.files.contains_key(absolutePath) || self.openedButNotRead.contains_key(absolutePath)
         {
@@ -91,6 +102,7 @@ impl<'a> FileMap {
         return Ok(());
     }
 
+    /// Get paths of current files opened.
     pub fn getCurrPaths(&self) -> Vec<String> {
         let mut paths = Vec::new();
         for path in self.files.keys() {
@@ -99,13 +111,14 @@ impl<'a> FileMap {
         return paths;
     }
 
-    #[allow(dead_code)]
+    /// Add a fake test file. Intened for testing.
     pub fn addTestFile(&mut self, path: String, content: String) {
         self.resolvedPaths.insert(path.clone(), path.clone());
         self.files
             .insert(path.clone(), Arc::new(CompileFile::new(path, content)));
     }
 
+    /// Resolve a path. On error, return error.
     fn getPath(&mut self, pathStr: &str) -> Result<String, String> {
         match self.resolvedPaths.entry(pathStr.to_string()) {
             std::collections::hash_map::Entry::Occupied(e) => {

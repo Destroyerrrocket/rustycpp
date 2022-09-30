@@ -1,3 +1,4 @@
+//! Prelexer. Tokenizes very laxly.
 use lazy_regex::{regex_captures, regex_find};
 
 use crate::utils::structs::PreTokPos;
@@ -8,6 +9,7 @@ use super::pretoken::{PreToken, PreTokenLexer, WhiteCom};
 // Control chars [ \n\x0B\t\x0C]
 
 #[derive(Debug)]
+#[doc(hidden)]
 pub struct PreLexer {
     enableHeader: u32,
     currentNonSpliced: String,
@@ -17,6 +19,8 @@ pub struct PreLexer {
     column: u32,
     lastNl: bool,
 }
+
+#[doc(hidden)]
 impl PreLexer {
     pub fn new(content: String) -> Self {
         Self {

@@ -1,3 +1,6 @@
+//! The Preprocessor is responsible for evaluating the step 4 of the C++
+//! translation.
+
 use std::{
     collections::{HashMap, VecDeque},
     sync::{Arc, Mutex},
@@ -26,25 +29,50 @@ mod macroexpand;
 mod macroexpression;
 
 #[derive(Debug, PartialEq)]
+/// The current #if scope is in status...
 enum ScopeStatus {
+    /// Successful. We return all tokens
     Success,
+    /// Failure. We return no tokens
     Failure,
+    /// Already been successful. Can happen in:
+    /// Example:
+    /// #if 1
+    /// #else
+    /// <here>
+    /// #endif
+    /// We return no tokens, and won't return any in any future scope change.
     AlreadySucceeded,
 }
 
 #[derive(Debug)]
+/// The preprocessor is an iterable object that generates tokens from the
+/// original input file. It will report any preprocessing errors as it
+/// encounters them, previous to returning the possibly incorrect tokens.
 pub struct Preprocessor {
+    /// Parameters of the compilation
     parameters: Arc<Parameters>,
+    /// The multilexer is the object that will generate the pretokens tokens
     multilexer: MultiLexer,
+    /// The generated preprocessing tokens to be returned. This is a stash, as
+    /// some tokens may generate more than one token.
     generated: VecDeque<FilePreTokPos<PreToken>>,
+    /// The generated errors be returned. This is a stash, as some tokens may
+    /// generate more than one error.
     errors: VecDeque<CompileMsg>,
+    /// The #if scope status. Keeps track of what to do in this scope.
     scope: Vec<ScopeStatus>,
+    /// Current definitions in the preprocessor.
     definitions: HashMap<String, DefineAst>,
+    /// Macros that are disabled in the preprocessor at this point in the evaluation.
     disabledMacros: HashMultiSet<String>,
+    /// The preprocessor is at the start of a line. No tokens have been found
+    /// yet in this one, except for whitespace.
     atStartLine: bool,
 }
 
 impl Preprocessor {
+    /// Creates a new preprocessor from the given parameters, filemap and path
     pub fn new(data: (Arc<Parameters>, Arc<Mutex<FileMap>>, &str)) -> Self {
         Self {
             parameters: data.0,
@@ -59,6 +87,7 @@ impl Preprocessor {
         .initCustomMacros()
     }
 
+    /// Creates a new preprocessor from the given parameters, filemap and path
     fn undefineMacro(&mut self, preToken: FilePreTokPos<PreToken>) {
         let vecPrepro = Iterator::take_while(&mut self.multilexer, |pre| {
             pre.tokPos.tok != PreToken::Newline
@@ -95,6 +124,7 @@ impl Preprocessor {
         return;
     }
 
+    /// Consume a #ifdef or #ifndef and return the macro name if it exists
     fn consumeMacroDef(&mut self, _PreToken: FilePreTokPos<PreToken>) -> Option<String> {
         let identStr;
         loop {
@@ -125,6 +155,7 @@ impl Preprocessor {
         return Some(identStr);
     }
 
+    /// Reach the nl.
     fn reachNl(&mut self) {
         loop {
             let inIdent = self.multilexer.next();
@@ -141,6 +172,7 @@ impl Preprocessor {
         }
     }
 
+    /// Evaluate the macro in an #ifdef/#ifndef directive
     fn evalIfDef(&self, def: Option<String>) -> bool {
         if let Some(macroName) = def {
             return self.definitions.contains_key(&macroName);
@@ -148,6 +180,8 @@ impl Preprocessor {
         return false;
     }
 
+    /// Encountered a preprocessor directive. Evaluate it accordingly, alering
+    /// the state of the preprocessor.
     fn preprocessorDirective(&mut self, _PreToken: FilePreTokPos<PreToken>) {
         let operation;
         let enabledBlock = matches!(self.scope.last(), Some(ScopeStatus::Success) | None);
@@ -334,6 +368,9 @@ impl Preprocessor {
         }
     }
 
+    /// Consumes a new token generated, and depending on the state of the
+    /// preprocessor, does something with it. Might consume more tokens from the
+    /// lexer.
     fn consume(&mut self, newToken: FilePreTokPos<PreToken>) {
         loop {
             match self.scope.last() {
@@ -425,25 +462,22 @@ impl Preprocessor {
 impl Iterator for Preprocessor {
     type Item = Result<FilePreTokPos<PreToken>, CompileMsg>;
     fn next(&mut self) -> Option<Self::Item> {
-        let this = self as *mut Self;
-        unsafe {
-            loop {
-                if let Some(err) = (*this).errors.pop_front() {
-                    return Some(Err(err));
+        loop {
+            if let Some(err) = self.errors.pop_front() {
+                return Some(Err(err));
+            }
+            match self.generated.pop_front() {
+                Some(tok) => {
+                    return Some(Ok(tok));
                 }
-                match (*this).generated.pop_front() {
-                    Some(tok) => {
-                        return Some(Ok(tok));
+                None => match self.multilexer.next() {
+                    None => {
+                        return None;
                     }
-                    None => match self.multilexer.next() {
-                        None => {
-                            return None;
-                        }
-                        Some(token) => {
-                            (*this).consume(token);
-                        }
-                    },
-                }
+                    Some(token) => {
+                        self.consume(token);
+                    }
+                },
             }
         }
     }

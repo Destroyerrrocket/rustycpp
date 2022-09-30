@@ -1,3 +1,5 @@
+//! Various misc utilities for the compiler.
+
 pub mod funcs;
 pub mod lalrpoplexerwrapper;
 #[macro_use]

@@ -1,3 +1,5 @@
+//! Parser of `#define` directives.
+
 use lalrpop_util::ParseError;
 
 use crate::{
@@ -17,6 +19,8 @@ use crate::{
 use super::Preprocessor;
 
 impl Preprocessor {
+    /// Parse a the replacement list of the define. It preprocesses the tokens
+    /// to aid lalrpop, and collects the resulting tokens from it.
     fn parseReplList(
         parse: &DefineAst,
         tokens: Vec<FilePreTokPos<PreToken>>,
@@ -149,6 +153,8 @@ impl Preprocessor {
         });
     }
 
+    /// Generate the definition info of the macro, mainly the name and the
+    /// parameters. Delegates the replacement list to `parseReplList`
     fn getAstMacro(
         initialToken: &FilePreTokPos<PreToken>,
         tokens: Vec<FilePreTokPos<PreToken>>,
@@ -297,6 +303,7 @@ impl Preprocessor {
         return Ok(res);
     }
 
+    /// Parse a macro definition and add it to the list of definitions.
     fn defineMacroImpl(
         &mut self,
         vecPrepro: Vec<FilePreTokPos<PreToken>>,
@@ -323,6 +330,7 @@ impl Preprocessor {
         return Ok(());
     }
 
+    /// Parse a macro definition and add it to the list of definitions
     pub fn defineMacro(&mut self, preToken: FilePreTokPos<PreToken>) {
         let vecPrepro = Iterator::take_while(&mut self.multilexer, |pre| {
             pre.tokPos.tok != PreToken::Newline

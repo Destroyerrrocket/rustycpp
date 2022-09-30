@@ -1,3 +1,4 @@
+//! Evaluator of the macro integer constant expression ast.
 use std::fmt::Debug;
 
 use crate::grammars::generated::macrointconstantexpressionast::{
@@ -19,6 +20,7 @@ use antlr_rust::tree::ParseTreeVisitorCompat;
 
 #[derive(Debug, Clone)]
 #[repr(isize)]
+#[doc(hidden)]
 pub enum PreTokenIf {
     EOF = -1,
     Invalid = 0,
@@ -65,6 +67,7 @@ pub enum PreTokenIf {
 }
 
 impl PreTokenIf {
+    #[doc(hidden)]
     pub fn stringToPreTokenIfOperator(s: &str) -> PreTokenIf {
         match s {
             r"(" => PreTokenIf::LParen,
@@ -116,16 +119,22 @@ impl HasEOF for PreTokenIf {
     }
 }
 
+/// Evaluator of a macro constant expression. The standard defines a pretty low
+/// lower limit in integer representation, so we use i128, which is way bigger.
 pub struct VisitorEvaluator(pub i128, i128);
 
 impl<'a> VisitorEvaluator {
+    #[doc(hidden)]
     pub fn new() -> Self {
         Self(0, 0)
     }
+
+    /// Result of the evaluation.
     pub fn res(&self) -> i128 {
         self.0
     }
 
+    /// Sart evaluation.
     pub fn visit_start(&mut self, ctx: &ExprResContextAll<'a>) {
         self.visit(ctx);
     }
