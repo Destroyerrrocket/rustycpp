@@ -1,9 +1,12 @@
-pub mod macrointconstantexpressionastlistener;
-pub mod macrointconstantexpressionastparser;
-pub mod macrointconstantexpressionastvisitor;
-
-pub mod macrointconstantexpressionast {
-    pub use super::macrointconstantexpressionastlistener::*;
-    pub use super::macrointconstantexpressionastparser::*;
-    pub use super::macrointconstantexpressionastvisitor::*;
+macro_rules! include_generated {
+    ($name:ident) => {
+        include!(concat!(
+            env!("OUT_DIR"),
+            "/generated/",
+            stringify!($name),
+            ".mod"
+        ));
+    };
 }
+
+include_generated!(macrointconstantexpressionast);
