@@ -123,7 +123,7 @@ pub struct CompileError;
 impl CompileError {
     pub fn from_preTo<T: ToString, Tok: Clone + Debug>(
         msg: T,
-        preToken: &FilePreTokPos<Tok>,
+        preToken: &FileTokPos<Tok>,
     ) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
@@ -156,7 +156,7 @@ pub struct CompileWarning;
 impl CompileWarning {
     pub fn from_preTo<T: ToString, U: Clone + Debug>(
         msg: T,
-        preToken: &FilePreTokPos<U>,
+        preToken: &FileTokPos<U>,
     ) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
@@ -185,7 +185,7 @@ impl CompileWarning {
 
 #[derive(Debug, Clone)]
 /// A token and its possition in a file
-pub struct PreTokPos<T: Clone + Debug> {
+pub struct TokPos<T: Clone + Debug> {
     /// Start of the token in the file
     pub start: usize,
     /// The token
@@ -193,7 +193,7 @@ pub struct PreTokPos<T: Clone + Debug> {
     /// End of the token in the file
     pub end: usize,
 }
-impl<T: Clone + Debug> PreTokPos<T> {
+impl<T: Clone + Debug> TokPos<T> {
     /// Token to string. Use the debug impl
     pub fn tokStringDebug(&self) -> String {
         format!("{:?}", self.tok)
@@ -202,16 +202,16 @@ impl<T: Clone + Debug> PreTokPos<T> {
 
 #[derive(Debug, Clone)]
 /// A token position and its file
-pub struct FilePreTokPos<T: Clone + Debug> {
+pub struct FileTokPos<T: Clone + Debug> {
     /// file of the token
     pub file: Arc<CompileFile>,
     /// token + position
-    pub tokPos: PreTokPos<T>,
+    pub tokPos: TokPos<T>,
 }
 
-impl<T: Clone + Debug> FilePreTokPos<T> {
+impl<T: Clone + Debug> FileTokPos<T> {
     /// New token
-    pub fn new(file: Arc<CompileFile>, tok: PreTokPos<T>) -> Self {
+    pub fn new(file: Arc<CompileFile>, tok: TokPos<T>) -> Self {
         Self { file, tokPos: tok }
     }
 
@@ -219,7 +219,7 @@ impl<T: Clone + Debug> FilePreTokPos<T> {
     pub fn new_meta(tok: T) -> Self {
         Self {
             file: Arc::new(CompileFile::default()),
-            tokPos: PreTokPos {
+            tokPos: TokPos {
                 start: 0,
                 tok,
                 end: 0,
@@ -229,10 +229,10 @@ impl<T: Clone + Debug> FilePreTokPos<T> {
 
     /// New meta token. It copies its location from another token, even if it is
     /// not located anywhere. Allows for better diagnostics
-    pub fn new_meta_c<U: Clone + Debug>(tok: T, other: &FilePreTokPos<U>) -> Self {
+    pub fn new_meta_c<U: Clone + Debug>(tok: T, other: &FileTokPos<U>) -> Self {
         Self {
             file: other.file.clone(),
-            tokPos: PreTokPos {
+            tokPos: TokPos {
                 start: other.tokPos.start,
                 tok,
                 end: other.tokPos.end,
@@ -247,28 +247,28 @@ impl<T: Clone + Debug> FilePreTokPos<T> {
 }
 
 /// generate boilerplate for the left side of a match statement, where the
-/// matched element is a [`FilePreTokPos`]. Most of the time, the file, start
+/// matched element is a [`FileTokPos`]. Most of the time, the file, start
 /// and end of a token are not relevant at all.
 #[macro_export]
-macro_rules! filePreTokPosMatchArm {
+macro_rules! fileTokPosMatchArm {
     ( $x:pat ) => {
-        FilePreTokPos {
-            tokPos: PreTokPos { tok: $x, .. },
+        FileTokPos {
+            tokPos: TokPos { tok: $x, .. },
             ..
         }
     };
 }
 
 /// generate boilerplate for a matches! macro, where the matched element is a
-/// [`FilePreTokPos`]. Most of the time, the file, start and end of a token are
+/// [`FileTokPos`]. Most of the time, the file, start and end of a token are
 /// not relevant at all.
 #[macro_export]
-macro_rules! filePreTokPosMatches {
+macro_rules! fileTokPosMatches {
     ( $file:expr, $x:pat ) => {
         matches!(
             $file,
-            FilePreTokPos {
-                tokPos: PreTokPos { tok: $x, .. },
+            FileTokPos {
+                tokPos: TokPos { tok: $x, .. },
                 ..
             }
         )

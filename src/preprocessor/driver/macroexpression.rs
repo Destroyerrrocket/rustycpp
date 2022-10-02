@@ -8,8 +8,8 @@ use crate::grammars::macrointconstantexpressionast::{PreTokenIf, VisitorEvaluato
 use crate::preprocessor::multilexer::MultiLexer;
 use crate::preprocessor::pretoken::PreToken;
 use crate::utils::antlrlexerwrapper::{AntlrLexerWrapper, LexerWrapperErrorStrategy};
-use crate::utils::structs::{CompileError, CompileMsg, FilePreTokPos, PreTokPos};
-use crate::{filePreTokPosMatchArm, filePreTokPosMatches};
+use crate::utils::structs::{CompileError, CompileMsg, FileTokPos, TokPos};
+use crate::{fileTokPosMatchArm, fileTokPosMatches};
 use antlr_rust::common_token_stream::CommonTokenStream;
 
 use super::Preprocessor;
@@ -25,12 +25,12 @@ impl Preprocessor {
     /// parser, as at that point the macros are all expanded.
     fn getDefinedName(
         lexer: &mut MultiLexer,
-        definedToken: &FilePreTokPos<PreToken>,
+        definedToken: &FileTokPos<PreToken>,
     ) -> Result<String, CompileMsg> {
         let mut name = String::new();
         // Skip whitespace. Push back the meta tokens. When we get the first open paren, wait.
         let mut metaToks = vec![];
-        let openParenTok: FilePreTokPos<PreToken> = loop {
+        let openParenTok: FileTokPos<PreToken> = loop {
             if let Some(tok) = lexer.next() {
                 match tok.tokPos.tok {
                     PreToken::Whitespace(_) => {}
@@ -73,11 +73,11 @@ impl Preprocessor {
         // Capture everything until the next matching close paren
         let mut openParens: usize = 0;
 
-        let mut tokies: Vec<FilePreTokPos<PreToken>> = vec![];
+        let mut tokies: Vec<FileTokPos<PreToken>> = vec![];
         loop {
             let tok = lexer.next();
             match (openParens, &tok) {
-                (_, Some(filePreTokPosMatchArm!(PreToken::Newline)) | None) => {
+                (_, Some(fileTokPosMatchArm!(PreToken::Newline)) | None) => {
                     if let Some(tok) = tok {
                         lexer.pushToken(tok);
                     }
@@ -86,14 +86,14 @@ impl Preprocessor {
                         &openParenTok,
                     ));
                 }
-                (0, Some(filePreTokPosMatchArm!(PreToken::OperatorPunctuator(")")))) => {
+                (0, Some(fileTokPosMatchArm!(PreToken::OperatorPunctuator(")")))) => {
                     break;
                 }
-                (_, Some(filePreTokPosMatchArm!(PreToken::OperatorPunctuator(")")))) => {
+                (_, Some(fileTokPosMatchArm!(PreToken::OperatorPunctuator(")")))) => {
                     tokies.push(tok.unwrap());
                     openParens -= 1;
                 }
-                (_, Some(filePreTokPosMatchArm!(PreToken::OperatorPunctuator("(")))) => {
+                (_, Some(fileTokPosMatchArm!(PreToken::OperatorPunctuator("(")))) => {
                     tokies.push(tok.unwrap());
                     openParens += 1;
                 }
@@ -107,7 +107,7 @@ impl Preprocessor {
         if let Some(tok) = tokies
             .iter()
             .filter(|x| {
-                !filePreTokPosMatches!(
+                !fileTokPosMatches!(
                     x,
                     PreToken::Whitespace(_)
                         | PreToken::EnableMacro(_)
@@ -116,7 +116,7 @@ impl Preprocessor {
                 )
             })
             .take(1)
-            .filter(|x| filePreTokPosMatches!(x, PreToken::Ident(_)))
+            .filter(|x| fileTokPosMatches!(x, PreToken::Ident(_)))
             .map(|x| x.tokPos.tok.to_str())
             .into_iter()
             .next()
@@ -137,31 +137,31 @@ impl Preprocessor {
     /// Consumes all the tokens until the next newline, and returns the exanded
     /// version of them. Takes special care of the `defined` operator. It also
     /// makes some minor transformations to handle char literals.
-    pub fn consumeMacroExpr(&mut self) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+    pub fn consumeMacroExpr(&mut self) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         let mut paramDisabledMacros = self.disabledMacros.clone();
         paramDisabledMacros.remove(&"__has_include".to_owned());
         paramDisabledMacros.remove(&"__has_cpp_attribute".to_owned());
         let mut preproTokie = VecDeque::new();
         while let Some(tok) = self.multilexer.next() {
             match &tok {
-                filePreTokPosMatchArm!(PreToken::Newline) => {
+                fileTokPosMatchArm!(PreToken::Newline) => {
                     break;
                 }
 
-                filePreTokPosMatchArm!(PreToken::EnableMacro(nameMacro)) => {
+                fileTokPosMatchArm!(PreToken::EnableMacro(nameMacro)) => {
                     paramDisabledMacros.remove(nameMacro);
                     preproTokie.push_back(tok.clone());
                 }
-                filePreTokPosMatchArm!(PreToken::DisableMacro(nameMacro)) => {
+                fileTokPosMatchArm!(PreToken::DisableMacro(nameMacro)) => {
                     paramDisabledMacros.insert(nameMacro.clone());
                     preproTokie.push_back(tok.clone());
                 }
-                filePreTokPosMatchArm!(PreToken::Ident(name)) => {
+                fileTokPosMatchArm!(PreToken::Ident(name)) => {
                     if name == "defined" {
                         let nameDefined = Self::getDefinedName(&mut self.multilexer, &tok);
                         match nameDefined {
                             Ok(nameDefined) => {
-                                preproTokie.push_back(FilePreTokPos::new_meta_c(
+                                preproTokie.push_back(FileTokPos::new_meta_c(
                                     PreToken::PPNumber(
                                         if self.definitions.contains_key(&nameDefined) {
                                             "1"
@@ -204,7 +204,7 @@ impl Preprocessor {
         Ok(preproTokie
             .into_iter()
             .filter(|x| {
-                !filePreTokPosMatches!(
+                !fileTokPosMatches!(
                     x,
                     PreToken::ValidNop
                         | PreToken::EnableMacro(_)
@@ -214,29 +214,29 @@ impl Preprocessor {
                 )
             })
             .filter_map(|x| match x {
-                filePreTokPosMatchArm!(
+                fileTokPosMatchArm!(
                     PreToken::ValidNop
                         | PreToken::EnableMacro(_)
                         | PreToken::DisableMacro(_)
                         | PreToken::Whitespace(_)
                         | PreToken::Newline
                 ) => None,
-                filePreTokPosMatchArm!(PreToken::CharLiteral(ref char)) => {
+                fileTokPosMatchArm!(PreToken::CharLiteral(ref char)) => {
                     // TODO: THIS IS NOT CORRECT. We need to evaluate the escape sequences! I'm ignoring this for now
                     let mut chars = char.chars();
                     chars.next();
                     let mut buffer = [0; 4];
                     chars.next().unwrap_or('\0').encode_utf8(&mut buffer);
-                    Some(FilePreTokPos::new_meta_c(
+                    Some(FileTokPos::new_meta_c(
                         PreToken::PPNumber(buffer[0].to_string()),
                         &x,
                     ))
                 }
-                filePreTokPosMatchArm!(PreToken::Keyword(key)) if key == "true" => Some(
-                    FilePreTokPos::new_meta_c(PreToken::PPNumber("1".to_owned()), &x),
+                fileTokPosMatchArm!(PreToken::Keyword(key)) if key == "true" => Some(
+                    FileTokPos::new_meta_c(PreToken::PPNumber("1".to_owned()), &x),
                 ),
-                filePreTokPosMatchArm!(PreToken::Keyword(_) | PreToken::Ident(_)) => Some(
-                    FilePreTokPos::new_meta_c(PreToken::PPNumber("0".to_owned()), &x),
+                fileTokPosMatchArm!(PreToken::Keyword(_) | PreToken::Ident(_)) => Some(
+                    FileTokPos::new_meta_c(PreToken::PPNumber("0".to_owned()), &x),
                 ),
                 _ => Some(x),
             })
@@ -245,13 +245,13 @@ impl Preprocessor {
 
     /// Transforms preprocessor tokens to tokens for [`PreTokenIf`] for the If evaluator
     fn transformToParserTokens(
-        sequence: &VecDeque<FilePreTokPos<PreToken>>,
-        token: &FilePreTokPos<PreToken>,
-    ) -> Result<VecDeque<FilePreTokPos<PreTokenIf>>, Vec<CompileMsg>> {
+        sequence: &VecDeque<FileTokPos<PreToken>>,
+        token: &FileTokPos<PreToken>,
+    ) -> Result<VecDeque<FileTokPos<PreTokenIf>>, Vec<CompileMsg>> {
         let mut errors = vec![];
         for invalid in sequence.iter().filter(|x| {
-            !filePreTokPosMatches!(x, PreToken::PPNumber(_) | PreToken::OperatorPunctuator(_))
-                || filePreTokPosMatches!(
+            !fileTokPosMatches!(x, PreToken::PPNumber(_) | PreToken::OperatorPunctuator(_))
+                || fileTokPosMatches!(
                     x,
                     PreToken::OperatorPunctuator(
                         r"{" | r"}"
@@ -296,16 +296,16 @@ impl Preprocessor {
         }
 
         // TODO: THIS IS NOT CORRECT. We should evaluate the pretocens to full tokens, but I'll wait for the lexer to be done
-        let mut intconstantValues: VecDeque<FilePreTokPos<_>> = VecDeque::new();
+        let mut intconstantValues: VecDeque<FileTokPos<_>> = VecDeque::new();
         for token in sequence {
             match token {
-                filePreTokPosMatchArm!(PreToken::PPNumber(ref num)) => {
+                fileTokPosMatchArm!(PreToken::PPNumber(ref num)) => {
                     let mut numClone = num.clone();
                     numClone.retain(char::is_numeric);
                     match numClone.parse::<i128>() {
                         Ok(num) => {
                             intconstantValues
-                                .push_back(FilePreTokPos::new_meta_c(PreTokenIf::Num(num), token));
+                                .push_back(FileTokPos::new_meta_c(PreTokenIf::Num(num), token));
                         }
                         Err(err) => errors.push(CompileError::from_preTo(
                             format!("Invalid number in if eval scope: {}", err),
@@ -313,8 +313,8 @@ impl Preprocessor {
                         )),
                     }
                 }
-                filePreTokPosMatchArm!(PreToken::OperatorPunctuator(s)) => {
-                    intconstantValues.push_back(FilePreTokPos::new_meta_c(
+                fileTokPosMatchArm!(PreToken::OperatorPunctuator(s)) => {
+                    intconstantValues.push_back(FileTokPos::new_meta_c(
                         PreTokenIf::stringToPreTokenIfOperator(s),
                         token,
                     ));
@@ -338,8 +338,8 @@ impl Preprocessor {
 
     /// Evaluates an if statement expression, returning the evaluation result. Does not alter the state of the preprocessor
     pub fn evalIfScope(
-        sequence: VecDeque<FilePreTokPos<PreToken>>,
-        token: &FilePreTokPos<PreToken>,
+        sequence: VecDeque<FileTokPos<PreToken>>,
+        token: &FileTokPos<PreToken>,
     ) -> Result<bool, Vec<CompileMsg>> {
         let numSequence = Self::transformToParserTokens(&sequence, token)?;
         let tokenStream = CommonTokenStream::new(AntlrLexerWrapper::new(

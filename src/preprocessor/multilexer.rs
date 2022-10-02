@@ -8,7 +8,7 @@ use std::{
 
 use crate::preprocessor::prelexer::PreLexer;
 use crate::utils::filemap::FileMap;
-use crate::utils::structs::FilePreTokPos;
+use crate::utils::structs::FileTokPos;
 
 use super::pretoken::PreToken;
 
@@ -28,7 +28,7 @@ pub struct MultiLexer {
     /// Files in the order they were opened
     files: Vec<FileLexer>,
     /// Pushed tokens to return back. This is specially useful when reevaluating an expanded macro
-    pushedTokens: VecDeque<FilePreTokPos<PreToken>>,
+    pushedTokens: VecDeque<FileTokPos<PreToken>>,
 }
 
 impl MultiLexer {
@@ -59,21 +59,21 @@ impl MultiLexer {
     }
 
     /// Push tokens to be returned back
-    pub fn pushTokensDec(&mut self, toks: VecDeque<FilePreTokPos<PreToken>>) {
+    pub fn pushTokensDec(&mut self, toks: VecDeque<FileTokPos<PreToken>>) {
         for i in toks.into_iter().rev() {
             self.pushedTokens.push_front(i);
         }
     }
 
     /// Push tokens to be returned back
-    pub fn pushTokensVec(&mut self, toks: Vec<FilePreTokPos<PreToken>>) {
+    pub fn pushTokensVec(&mut self, toks: Vec<FileTokPos<PreToken>>) {
         for i in toks.into_iter().rev() {
             self.pushedTokens.push_front(i);
         }
     }
 
     /// Push token to be returned back
-    pub fn pushToken(&mut self, tok: FilePreTokPos<PreToken>) {
+    pub fn pushToken(&mut self, tok: FileTokPos<PreToken>) {
         self.pushedTokens.push_back(tok);
     }
 
@@ -114,7 +114,7 @@ impl MultiLexer {
 }
 
 impl Iterator for MultiLexer {
-    type Item = FilePreTokPos<PreToken>;
+    type Item = FileTokPos<PreToken>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(t) = self.pushedTokens.pop_front() {
@@ -125,7 +125,7 @@ impl Iterator for MultiLexer {
                 match lexer.lexer.next() {
                     None => {}
                     Some(tok) => {
-                        return Some(FilePreTokPos::new(
+                        return Some(FileTokPos::new(
                             self.fileMapping
                                 .lock()
                                 .expect("Thread panic")

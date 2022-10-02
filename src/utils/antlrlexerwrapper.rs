@@ -6,7 +6,7 @@ use antlr_rust::errors::{ANTLRError, FailedPredicateError, InputMisMatchError, N
 use antlr_rust::interval_set::IntervalSet;
 use antlr_rust::parser::ParserNodeType;
 use antlr_rust::rule_context::{CustomRuleContext, RuleContext};
-use antlr_rust::token::{Token, TOKEN_EOF, TOKEN_EPSILON, TOKEN_INVALID_TYPE};
+use antlr_rust::token::{OwningToken, Token, TOKEN_EOF, TOKEN_EPSILON, TOKEN_INVALID_TYPE};
 use antlr_rust::token_factory::TokenFactory;
 use antlr_rust::transition::RuleTransition;
 use antlr_rust::{ErrorStrategy, Parser};
@@ -22,7 +22,7 @@ use std::rc::Rc;
 use std::sync::atomic::{AtomicIsize, Ordering};
 use std::sync::{Arc, Mutex};
 
-use super::structs::{CompileError, CompileFile, CompileMsg, FilePreTokPos};
+use super::structs::{CompileError, CompileFile, CompileMsg, FileTokPos};
 
 #[doc(hidden)]
 const ATNSTATE_INVALID_TYPE: isize = 0;
@@ -67,7 +67,7 @@ pub trait HasEOF {
 /// Wrapper over a token, so we also store its index
 pub struct AntlrToken<T: Clone + Debug + HasEOF> {
     /// The token
-    pub data: FilePreTokPos<T>,
+    pub data: FileTokPos<T>,
     /// Error in case it is found
     /// The index of the token
     index: Arc<AtomicIsize>,
@@ -75,7 +75,7 @@ pub struct AntlrToken<T: Clone + Debug + HasEOF> {
 
 impl<T: Clone + Debug + HasEOF> AntlrToken<T> {
     /// new token with index
-    pub fn new(data: FilePreTokPos<T>, index: isize) -> Self {
+    pub fn new(data: FileTokPos<T>, index: isize) -> Self {
         Self {
             data,
             index: Arc::new(AtomicIsize::new(index)),
@@ -125,8 +125,18 @@ impl<T: Clone + Debug + HasEOF + 'static> Token for AntlrToken<T> {
         self.index.store(v, Ordering::Relaxed);
     }
 
-    fn to_owned(&self) -> antlr_rust::token::OwningToken {
-        unreachable!()
+    fn to_owned(&self) -> OwningToken {
+        OwningToken {
+            token_type: self.get_token_type(),
+            channel: self.get_channel(),
+            start: self.get_start(),
+            stop: self.get_stop(),
+            token_index: AtomicIsize::new(self.get_token_index()),
+            line: self.get_line(),
+            column: self.get_column(),
+            text: format!("{:?}", self.data.tokPos.tok),
+            read_only: false,
+        }
     }
 
     fn get_token_type(&self) -> isize {
@@ -166,7 +176,7 @@ impl<T: Clone + Debug + HasEOF + 'static> InputData for AntlrToken<T> {
     #[doc(hidden)]
     fn from_text(_: &str) -> Self::Owned {
         /*Self::new_err(
-            FilePreTokPos::new_meta((message.to_owned(), TOKEN_INVALID_TYPE)),
+            FileTokPos::new_meta((message.to_owned(), TOKEN_INVALID_TYPE)),
             -1,
         );*/
         unimplemented!();
@@ -228,16 +238,13 @@ impl<'a, U: Clone + Debug + HasEOF + 'static> TokenFactory<'a> for AntlrLexerWra
         unimplemented!();
         /*
         Box::new(AntlrToken::new_err(
-            FilePreTokPos::new_meta_c((text.unwrap().1, ttype), &text.unwrap().0.data.unwrap()),
+            FileTokPos::new_meta_c((text.unwrap().1, ttype), &text.unwrap().0.data.unwrap()),
             -1,
         ))*/
     }
 
     fn create_invalid() -> Self::Tok {
-        Box::new(AntlrToken::new(
-            FilePreTokPos::new_meta(U::getInvalid()),
-            -1,
-        ))
+        Box::new(AntlrToken::new(FileTokPos::new_meta(U::getInvalid()), -1))
     }
 
     fn get_data(data: Self::From) -> std::borrow::Cow<'static, Self::Data> {
@@ -257,7 +264,7 @@ pub struct AntlrLexerWrapper<'a, T: Clone + Debug + HasEOF> {
     /// Fake a lifetime need.
     pd: &'a PhantomData<AntlrToken<T>>,
     /// The tokens to input.
-    tokens: VecDeque<FilePreTokPos<T>>,
+    tokens: VecDeque<FileTokPos<T>>,
     /// Index of the current token.
     idx: isize,
     /// File name of the soure of tokens.
@@ -266,7 +273,7 @@ pub struct AntlrLexerWrapper<'a, T: Clone + Debug + HasEOF> {
 
 impl<'a, T: Clone + Debug + HasEOF> AntlrLexerWrapper<'a, T> {
     /// Create a new wrapper.
-    pub const fn new(tokens: VecDeque<FilePreTokPos<T>>, file: String) -> Self {
+    pub const fn new(tokens: VecDeque<FileTokPos<T>>, file: String) -> Self {
         Self {
             pd: &PhantomData,
             tokens,
@@ -284,10 +291,7 @@ impl<'a, T: Clone + Debug + HasEOF + 'static> TokenSource<'a> for AntlrLexerWrap
             self.idx += 1;
             Box::new(AntlrToken::new(tok, self.idx))
         } else {
-            Box::new(AntlrToken::new(
-                FilePreTokPos::new_meta(T::getEOF()),
-                self.idx,
-            ))
+            Box::new(AntlrToken::new(FileTokPos::new_meta(T::getEOF()), self.idx))
         }
     }
 
@@ -492,7 +496,6 @@ where
     ) -> Option<&'a Box<AntlrToken<Tok>>> {
         let next_token_type = recognizer.get_input_stream_mut().la(2);
         let expecting = self.get_expected_tokens(recognizer);
-        //        println!("expecting {}", expecting.to_token_string(recognizer.get_vocabulary()));
         if expecting.contains(next_token_type) {
             self.report_unwanted_token(recognizer);
             recognizer.consume(self);
@@ -515,7 +518,7 @@ where
         let curr = &recognizer.get_current_token().data;
 
         Box::new(AntlrToken::new(
-            FilePreTokPos::new_meta_c(Tok::getFromTType(expected_token_type), curr),
+            FileTokPos::new_meta_c(Tok::getFromTType(expected_token_type), curr),
             -1,
         ))
         // Token::to_owned(token.borrow())

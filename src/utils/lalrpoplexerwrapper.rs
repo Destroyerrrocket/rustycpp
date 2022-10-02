@@ -2,18 +2,18 @@
 use std::fmt::Debug;
 use std::sync::Arc;
 
-use super::structs::{CompileFile, FilePreTokPos};
+use super::structs::{CompileFile, FileTokPos};
 
 #[derive(Debug)]
 /// The wrapper over the token collection
 pub struct LalrPopLexerWrapper<'slice, T: Clone + Debug> {
     /// The tokens
-    tokens: &'slice [FilePreTokPos<T>],
+    tokens: &'slice [FileTokPos<T>],
 }
 
 impl<'slice, T: Clone + Debug> LalrPopLexerWrapper<'slice, T> {
     /// Create a new wrapper
-    pub const fn new(tokens: &'slice [FilePreTokPos<T>]) -> LalrPopLexerWrapper<T> {
+    pub const fn new(tokens: &'slice [FileTokPos<T>]) -> LalrPopLexerWrapper<T> {
         LalrPopLexerWrapper { tokens }
     }
 }

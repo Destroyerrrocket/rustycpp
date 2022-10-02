@@ -11,7 +11,7 @@ use crate::{
     utils::{
         filemap::FileMap,
         parameters::Parameters,
-        structs::{CompileError, CompileMsg, CompileWarning, FilePreTokPos},
+        structs::{CompileError, CompileMsg, CompileWarning, FileTokPos},
     },
 };
 
@@ -56,7 +56,7 @@ pub struct Preprocessor {
     multilexer: MultiLexer,
     /// The generated preprocessing tokens to be returned. This is a stash, as
     /// some tokens may generate more than one token.
-    generated: VecDeque<FilePreTokPos<PreToken>>,
+    generated: VecDeque<FileTokPos<PreToken>>,
     /// The generated errors be returned. This is a stash, as some tokens may
     /// generate more than one error.
     errors: VecDeque<CompileMsg>,
@@ -88,7 +88,7 @@ impl Preprocessor {
     }
 
     /// Creates a new preprocessor from the given parameters, filemap and path
-    fn undefineMacro(&mut self, preToken: FilePreTokPos<PreToken>) {
+    fn undefineMacro(&mut self, preToken: FileTokPos<PreToken>) {
         let vecPrepro = Iterator::take_while(&mut self.multilexer, |pre| {
             pre.tokPos.tok != PreToken::Newline
         });
@@ -125,7 +125,7 @@ impl Preprocessor {
     }
 
     /// Consume a #ifdef or #ifndef and return the macro name if it exists
-    fn consumeMacroDef(&mut self, _PreToken: FilePreTokPos<PreToken>) -> Option<String> {
+    fn consumeMacroDef(&mut self, _PreToken: FileTokPos<PreToken>) -> Option<String> {
         let identStr;
         loop {
             let inIdent = self.multilexer.next();
@@ -182,7 +182,7 @@ impl Preprocessor {
 
     /// Encountered a preprocessor directive. Evaluate it accordingly, alering
     /// the state of the preprocessor.
-    fn preprocessorDirective(&mut self, _PreToken: FilePreTokPos<PreToken>) {
+    fn preprocessorDirective(&mut self, _PreToken: FileTokPos<PreToken>) {
         let operation;
         let enabledBlock = matches!(self.scope.last(), Some(ScopeStatus::Success) | None);
         loop {
@@ -371,7 +371,7 @@ impl Preprocessor {
     /// Consumes a new token generated, and depending on the state of the
     /// preprocessor, does something with it. Might consume more tokens from the
     /// lexer.
-    fn consume(&mut self, newToken: FilePreTokPos<PreToken>) {
+    fn consume(&mut self, newToken: FileTokPos<PreToken>) {
         loop {
             match self.scope.last() {
                 Some(ScopeStatus::Success) | None => {
@@ -412,7 +412,7 @@ impl Preprocessor {
                                         self.generated.append(
                                             &mut toks
                                                 .into_iter()
-                                                .collect::<VecDeque<FilePreTokPos<PreToken>>>(),
+                                                .collect::<VecDeque<FileTokPos<PreToken>>>(),
                                         );
                                     }
                                     Err(err) => {
@@ -460,7 +460,7 @@ impl Preprocessor {
     }
 }
 impl Iterator for Preprocessor {
-    type Item = Result<FilePreTokPos<PreToken>, CompileMsg>;
+    type Item = Result<FileTokPos<PreToken>, CompileMsg>;
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             if let Some(err) = self.errors.pop_front() {

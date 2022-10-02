@@ -8,7 +8,7 @@ use crate::preprocessor::pretoken::PreToken;
 use crate::preprocessor::structs::ExpandData;
 use crate::utils::structs::CompileMsg;
 
-use crate::utils::structs::FilePreTokPos;
+use crate::utils::structs::FileTokPos;
 
 #[derive(Debug, Clone)]
 /// Is the macro variadic? Supports named variadics.
@@ -53,22 +53,21 @@ pub enum PreTokenDefinePreParse {
 /// Resulting AST of the macro definition. The definition will be a list of these tokens
 pub enum PreTokenDefine {
     /// Normal token
-    Normal(FilePreTokPos<PreToken>),
+    Normal(FileTokPos<PreToken>),
     /// Argument of the macro
-    Arg(FilePreTokPos<String>),
+    Arg(FileTokPos<String>),
     /// Variadic argument of the macro
-    VariadicArg(FilePreTokPos<()>),
+    VariadicArg(FileTokPos<()>),
     /// A # operator. It contains the tokens it will stringify
-    Hash(FilePreTokPos<()>, Vec<PreTokenDefine>),
+    Hash(FileTokPos<()>, Vec<PreTokenDefine>),
     /// A ## operator. It contains the tokens it will concatenate
-    HashHash(FilePreTokPos<()>, Vec<PreTokenDefine>, Vec<PreTokenDefine>),
+    HashHash(FileTokPos<()>, Vec<PreTokenDefine>, Vec<PreTokenDefine>),
     /// A __VA_OPT__ operator. It contains the tokens It will place if the variadic argument is not empty
-    VariadicOpt(FilePreTokPos<()>, Vec<PreTokenDefine>),
+    VariadicOpt(FileTokPos<()>, Vec<PreTokenDefine>),
 }
 
 #[doc(hidden)]
-type DefineExpansionFunc =
-    dyn Fn(ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg>;
+type DefineExpansionFunc = dyn Fn(ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg>;
 #[derive(Clone)]
 /// A macro definition, with all the needed data
 pub struct DefineAst {

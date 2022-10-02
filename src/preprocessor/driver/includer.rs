@@ -4,12 +4,12 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use crate::filePreTokPosMatches;
+use crate::fileTokPosMatches;
 use crate::grammars::defineast::DefineAst;
 use crate::preprocessor::prelexer::PreLexer;
 use crate::preprocessor::pretoken::PreToken;
-use crate::utils::structs::PreTokPos;
-use crate::utils::structs::{CompileError, CompileMsg, FilePreTokPos};
+use crate::utils::structs::TokPos;
+use crate::utils::structs::{CompileError, CompileMsg, FileTokPos};
 
 use multiset::HashMultiSet;
 
@@ -20,7 +20,7 @@ impl Preprocessor {
     /// Include a file in the current position of the preprocessor
     pub fn includeFile(
         &mut self,
-        preToken: &FilePreTokPos<PreToken>,
+        preToken: &FileTokPos<PreToken>,
         file: String,
     ) -> Result<(), CompileMsg> {
         if self.multilexer.hasFileAccess(&file) {
@@ -37,11 +37,11 @@ impl Preprocessor {
     /// Evaluates the #include directive. Finds a candidate and returns the file path
     pub fn consumeMacroInclude(
         &mut self,
-        preToken: &FilePreTokPos<PreToken>,
+        preToken: &FileTokPos<PreToken>,
     ) -> Result<String, CompileMsg> {
         let multilexer = &mut self.multilexer;
         let tokens = multilexer
-            .take_while(|x| !filePreTokPosMatches!(x, PreToken::Newline))
+            .take_while(|x| !fileTokPosMatches!(x, PreToken::Newline))
             .collect::<VecDeque<_>>();
         Self::tokensToValidIncludeablePath(
             &self.multilexer,
@@ -57,8 +57,8 @@ impl Preprocessor {
         lexer: &MultiLexer,
         definitions: &HashMap<String, DefineAst>,
         disabledMacros: &HashMultiSet<String>,
-        preToken: &FilePreTokPos<PreToken>,
-        tokensInclude: VecDeque<FilePreTokPos<PreToken>>,
+        preToken: &FileTokPos<PreToken>,
+        tokensInclude: VecDeque<FileTokPos<PreToken>>,
     ) -> Result<String, CompileMsg> {
         let mut path = String::new();
 
@@ -89,11 +89,11 @@ impl Preprocessor {
     }
 
     /// Is the current tokens a valid include path token? Re-lexes them if necessary
-    fn checkForInclude(mut toks: VecDeque<FilePreTokPos<PreToken>>) -> Option<String> {
+    fn checkForInclude(mut toks: VecDeque<FileTokPos<PreToken>>) -> Option<String> {
         let mut res = String::new();
 
         while toks.front().is_some_and(|x| {
-            filePreTokPosMatches!(
+            fileTokPosMatches!(
                 x,
                 PreToken::Whitespace(_)
                     | PreToken::Newline

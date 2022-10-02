@@ -5,7 +5,7 @@ use crate::preprocessor::pretoken::PreToken;
 use crate::preprocessor::Preprocessor;
 use crate::utils::filemap::FileMap;
 use crate::utils::parameters::Parameters;
-use crate::utils::structs::{CompileMsg, FilePreTokPos};
+use crate::utils::structs::{CompileMsg, FileTokPos};
 
 use test_log::test;
 
@@ -42,7 +42,7 @@ fn generateFileMap(
 fn getToksPreprocessed(files: &[(&'static str, &'static str)]) -> Vec<PreToken> {
     let prep = Preprocessor::new(generateFileMap(files));
     return prep
-        .filter_map(|x: Result<FilePreTokPos<PreToken>, CompileMsg>| {
+        .filter_map(|x: Result<FileTokPos<PreToken>, CompileMsg>| {
             x.map_or_else(
                 |err| {
                     log::error!("{}", err.to_string());

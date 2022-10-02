@@ -3,7 +3,7 @@
 use lalrpop_util::ParseError;
 
 use crate::{
-    filePreTokPosMatchArm,
+    fileTokPosMatchArm,
     grammars::{
         define,
         defineast::{DefineAst, IsVariadic, PreTokenDefine, PreTokenDefinePreParse},
@@ -12,7 +12,7 @@ use crate::{
     utils::{
         funcs::all_unique_elements,
         lalrpoplexerwrapper::LalrPopLexerWrapper,
-        structs::{CompileError, CompileMsg, CompileWarning, FilePreTokPos, PreTokPos},
+        structs::{CompileError, CompileMsg, CompileWarning, FileTokPos, TokPos},
     },
 };
 
@@ -23,7 +23,7 @@ impl Preprocessor {
     /// to aid lalrpop, and collects the resulting tokens from it.
     fn parseReplList(
         parse: &DefineAst,
-        tokens: Vec<FilePreTokPos<PreToken>>,
+        tokens: Vec<FileTokPos<PreToken>>,
     ) -> Result<Vec<PreTokenDefine>, CompileMsg> {
         let variadicStr = if let IsVariadic::True(stri) = &parse.variadic {
             stri.as_str()
@@ -31,11 +31,11 @@ impl Preprocessor {
             ""
         };
         let mut vaOptExpectParen: Vec<i32> = vec![];
-        let mut toksPre: Vec<FilePreTokPos<PreTokenDefinePreParse>> = tokens
+        let mut toksPre: Vec<FileTokPos<PreTokenDefinePreParse>> = tokens
             .into_iter()
-            .map(|tok| FilePreTokPos {
+            .map(|tok| FileTokPos {
                 file: tok.file,
-                tokPos: PreTokPos::<PreTokenDefinePreParse> {
+                tokPos: TokPos::<PreTokenDefinePreParse> {
                     start: tok.tokPos.start,
                     tok: match tok.tokPos.tok {
                         PreToken::Ident(s) => {
@@ -106,10 +106,10 @@ impl Preprocessor {
                     true
                 }
             })
-            .collect::<Vec<FilePreTokPos<PreTokenDefinePreParse>>>()
+            .collect::<Vec<FileTokPos<PreTokenDefinePreParse>>>()
             .into_iter()
             .rev()
-            .collect::<Vec<FilePreTokPos<PreTokenDefinePreParse>>>();
+            .collect::<Vec<FileTokPos<PreTokenDefinePreParse>>>();
 
         let lexer = LalrPopLexerWrapper::new(toksPre.as_slice());
         let res = define::DefineStmtParser::new().parse(lexer);
@@ -156,8 +156,8 @@ impl Preprocessor {
     /// Generate the definition info of the macro, mainly the name and the
     /// parameters. Delegates the replacement list to `parseReplList`
     fn getAstMacro(
-        initialToken: &FilePreTokPos<PreToken>,
-        tokens: Vec<FilePreTokPos<PreToken>>,
+        initialToken: &FileTokPos<PreToken>,
+        tokens: Vec<FileTokPos<PreToken>>,
     ) -> Result<DefineAst, CompileMsg> {
         let mut res = DefineAst {
             id: String::new(),
@@ -192,7 +192,7 @@ impl Preprocessor {
                 {
                     rlt = ntok
                         .skip_while(|tok| tok.tokPos.tok.isWhitespace())
-                        .collect::<Vec<FilePreTokPos<PreToken>>>();
+                        .collect::<Vec<FileTokPos<PreToken>>>();
                 }
                 PreToken::OperatorPunctuator("(") => {
                     // We have a function macro
@@ -209,7 +209,7 @@ impl Preprocessor {
                             .take_while(|x| {
                                 !matches!(x.tokPos.tok, PreToken::OperatorPunctuator(","))
                             })
-                            .collect::<Vec<FilePreTokPos<PreToken>>>();
+                            .collect::<Vec<FileTokPos<PreToken>>>();
                         let identParamTokens = paramData
                             .iter()
                             .map(|x| &x.tokPos.tok)
@@ -257,7 +257,7 @@ impl Preprocessor {
 
                     rlt = ntok
                         .skip_while(|tok| tok.tokPos.tok.isWhitespace())
-                        .collect::<Vec<FilePreTokPos<PreToken>>>();
+                        .collect::<Vec<FileTokPos<PreToken>>>();
 
                     res.param = Some(param);
                 }
@@ -272,7 +272,7 @@ impl Preprocessor {
             while rl.last().is_some_and(|tok| {
                 matches!(
                     tok,
-                    PreTokenDefine::Normal(filePreTokPosMatchArm!(PreToken::Whitespace(_)))
+                    PreTokenDefine::Normal(fileTokPosMatchArm!(PreToken::Whitespace(_)))
                 )
             }) {
                 rl.pop();
@@ -306,8 +306,8 @@ impl Preprocessor {
     /// Parse a macro definition and add it to the list of definitions.
     fn defineMacroImpl(
         &mut self,
-        vecPrepro: Vec<FilePreTokPos<PreToken>>,
-        preToken: &FilePreTokPos<PreToken>,
+        vecPrepro: Vec<FileTokPos<PreToken>>,
+        preToken: &FileTokPos<PreToken>,
     ) -> Result<(), CompileMsg> {
         let def = {
             match Self::getAstMacro(preToken, vecPrepro) {
@@ -331,11 +331,11 @@ impl Preprocessor {
     }
 
     /// Parse a macro definition and add it to the list of definitions
-    pub fn defineMacro(&mut self, preToken: FilePreTokPos<PreToken>) {
+    pub fn defineMacro(&mut self, preToken: FileTokPos<PreToken>) {
         let vecPrepro = Iterator::take_while(&mut self.multilexer, |pre| {
             pre.tokPos.tok != PreToken::Newline
         })
-        .collect::<Vec<FilePreTokPos<PreToken>>>();
+        .collect::<Vec<FileTokPos<PreToken>>>();
         {
             let res = self.defineMacroImpl(vecPrepro, &preToken);
             if let Err(err) = res {

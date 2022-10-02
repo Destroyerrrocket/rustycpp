@@ -1,7 +1,7 @@
 //! Prelexer. Tokenizes very laxly.
 use lazy_regex::{regex_captures, regex_find};
 
-use crate::utils::structs::PreTokPos;
+use crate::utils::structs::TokPos;
 use logos::Logos;
 
 use super::pretoken::{PreToken, PreTokenLexer, WhiteCom};
@@ -151,8 +151,8 @@ impl PreLexer {
         return (kind, idx, splices);
     }
 
-    fn doNext(&mut self) -> Option<PreTokPos<PreToken>> {
-        let mut res: Option<PreTokPos<PreToken>> = None;
+    fn doNext(&mut self) -> Option<TokPos<PreToken>> {
+        let mut res: Option<TokPos<PreToken>> = None;
         let (kind, mut idx, splices) = self.getNextTokenData();
 
         if let Some(mut kind) = kind {
@@ -186,7 +186,7 @@ impl PreLexer {
             if originalString.ends_with("\\\n") {
                 originalString = &self.currentNonSpliced[0..idx + splices * 2 - 2];
             }
-            res = Some(PreTokPos {
+            res = Some(TokPos {
                 tok: kind,
                 start: self.diff,
                 end: self.diff + originalString.len(),
@@ -200,7 +200,7 @@ impl PreLexer {
     }
 }
 impl Iterator for PreLexer {
-    type Item = PreTokPos<PreToken>;
+    type Item = TokPos<PreToken>;
     fn next(&mut self) -> Option<Self::Item> {
         let res = self.doNext();
         if res.is_some_and(|x| matches!(x.tok, PreToken::Newline)) {
@@ -213,7 +213,7 @@ impl Iterator for PreLexer {
         }
         if !self.lastNl {
             self.lastNl = true;
-            return Some(PreTokPos {
+            return Some(TokPos {
                 start: self.diff,
                 tok: PreToken::Newline,
                 end: self.diff + 1,

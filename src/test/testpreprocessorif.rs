@@ -81,6 +81,7 @@ fn checkForBorkenEvalOfIfClause(string: &'static str) {
     let info = &[("test", string.to_string() + "\nSUCCESS\n#endif")];
     let tokens = getToksPreprocessedNoWs(info);
     let res = tokens.iter().any(Result::is_err);
+    log::debug!("Tokens: {:?}", tokens);
     assert!(res, "The expression does not yield an error");
 }
 
@@ -218,6 +219,24 @@ fn checkBrokenParen() {
     checkForBorkenEvalOfIfClause(
         r##"
 #if (1+1
+"##,
+    );
+}
+
+#[test]
+fn checkBrokenOp() {
+    checkForBorkenEvalOfIfClause(
+        r##"
+#if 1+
+"##,
+    );
+}
+
+#[test]
+fn checkValidOp() {
+    checkForCorrectEvalOfIfClause(
+        r##"
+#if -1
 "##,
     );
 }

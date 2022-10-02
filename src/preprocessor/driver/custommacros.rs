@@ -8,7 +8,7 @@ use std::sync::Mutex;
 
 use crate::grammars::defineast::{DefineAst, IsVariadic};
 use crate::preprocessor::pretoken::PreToken;
-use crate::utils::structs::{CompileMsg, FilePreTokPos};
+use crate::utils::structs::{CompileMsg, FileTokPos};
 
 use chrono::Local;
 use lazy_static::lazy_static;
@@ -21,7 +21,7 @@ trait CustomMacro {
     /// Macro information
     fn macroInfo() -> DefineAst;
     /// Expand function
-    fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg>;
+    fn expand(expandData: ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg>;
 }
 
 /// Trait of a custom macro
@@ -40,18 +40,18 @@ macro_rules! declCMVar {
             }
             fn expand(
                 expandData: ExpandData,
-            ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+            ) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
                 let expanded = $expand;
                 let mut res = VecDeque::new();
-                res.push_back(FilePreTokPos::new_meta_c(
+                res.push_back(FileTokPos::new_meta_c(
                     PreToken::DisableMacro(stringify!($x).to_string()),
                     &expandData.newToken,
                 ));
-                res.push_back(FilePreTokPos::new_meta_c(
+                res.push_back(FileTokPos::new_meta_c(
                     PreToken::RawStringLiteral((expanded)(&expandData).to_string()),
                     &expandData.newToken,
                 ));
-                res.push_back(FilePreTokPos::new_meta_c(
+                res.push_back(FileTokPos::new_meta_c(
                     PreToken::EnableMacro(stringify!($x).to_string()),
                     &expandData.newToken,
                 ));
@@ -81,18 +81,18 @@ impl CustomMacro for __cplusplus {
         }
     }
 
-    fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+    fn expand(expandData: ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         let mut res = VecDeque::new();
-        res.push_back(FilePreTokPos::new_meta_c(
+        res.push_back(FileTokPos::new_meta_c(
             PreToken::DisableMacro(stringify!(__cplusplus).to_string()),
             expandData.newToken,
         ));
 
-        res.push_back(FilePreTokPos::new_meta_c(
+        res.push_back(FileTokPos::new_meta_c(
             PreToken::PPNumber("202002L".to_owned()),
             expandData.newToken,
         ));
-        res.push_back(FilePreTokPos::new_meta_c(
+        res.push_back(FileTokPos::new_meta_c(
             PreToken::EnableMacro(stringify!(__cplusplus).to_string()),
             expandData.newToken,
         ));
@@ -114,9 +114,9 @@ impl CustomMacro for __has_include {
         }
     }
 
-    fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+    fn expand(expandData: ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         let mut res = VecDeque::new();
-        res.push_back(FilePreTokPos::new_meta_c(
+        res.push_back(FileTokPos::new_meta_c(
             PreToken::DisableMacro(stringify!(__has_include).to_string()),
             expandData.newToken,
         ));
@@ -127,7 +127,7 @@ impl CustomMacro for __has_include {
                 tokensPath.push_back(v.clone());
             }
             if posVariadic + 1 != expandData.variadic.len() {
-                tokensPath.push_back(FilePreTokPos::new_meta_c(
+                tokensPath.push_back(FileTokPos::new_meta_c(
                     PreToken::OperatorPunctuator(","),
                     expandData.newToken,
                 ));
@@ -142,7 +142,7 @@ impl CustomMacro for __has_include {
             tokensPath,
         )?;
 
-        res.push_back(FilePreTokPos::new_meta_c(
+        res.push_back(FileTokPos::new_meta_c(
             PreToken::PPNumber(if expandData.lexer.hasFileAccess(&path) {
                 "1".to_owned()
             } else {
@@ -150,7 +150,7 @@ impl CustomMacro for __has_include {
             }),
             expandData.newToken,
         ));
-        res.push_back(FilePreTokPos::new_meta_c(
+        res.push_back(FileTokPos::new_meta_c(
             PreToken::EnableMacro(stringify!(__has_include).to_string()),
             expandData.newToken,
         ));
@@ -172,18 +172,18 @@ impl CustomMacro for __has_cpp_attribute {
         }
     }
 
-    fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+    fn expand(expandData: ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         let mut res = VecDeque::new();
-        res.push_back(FilePreTokPos::new_meta_c(
+        res.push_back(FileTokPos::new_meta_c(
             PreToken::DisableMacro(stringify!(__has_include).to_string()),
             expandData.newToken,
         ));
 
-        res.push_back(FilePreTokPos::new_meta_c(
+        res.push_back(FileTokPos::new_meta_c(
             PreToken::PPNumber("0".to_owned()),
             expandData.newToken,
         ));
-        res.push_back(FilePreTokPos::new_meta_c(
+        res.push_back(FileTokPos::new_meta_c(
             PreToken::EnableMacro(stringify!(__has_include).to_string()),
             expandData.newToken,
         ));

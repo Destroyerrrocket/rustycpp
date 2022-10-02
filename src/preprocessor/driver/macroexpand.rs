@@ -4,19 +4,19 @@ use std::collections::{HashMap, VecDeque};
 use multiset::HashMultiSet;
 
 use crate::{
-    filePreTokPosMatchArm, filePreTokPosMatches,
+    fileTokPosMatchArm, fileTokPosMatches,
     grammars::defineast::{DefineAst, IsVariadic, PreTokenDefine},
     preprocessor::{
         multilexer::MultiLexer, prelexer::PreLexer, pretoken::PreToken, structs::ExpandData,
     },
-    utils::structs::{CompileError, CompileMsg, FilePreTokPos, PreTokPos},
+    utils::structs::{CompileError, CompileMsg, FileTokPos, TokPos},
 };
 
 use super::Preprocessor;
 
 impl Preprocessor {
     /// Is there a meta token?
-    fn anyNonMetaToken(toks: &VecDeque<FilePreTokPos<PreToken>>) -> bool {
+    fn anyNonMetaToken(toks: &VecDeque<FileTokPos<PreToken>>) -> bool {
         for tok in toks {
             if !matches!(
                 tok.tokPos.tok,
@@ -33,20 +33,20 @@ impl Preprocessor {
         mut selfContainedLexer: MultiLexer,
         macros: &HashMap<String, DefineAst>,
         disabledMacros: &HashMultiSet<String>,
-    ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+    ) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         let mut paramDisabledMacros = disabledMacros.clone();
         let mut preproTokie = VecDeque::new();
         while let Some(tok) = selfContainedLexer.next() {
             match &tok {
-                filePreTokPosMatchArm!(PreToken::EnableMacro(nameMacro)) => {
+                fileTokPosMatchArm!(PreToken::EnableMacro(nameMacro)) => {
                     paramDisabledMacros.remove(nameMacro);
                     preproTokie.push_back(tok.clone());
                 }
-                filePreTokPosMatchArm!(PreToken::DisableMacro(nameMacro)) => {
+                fileTokPosMatchArm!(PreToken::DisableMacro(nameMacro)) => {
                     paramDisabledMacros.insert(nameMacro.clone());
                     preproTokie.push_back(tok.clone());
                 }
-                filePreTokPosMatchArm!(PreToken::Ident(_)) => {
+                fileTokPosMatchArm!(PreToken::Ident(_)) => {
                     let toks = Self::macroExpandInternal(
                         macros,
                         &paramDisabledMacros,
@@ -65,19 +65,19 @@ impl Preprocessor {
 
     /// Expand a [`PreTokenDefine::Normal`]
     fn expandNormal(
-        mut result: VecDeque<FilePreTokPos<PreToken>>,
-        t: &FilePreTokPos<PreToken>,
-    ) -> VecDeque<FilePreTokPos<PreToken>> {
+        mut result: VecDeque<FileTokPos<PreToken>>,
+        t: &FileTokPos<PreToken>,
+    ) -> VecDeque<FileTokPos<PreToken>> {
         result.push_back(t.clone());
         return result;
     }
 
     /// Expand a [`PreTokenDefine::Arg`]
     fn expandArg(
-        mut result: VecDeque<FilePreTokPos<PreToken>>,
+        mut result: VecDeque<FileTokPos<PreToken>>,
         expandData: ExpandData,
-        a: &FilePreTokPos<String>,
-    ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+        a: &FileTokPos<String>,
+    ) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         if expandData.expandArg {
             let mut paramLexer = MultiLexer::new_def(expandData.lexer.fileMapping());
             paramLexer.pushTokensVec(expandData.namedArgs.get(&a.tokPos.tok).unwrap().clone());
@@ -90,7 +90,7 @@ impl Preprocessor {
                 "EXPANDED INTO: {:?}",
                 preproTokie
                     .iter()
-                    .map(FilePreTokPos::tokStringDebug)
+                    .map(FileTokPos::tokStringDebug)
                     .collect::<Vec<_>>()
             );
 
@@ -99,13 +99,12 @@ impl Preprocessor {
                 let mut metas = VecDeque::new();
                 while moded {
                     moded = false;
-                    if let Some(filePreTokPosMatchArm!(PreToken::Whitespace(_))) =
-                        preproTokie.front()
+                    if let Some(fileTokPosMatchArm!(PreToken::Whitespace(_))) = preproTokie.front()
                     {
                         moded = true;
                         preproTokie.pop_front();
                     } else if let Some(
-                        filePreTokPosMatchArm!(
+                        fileTokPosMatchArm!(
                             PreToken::ValidNop
                                 | PreToken::EnableMacro(_)
                                 | PreToken::DisableMacro(_)
@@ -122,7 +121,7 @@ impl Preprocessor {
             }
 
             if preproTokie.is_empty() {
-                preproTokie.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, a));
+                preproTokie.push_back(FileTokPos::new_meta_c(PreToken::ValidNop, a));
             }
             result.append(&mut preproTokie);
         } else {
@@ -134,7 +133,7 @@ impl Preprocessor {
                 .into_iter()
                 .collect_into(&mut result);
             if expandData.namedArgs.get(&a.tokPos.tok).unwrap().is_empty() {
-                FilePreTokPos::new_meta_c(PreToken::ValidNop, a);
+                FileTokPos::new_meta_c(PreToken::ValidNop, a);
             }
         }
         return Ok(result);
@@ -142,10 +141,10 @@ impl Preprocessor {
 
     /// Expand a [`PreTokenDefine::VariadicArg`]
     fn expandVariadicArg(
-        mut result: VecDeque<FilePreTokPos<PreToken>>,
+        mut result: VecDeque<FileTokPos<PreToken>>,
         expandData: ExpandData,
-        vaTok: &FilePreTokPos<()>,
-    ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+        vaTok: &FileTokPos<()>,
+    ) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         if expandData.expandArg {
             let mut tempResult = VecDeque::new();
             for posVariadic in 0..expandData.variadic.len() {
@@ -159,20 +158,20 @@ impl Preprocessor {
                 tempResult.append(&mut preproTokie);
 
                 if posVariadic + 1 != expandData.variadic.len() {
-                    tempResult.push_back(FilePreTokPos::new_meta_c(
+                    tempResult.push_back(FileTokPos::new_meta_c(
                         PreToken::OperatorPunctuator(","),
                         vaTok,
                     ));
                 }
             }
-            while let Some(filePreTokPosMatchArm!(PreToken::Whitespace(_))) = tempResult.front() {
+            while let Some(fileTokPosMatchArm!(PreToken::Whitespace(_))) = tempResult.front() {
                 tempResult.pop_front();
             }
-            while let Some(filePreTokPosMatchArm!(PreToken::Whitespace(_))) = tempResult.back() {
+            while let Some(fileTokPosMatchArm!(PreToken::Whitespace(_))) = tempResult.back() {
                 tempResult.pop_back();
             }
             if tempResult.is_empty() {
-                tempResult.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, vaTok));
+                tempResult.push_back(FileTokPos::new_meta_c(PreToken::ValidNop, vaTok));
             }
             result.append(&mut tempResult);
         } else {
@@ -181,14 +180,14 @@ impl Preprocessor {
                     result.push_back(v.clone());
                 }
                 if posVariadic + 1 != expandData.variadic.len() {
-                    result.push_back(FilePreTokPos::new_meta_c(
+                    result.push_back(FileTokPos::new_meta_c(
                         PreToken::OperatorPunctuator(","),
                         vaTok,
                     ));
                 }
             }
             if expandData.variadic.is_empty() {
-                result.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, vaTok));
+                result.push_back(FileTokPos::new_meta_c(PreToken::ValidNop, vaTok));
             }
         }
         return Ok(result);
@@ -196,11 +195,11 @@ impl Preprocessor {
 
     /// Expand a [`PreTokenDefine::Hash`]
     fn expandHash(
-        mut result: VecDeque<FilePreTokPos<PreToken>>,
+        mut result: VecDeque<FileTokPos<PreToken>>,
         expandData: ExpandData,
-        pos: &FilePreTokPos<()>,
+        pos: &FileTokPos<()>,
         tokie: &Vec<PreTokenDefine>,
-    ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+    ) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         let mut resChild = Self::expand(ExpandData {
             definitions: expandData.definitions,
             disabledMacros: expandData.disabledMacros,
@@ -220,7 +219,7 @@ impl Preprocessor {
             let mut lastTokenWasWhitespace = false;
             for el in &resChild {
                 match el {
-                    filePreTokPosMatchArm!(
+                    fileTokPosMatchArm!(
                         PreToken::StringLiteral(_)
                             | PreToken::UdStringLiteral(_)
                             | PreToken::CharLiteral(_)
@@ -236,7 +235,7 @@ impl Preprocessor {
                         );
                         lastTokenWasWhitespace = false;
                     }
-                    filePreTokPosMatchArm!(PreToken::Newline | PreToken::Whitespace(_)) => {
+                    fileTokPosMatchArm!(PreToken::Newline | PreToken::Whitespace(_)) => {
                         if lastTokenWasWhitespace {
                             continue;
                         }
@@ -255,7 +254,7 @@ impl Preprocessor {
         text.insert(0, '"');
         text.push('"');
 
-        result.push_back(FilePreTokPos::new_meta_c(
+        result.push_back(FileTokPos::new_meta_c(
             PreToken::RawStringLiteral(text),
             pos,
         ));
@@ -264,16 +263,16 @@ impl Preprocessor {
 
     /// Expand a [`PreTokenDefine::HashHash`]
     fn expandHashHash(
-        mut result: VecDeque<FilePreTokPos<PreToken>>,
+        mut result: VecDeque<FileTokPos<PreToken>>,
         expandData: ExpandData,
-        pos: &FilePreTokPos<()>,
+        pos: &FileTokPos<()>,
         left: &Vec<PreTokenDefine>,
         right: &Vec<PreTokenDefine>,
-    ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+    ) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         // We support the GNU extension  ",##__VA_ARGS__
         if matches!(
             left.first().unwrap(),
-            PreTokenDefine::Normal(filePreTokPosMatchArm!(PreToken::OperatorPunctuator(",")))
+            PreTokenDefine::Normal(fileTokPosMatchArm!(PreToken::OperatorPunctuator(",")))
         ) && matches!(right.first().unwrap(), PreTokenDefine::VariadicArg(_))
         {
             let mut expR = Self::expand(ExpandData {
@@ -292,7 +291,7 @@ impl Preprocessor {
             expR.pop_front();
 
             if !Self::anyNonMetaToken(&expR) {
-                result.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, pos));
+                result.push_back(FileTokPos::new_meta_c(PreToken::ValidNop, pos));
                 return Ok(result);
             }
 
@@ -331,10 +330,10 @@ impl Preprocessor {
             log::trace!(
                 "L: {:?}\nR: {:?}",
                 expL.iter()
-                    .map(FilePreTokPos::tokStringDebug)
+                    .map(FileTokPos::tokStringDebug)
                     .collect::<Vec<_>>(),
                 expR.iter()
-                    .map(FilePreTokPos::tokStringDebug)
+                    .map(FileTokPos::tokStringDebug)
                     .collect::<Vec<_>>(),
             );
 
@@ -350,11 +349,11 @@ impl Preprocessor {
                 let mut receivedTok = PreLexer::new(expectedStr.clone()).collect::<Vec<_>>();
                 receivedTok.pop();
                 for x in receivedTok {
-                    result.push_back(FilePreTokPos::new_meta_c(x.tok, pos));
+                    result.push_back(FileTokPos::new_meta_c(x.tok, pos));
                 }
             } else {
                 // Both sides are empty. We add a ValidNop token
-                result.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, pos));
+                result.push_back(FileTokPos::new_meta_c(PreToken::ValidNop, pos));
             }
         }
         return Ok(result);
@@ -362,11 +361,11 @@ impl Preprocessor {
 
     /// Expand a [`PreTokenDefine::VariadicOpt`]
     fn expandVariadicOpt(
-        mut result: VecDeque<FilePreTokPos<PreToken>>,
+        mut result: VecDeque<FileTokPos<PreToken>>,
         expandData: ExpandData,
-        pos: &FilePreTokPos<()>,
+        pos: &FileTokPos<()>,
         tokies: &Vec<PreTokenDefine>,
-    ) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+    ) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         let vaOptEnabled = Self::expand(ExpandData {
             definitions: expandData.definitions,
             disabledMacros: expandData.disabledMacros,
@@ -380,7 +379,7 @@ impl Preprocessor {
         })
         .is_ok_and(|x| {
             x.iter().any(|x| -> bool {
-                !filePreTokPosMatches!(
+                !fileTokPosMatches!(
                     x,
                     PreToken::Whitespace(_)
                         | PreToken::Newline
@@ -409,18 +408,18 @@ impl Preprocessor {
                 result.append(
                     &mut res
                         .into_iter()
-                        .filter(|x| !filePreTokPosMatches!(x, PreToken::ValidNop))
+                        .filter(|x| !fileTokPosMatches!(x, PreToken::ValidNop))
                         .collect(),
                 );
             } else {
-                result.push_back(FilePreTokPos::new_meta_c(PreToken::ValidNop, pos));
+                result.push_back(FileTokPos::new_meta_c(PreToken::ValidNop, pos));
             }
         }
         return Ok(result);
     }
 
     /// Expand the given macro, with the necessary invocation data
-    pub fn expand(expandData: ExpandData) -> Result<VecDeque<FilePreTokPos<PreToken>>, CompileMsg> {
+    pub fn expand(expandData: ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         let mut result = VecDeque::new();
         for tok in expandData.replacement {
             match tok {
@@ -444,10 +443,10 @@ impl Preprocessor {
                 }
             }
         }
-        result.push_front(FilePreTokPos::new_meta(PreToken::DisableMacro(
+        result.push_front(FileTokPos::new_meta(PreToken::DisableMacro(
             expandData.astId.clone(),
         )));
-        result.push_back(FilePreTokPos::new_meta(PreToken::EnableMacro(
+        result.push_back(FileTokPos::new_meta(PreToken::EnableMacro(
             expandData.astId.clone(),
         )));
         return Ok(result);
@@ -456,14 +455,14 @@ impl Preprocessor {
 
 #[doc(hidden)]
 struct ParamMapResult {
-    namedParameters: HashMap<String, Vec<FilePreTokPos<PreToken>>>,
-    varadicParameters: Vec<Vec<FilePreTokPos<PreToken>>>,
+    namedParameters: HashMap<String, Vec<FileTokPos<PreToken>>>,
+    varadicParameters: Vec<Vec<FileTokPos<PreToken>>>,
 }
 
 impl Preprocessor {
     /// Parse the parameters of a macro invocation
     fn generateParamMap(
-        mut paramRes: Vec<Vec<FilePreTokPos<PreToken>>>,
+        mut paramRes: Vec<Vec<FileTokPos<PreToken>>>,
         params: &Vec<String>,
     ) -> ParamMapResult {
         let mut named = HashMap::new();
@@ -480,7 +479,7 @@ impl Preprocessor {
     fn hasMatchingClosingParen(lexer: &mut MultiLexer) -> bool {
         let mut openParens: usize = 0;
 
-        let mut tokies: Vec<FilePreTokPos<PreToken>> = vec![];
+        let mut tokies: Vec<FileTokPos<PreToken>> = vec![];
 
         loop {
             let tok = lexer.next();
@@ -489,16 +488,16 @@ impl Preprocessor {
                     lexer.pushTokensVec(tokies);
                     return false;
                 }
-                (0, Some(filePreTokPosMatchArm!(PreToken::OperatorPunctuator(")")))) => {
+                (0, Some(fileTokPosMatchArm!(PreToken::OperatorPunctuator(")")))) => {
                     tokies.push(tok.unwrap());
                     lexer.pushTokensVec(tokies);
                     return true;
                 }
-                (_, Some(filePreTokPosMatchArm!(PreToken::OperatorPunctuator(")")))) => {
+                (_, Some(fileTokPosMatchArm!(PreToken::OperatorPunctuator(")")))) => {
                     tokies.push(tok.unwrap());
                     openParens -= 1;
                 }
-                (_, Some(filePreTokPosMatchArm!(PreToken::OperatorPunctuator("(")))) => {
+                (_, Some(fileTokPosMatchArm!(PreToken::OperatorPunctuator("(")))) => {
                     tokies.push(tok.unwrap());
                     openParens += 1;
                 }
@@ -514,11 +513,11 @@ impl Preprocessor {
         lexer: &mut MultiLexer,
         min: usize,
         max: usize,
-        openParen: FilePreTokPos<PreToken>,
-    ) -> Result<Vec<Vec<FilePreTokPos<PreToken>>>, CompileMsg> {
+        openParen: FileTokPos<PreToken>,
+    ) -> Result<Vec<Vec<FileTokPos<PreToken>>>, CompileMsg> {
         let mut openParens: usize = 0;
 
-        let mut tokies: Vec<Vec<FilePreTokPos<PreToken>>> = vec![vec![]];
+        let mut tokies: Vec<Vec<FileTokPos<PreToken>>> = vec![vec![]];
 
         let closeParen = loop {
             let tok = lexer.next();
@@ -529,21 +528,21 @@ impl Preprocessor {
                         &openParen,
                     ));
                 }
-                (0, Some(filePreTokPosMatchArm!(PreToken::OperatorPunctuator(",")))) => {
+                (0, Some(fileTokPosMatchArm!(PreToken::OperatorPunctuator(",")))) => {
                     tokies.push(vec![]);
                 }
-                (0, Some(filePreTokPosMatchArm!(PreToken::OperatorPunctuator(")")))) => {
+                (0, Some(fileTokPosMatchArm!(PreToken::OperatorPunctuator(")")))) => {
                     break tok.unwrap();
                 }
-                (_, Some(filePreTokPosMatchArm!(PreToken::OperatorPunctuator(")")))) => {
+                (_, Some(fileTokPosMatchArm!(PreToken::OperatorPunctuator(")")))) => {
                     tokies.last_mut().unwrap().push(tok.unwrap());
                     openParens -= 1;
                 }
-                (_, Some(filePreTokPosMatchArm!(PreToken::OperatorPunctuator("(")))) => {
+                (_, Some(fileTokPosMatchArm!(PreToken::OperatorPunctuator("(")))) => {
                     tokies.last_mut().unwrap().push(tok.unwrap());
                     openParens += 1;
                 }
-                (_, Some(filePreTokPosMatchArm!(PreToken::Whitespace(_) | PreToken::Newline))) => {
+                (_, Some(fileTokPosMatchArm!(PreToken::Whitespace(_) | PreToken::Newline))) => {
                     let tokie = tokies.last_mut().unwrap();
                     tokie.push(tok.unwrap());
                 }
@@ -556,7 +555,7 @@ impl Preprocessor {
         for tokie in &mut tokies {
             while tokie
                 .last()
-                .is_some_and(|x| filePreTokPosMatches!(x, PreToken::Whitespace(_)))
+                .is_some_and(|x| fileTokPosMatches!(x, PreToken::Whitespace(_)))
             {
                 tokie.pop();
             }
@@ -595,8 +594,8 @@ impl Preprocessor {
         definitions: &HashMap<String, DefineAst>,
         disabledMacros: &HashMultiSet<String>,
         lexer: &mut MultiLexer,
-        newToken: FilePreTokPos<PreToken>,
-    ) -> Result<Vec<FilePreTokPos<PreToken>>, CompileMsg> {
+        newToken: FileTokPos<PreToken>,
+    ) -> Result<Vec<FileTokPos<PreToken>>, CompileMsg> {
         if !disabledMacros.contains(newToken.tokPos.tok.to_str()) {
             if let Some(macroAst) = definitions.get(newToken.tokPos.tok.to_str()) {
                 if let Some(params) = &macroAst.param {
@@ -669,7 +668,7 @@ impl Preprocessor {
                         residual
                             .into_iter()
                             .filter(|x| {
-                                filePreTokPosMatches!(
+                                fileTokPosMatches!(
                                     x,
                                     PreToken::EnableMacro(_) | PreToken::DisableMacro(_)
                                 )
@@ -711,8 +710,8 @@ impl Preprocessor {
     /// re-examined. This is done to allow for "infinite" macro evaluation.
     pub fn macroExpand(
         &mut self,
-        newToken: FilePreTokPos<PreToken>,
-    ) -> Result<Vec<FilePreTokPos<PreToken>>, CompileMsg> {
+        newToken: FileTokPos<PreToken>,
+    ) -> Result<Vec<FileTokPos<PreToken>>, CompileMsg> {
         Self::macroExpandInternal(
             &self.definitions,
             &self.disabledMacros,
