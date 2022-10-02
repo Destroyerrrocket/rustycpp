@@ -212,3 +212,12 @@ fn checkHasInclude() {
 "##,
     );
 }
+
+#[test]
+fn checkBrokenParen() {
+    checkForBorkenEvalOfIfClause(
+        r##"
+#if (1+1
+"##,
+    );
+}

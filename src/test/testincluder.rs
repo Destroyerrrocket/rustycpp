@@ -117,3 +117,18 @@ fn testHeaderOpeningMacro() {
     assert_eq!(toks.len(), 1);
     assert_eq!(toks[0].to_str(), "SUCCESS");
 }
+
+#[test]
+fn testHeaderOpeningTwice() {
+    let toks = getToksPreprocessedNoWs(&[(
+        "test",
+        r#"
+#include <header.h>
+#include <header.h>
+"#,
+    )]);
+    println!("{:?}", toks);
+    assert_eq!(toks.len(), 2);
+    assert_eq!(toks[0].to_str(), "SUCCESS");
+    assert_eq!(toks[1].to_str(), "SUCCESS");
+}

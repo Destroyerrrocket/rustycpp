@@ -1,9 +1,7 @@
 //! A varitety of structs used throughout the compiler.
 use std::fmt::Debug;
-use std::ops::{Index, Range, RangeFrom};
 use std::sync::Arc;
 
-use antlr_rust::char_stream::InputData;
 use colored::Colorize;
 
 #[derive(Debug, Default)]
@@ -245,50 +243,6 @@ impl<T: Clone + Debug> FilePreTokPos<T> {
     /// Token to string. Use the debug impl
     pub fn tokStringDebug(&self) -> String {
         self.tokPos.tokStringDebug()
-    }
-}
-
-impl<T: Clone + Debug + 'static> InputData for FilePreTokPos<T> {
-    // fn to_indexed_vec(&self) -> Vec<(u32, u32)>;
-
-    #[doc(hidden)]
-    fn offset(&self, _: isize, _: isize) -> Option<isize> {
-        unimplemented!();
-    }
-
-    #[doc(hidden)]
-    fn item(&self, _: isize) -> Option<isize> {
-        unimplemented!();
-    }
-
-    #[doc(hidden)]
-    fn len(&self) -> usize {
-        unimplemented!();
-    }
-
-    #[doc(hidden)]
-    fn from_text(_: &str) -> Self::Owned {
-        unimplemented!();
-    }
-
-    #[doc(hidden)]
-    fn to_display(&self) -> String {
-        unimplemented!();
-    }
-}
-
-impl<T: Clone + Debug> Index<Range<usize>> for FilePreTokPos<T> {
-    type Output = Self;
-
-    fn index(&self, _: Range<usize>) -> &Self::Output {
-        unimplemented!();
-    }
-}
-impl<T: Clone + Debug> Index<RangeFrom<usize>> for FilePreTokPos<T> {
-    type Output = Self;
-
-    fn index(&self, _: RangeFrom<usize>) -> &Self::Output {
-        unimplemented!();
     }
 }
 

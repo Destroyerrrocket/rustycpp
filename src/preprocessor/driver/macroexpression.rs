@@ -1,11 +1,13 @@
 //! Macro constant integer expression evaluation
 use std::collections::VecDeque;
+use std::rc::Rc;
+use std::sync::Mutex;
 
-use crate::grammars::generated::macrointconstantexpressionastparser;
+use crate::grammars::generated::macrointconstantexpressionastparser::macrointconstantexpressionast;
 use crate::grammars::macrointconstantexpressionast::{PreTokenIf, VisitorEvaluator};
 use crate::preprocessor::multilexer::MultiLexer;
 use crate::preprocessor::pretoken::PreToken;
-use crate::utils::antlrlexerwrapper::AntlrLexerWrapper;
+use crate::utils::antlrlexerwrapper::{AntlrLexerWrapper, LexerWrapperErrorStrategy};
 use crate::utils::structs::{CompileError, CompileMsg, FilePreTokPos, PreTokPos};
 use crate::{filePreTokPosMatchArm, filePreTokPosMatches};
 use antlr_rust::common_token_stream::CommonTokenStream;
@@ -344,9 +346,21 @@ impl Preprocessor {
             numSequence,
             token.file.path().clone(),
         ));
-        let mut basicParser =
-            macrointconstantexpressionastparser::macrointconstantexpressionast::new(tokenStream);
+
+        let errors = Rc::new(Mutex::new(vec![]));
+
+        let mut basicParser = macrointconstantexpressionast::with_strategy(
+            tokenStream,
+            LexerWrapperErrorStrategy::new(errors.clone(), token.file.clone()),
+        );
+
         let tree = basicParser.exprRes().unwrap();
+
+        let errors = errors.lock().unwrap();
+        if !errors.is_empty() {
+            return Err(errors.clone());
+        }
+
         let mut visitor = VisitorEvaluator::new();
         visitor.visit_start(&tree);
         return Ok(visitor.res() != 0);
