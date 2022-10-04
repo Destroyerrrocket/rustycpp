@@ -78,11 +78,20 @@ impl PreLexer {
                         if let Some(position) =
                             self.current.find((")".to_owned() + key + "\"").as_str())
                         {
+                            let additionalChars = if let Some(res) = regex_find!(
+                                r#"^(?:[\\w_][\\w\\d_]*)"#,
+                                &self.current[..position + key.len() + 2]
+                            ) {
+                                2 + res.len()
+                            } else {
+                                2
+                            };
                             return (
                                 Some(PreToken::RawStringLiteral(
-                                    self.current[0..position + key.len() + 2].to_string(),
+                                    self.current[0..position + key.len() + additionalChars]
+                                        .to_string(),
                                 )),
-                                position + key.len() + 2,
+                                position + key.len() + additionalChars,
                             );
                         }
                     }

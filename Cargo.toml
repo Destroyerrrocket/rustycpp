@@ -27,3 +27,4 @@ multiset = "0.0.5"
 chrono = "0.4"
 antlr-rust = {version = "0.3.0-beta"}
 json = "0.12.4"
+f128 = "0.2.9"

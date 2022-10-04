@@ -38,6 +38,7 @@
 
 mod compiler;
 mod grammars;
+mod lexer;
 mod preprocessor;
 mod test;
 mod utils;
