@@ -1,7 +1,9 @@
 # C++20 preprocessor of C++ written in Rust
 
-## Currently, a custom build of lalrpop is needed. I'll find a proper solution to this, or replace it with antlr, which is now supported.
+### Please use `git clone --recurse-submodules https://github.com/Destroyerrrocket/rustycpp.git` to clone the necessary submodules
+Unfortunately a custom build of lalrpop is needed.
 
+### Description
 Module dependency tree generation is done!
 
 This is a very simple and most certainly wrong preprocessor for C++. This was not done with any major intents, it was simply to test Rust and its capabilities (I find learning by doing a lot more useful than just following tutorials).

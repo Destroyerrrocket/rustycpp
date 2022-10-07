@@ -1,6 +1,7 @@
 extern crate lalrpop;
 
 use std::env;
+use std::env::current_dir;
 use std::fs;
 use std::fs::File;
 use std::io::Error;
@@ -9,7 +10,14 @@ use std::path::Path;
 use std::process::Command;
 
 fn main() {
-    lalrpop::process_root().unwrap();
+    lalrpop::Configuration::new()
+        .process_dir(
+            (*current_dir().unwrap().as_path())
+                .join("src")
+                .to_str()
+                .unwrap(),
+        )
+        .unwrap();
 
     let grammars = vec!["macrointconstantexpressionast"];
     let additional_args = vec![&["-visitor"][..]];

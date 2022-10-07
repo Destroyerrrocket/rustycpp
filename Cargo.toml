@@ -10,7 +10,7 @@ categories = ["compilers"]
 description = "An attempt to implement the C++20 standard. This is mostly to have fun & learn rust"
 # Unfortunatelly, right now lalrpop has some minnor issues that I needed to patch out manually
 [build-dependencies]
-lalrpop = {version = "0.19.8", path = "../lalrpop/lalrpop"}
+lalrpop = {version = "0.19.8", path = "./lalrpop/lalrpop"}
 
 [dependencies]
 clap = { version = "3.2.0", features = ["derive"] }
@@ -19,7 +19,7 @@ regex = "1.0.0"
 lazy_static = "1.4.0"
 logos = "0.12.0"
 colored = "2.0.0"
-lalrpop-util = {version = "0.19.8", path = "../lalrpop/lalrpop-util"}
+lalrpop-util = {version = "0.19.8", path = "./lalrpop/lalrpop-util"}
 log = "0.4.17"
 env_logger = "0.9.1"
 test-log = "0.2.10"

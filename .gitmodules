@@ -1,0 +1,3 @@
+[submodule "lalrpop"]
+	path = lalrpop
+	url = https://github.com/Destroyerrrocket/lalrpop.git
