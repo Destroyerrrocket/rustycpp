@@ -78,14 +78,11 @@ impl PreLexer {
                         if let Some(position) =
                             self.current.find((")".to_owned() + key + "\"").as_str())
                         {
-                            let additionalChars = if let Some(res) = regex_find!(
+                            let additionalChars = regex_find!(
                                 r#"^(?:[\\w_][\\w\\d_]*)"#,
                                 &self.current[..position + key.len() + 2]
-                            ) {
-                                2 + res.len()
-                            } else {
-                                2
-                            };
+                            )
+                            .map_or(2, |res| 2 + res.len());
                             return (
                                 Some(PreToken::RawStringLiteral(
                                     self.current[0..position + key.len() + additionalChars]
@@ -151,9 +148,10 @@ impl PreLexer {
             } else if kind.is_some() {
                 break;
             }
-            eprintln!(
+            log::error!(
                 "Encountered unmachable preprocessing token at: {} {}",
-                self.line, self.column
+                self.line,
+                self.column
             );
             return (None, 0, 0);
         }

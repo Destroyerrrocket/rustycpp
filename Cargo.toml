@@ -1,6 +1,6 @@
 [package]
 name = "rustycpp"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 repository = "https://github.com/Destroyerrrocket/rustycpp"
 readme = "README.md"
@@ -28,3 +28,4 @@ chrono = "0.4"
 antlr-rust = {version = "0.3.0-beta"}
 json = "0.12.4"
 f128 = "0.2.9"
+priority-queue = "1.2.3"

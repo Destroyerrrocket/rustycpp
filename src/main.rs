@@ -9,7 +9,9 @@
     is_some_with,
     unwrap_infallible,
     new_uninit,
-    arbitrary_enum_discriminant
+    arbitrary_enum_discriminant,
+    map_try_insert,
+    map_many_mut
 )]
 #![warn(
     missing_docs,
@@ -23,7 +25,7 @@
     clippy::string_to_string,
     clippy::if_then_some_else_none,
     clippy::empty_structs_with_brackets,
-    clippy::missing_docs_in_private_items
+    //clippy::missing_docs_in_private_items
 )]
 #![allow(
     non_snake_case,
@@ -39,9 +41,11 @@
 mod compiler;
 mod grammars;
 mod lexer;
+mod module_tree;
 mod preprocessor;
-mod test;
 mod utils;
+
+mod test;
 
 use clap::Parser;
 use compiler::Compiler;
@@ -52,8 +56,16 @@ use utils::parameters::Parameters;
 #[doc(hidden)]
 struct Args {
     /// Filelist to compile
-    #[clap(short, long, value_parser, default_value = "")]
+    #[clap(short, long)]
     files: String,
+
+    /// Print the module depenedency tree of the provided set of files.
+    #[clap(long, value_parser, default_value = "false")]
+    printDependencyTree: bool,
+
+    /// Preprocess files and print the result to stdout.
+    #[clap(long, value_parser, default_value = "false")]
+    preprocess: bool,
 }
 
 fn main() {
@@ -67,5 +79,11 @@ fn main() {
     let parameters = Parameters::new_file(&args.files).unwrap();
 
     let mut compiler = Compiler::new(parameters);
-    compiler.print_preprocessor();
+    if args.printDependencyTree {
+        compiler.print_dependency_tree();
+    } else if args.preprocess {
+        compiler.print_preprocessor();
+    } else {
+        compiler.doTheThing();
+    }
 }

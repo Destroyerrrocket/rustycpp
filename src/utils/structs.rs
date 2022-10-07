@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use colored::Colorize;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Eq)]
 /// A file to be compiled
 pub struct CompileFile {
     /// Path to the file
@@ -13,6 +13,12 @@ pub struct CompileFile {
     content: Arc<String>,
     /// Offsets to the newlines of the file
     newlines: Vec<usize>,
+}
+
+impl PartialEq for CompileFile {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path
+    }
 }
 
 impl CompileFile {
@@ -55,9 +61,14 @@ impl CompileFile {
     }
 
     /// Get the location of a position as a string
-    pub fn getLocStr(&self, diff: usize) -> String {
-        let (r, c) = self.getRowColumn(diff);
-        format!("{}:{}:{}", self.path(), r, c)
+    pub fn getLocStr(&self, diff: Option<usize>) -> String {
+        diff.map_or_else(
+            || self.path().clone(),
+            |diff| {
+                let (r, c) = self.getRowColumn(diff);
+                format!("{}:{}:{}", self.path(), r, c)
+            },
+        )
     }
 }
 
@@ -89,7 +100,7 @@ pub struct CompileMsg {
     kind: CompileMsgKind,
     msg: String,
     file: Arc<CompileFile>,
-    at: usize,
+    at: Option<usize>,
     atEnd: Option<usize>,
 }
 
@@ -107,12 +118,16 @@ impl CompileMsg {
 
 impl ToString for CompileMsg {
     fn to_string(&self) -> String {
-        format!(
-            "{} at: {}\n{}\n",
-            self.kind.to_string(),
-            self.errorLocStr(),
-            self.msg
-        )
+        if self.file != Arc::default() {
+            format!(
+                "{} at: {}\n{}\n",
+                self.kind.to_string(),
+                self.errorLocStr(),
+                self.msg
+            )
+        } else {
+            format!("{}:\n{}\n", self.kind.to_string(), self.msg)
+        }
     }
 }
 
@@ -121,6 +136,26 @@ pub struct CompileError;
 
 #[doc(hidden)]
 impl CompileError {
+    pub fn unlocated<T: ToString>(msg: T) -> CompileMsg {
+        CompileMsg {
+            msg: msg.to_string(),
+            file: Arc::default(),
+            at: None,
+            atEnd: None,
+            kind: CompileMsgKind::Error,
+        }
+    }
+
+    pub fn on_file<T: ToString>(msg: T, file: Arc<CompileFile>) -> CompileMsg {
+        CompileMsg {
+            msg: msg.to_string(),
+            file,
+            at: None,
+            atEnd: None,
+            kind: CompileMsgKind::Error,
+        }
+    }
+
     pub fn from_preTo<T: ToString, Tok: Clone + Debug>(
         msg: T,
         preToken: &FileTokPos<Tok>,
@@ -128,7 +163,7 @@ impl CompileError {
         CompileMsg {
             msg: msg.to_string(),
             file: preToken.file.clone(),
-            at: preToken.tokPos.start,
+            at: Some(preToken.tokPos.start),
             atEnd: Some(preToken.tokPos.end),
             kind: CompileMsgKind::Error,
         }
@@ -143,7 +178,7 @@ impl CompileError {
         CompileMsg {
             msg: msg.to_string(),
             file,
-            at,
+            at: Some(at),
             atEnd,
             kind: CompileMsgKind::Error,
         }
@@ -154,6 +189,26 @@ impl CompileError {
 pub struct CompileWarning;
 #[doc(hidden)]
 impl CompileWarning {
+    pub fn unlocated<T: ToString>(msg: T) -> CompileMsg {
+        CompileMsg {
+            msg: msg.to_string(),
+            file: Arc::default(),
+            at: None,
+            atEnd: None,
+            kind: CompileMsgKind::Warning,
+        }
+    }
+
+    pub fn on_file<T: ToString>(msg: T, file: Arc<CompileFile>) -> CompileMsg {
+        CompileMsg {
+            msg: msg.to_string(),
+            file,
+            at: None,
+            atEnd: None,
+            kind: CompileMsgKind::Warning,
+        }
+    }
+
     pub fn from_preTo<T: ToString, U: Clone + Debug>(
         msg: T,
         preToken: &FileTokPos<U>,
@@ -161,23 +216,18 @@ impl CompileWarning {
         CompileMsg {
             msg: msg.to_string(),
             file: preToken.file.clone(),
-            at: preToken.tokPos.start,
+            at: Some(preToken.tokPos.start),
             atEnd: Some(preToken.tokPos.end),
             kind: CompileMsgKind::Warning,
         }
     }
 
-    pub fn from_at(
-        msg: String,
-        file: Arc<CompileFile>,
-        at: usize,
-        atEnd: Option<usize>,
-    ) -> CompileMsg {
+    pub fn from_at(msg: String, file: Arc<CompileFile>, at: usize, atEnd: usize) -> CompileMsg {
         CompileMsg {
             msg,
             file,
-            at,
-            atEnd,
+            at: Some(at),
+            atEnd: Some(atEnd),
             kind: CompileMsgKind::Warning,
         }
     }

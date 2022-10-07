@@ -1,3 +1,9 @@
+# Changelog
+
+### 0.1.5
+ - Module dependency tree generation has been completed, automatically adds TU for imported headers
+ - A bit of lexing was done, but is not tested
+
 ### 0.1.2
 Features:
  - Finish all critical features of the preprocessor

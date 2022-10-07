@@ -1,5 +1,5 @@
 //! Wrapper over a token collection for antlr consumption.
-
+#![allow(clippy::unused_self, clippy::cast_sign_loss, clippy::borrowed_box)]
 use antlr_rust::atn_simulator::IATNSimulator;
 use antlr_rust::char_stream::InputData;
 use antlr_rust::errors::{ANTLRError, FailedPredicateError, InputMisMatchError, NoViableAltError};
@@ -11,7 +11,6 @@ use antlr_rust::token_factory::TokenFactory;
 use antlr_rust::transition::RuleTransition;
 use antlr_rust::{ErrorStrategy, Parser};
 use antlr_rust::{TidAble, TokenSource};
-use lazy_static::__Deref;
 
 use std::borrow::Borrow;
 use std::collections::VecDeque;
@@ -481,7 +480,7 @@ where
             .get_target();
         let expect_at_ll2 = atn.next_tokens_in_ctx::<Ctx>(
             atn.states[next].as_ref(),
-            Some(recognizer.get_parser_rule_context().deref()),
+            Some(&**recognizer.get_parser_rule_context()),
         );
         if expect_at_ll2.contains(current_token) {
             self.report_missing_token(recognizer);
@@ -585,7 +584,7 @@ impl<
     > ErrorStrategy<'a, T> for LexerWrapperErrorStrategy<'a, Ctx, Tok, T>
 {
     fn reset(&mut self, recognizer: &mut T) {
-        self.end_error_condition(recognizer)
+        self.end_error_condition(recognizer);
     }
 
     fn recover_inline(
@@ -594,7 +593,7 @@ impl<
     ) -> Result<<T::TF as TokenFactory<'a>>::Tok, ANTLRError> {
         let t = self
             .single_token_deletion(recognizer)
-            .map(|it| it.to_owned());
+            .map(std::borrow::ToOwned::to_owned);
         if let Some(t) = t {
             recognizer.consume(self);
             return Ok(t);
@@ -629,7 +628,7 @@ impl<
                 .unwrap()
                 .contains(recognizer.get_state())
         {
-            recognizer.consume(self)
+            recognizer.consume(self);
         }
 
         self.last_error_index = recognizer.get_current_token().get_token_index();
@@ -650,7 +649,6 @@ impl<
             recognizer.get_interpreter().atn().states[recognizer.get_state() as usize].as_ref();
 
         let next_tokens = recognizer.get_interpreter().atn().next_tokens(state);
-        //        println!("{:?}",next_tokens);
 
         if next_tokens.contains(next) {
             self.next_tokens_state = ATNSTATE_INVALID_STATE_NUMBER;

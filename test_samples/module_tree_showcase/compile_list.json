@@ -1,0 +1,16 @@
+{
+"includeDirs": [],
+"includeSystemDirs": [],
+"translationUnits": [
+	"main.cpp",
+	"main2.cpp",
+	"bar.cpp",
+	"foo_interface.cpp",
+	"foo.cpp",
+	"foo_partition.cpp",
+	"foo_partition_interface.cpp",
+	"foo_partition_2.cpp",
+	"foo_partition_interface_2.cpp",
+	"classic_normal.cpp"
+]
+}
