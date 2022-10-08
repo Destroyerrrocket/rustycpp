@@ -6,3 +6,5 @@ pub mod testincluder;
 pub mod testpreprocessordefine;
 #[cfg(test)]
 pub mod testpreprocessorif;
+#[cfg(test)]
+pub mod testlexer;

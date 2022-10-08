@@ -11,7 +11,7 @@ use crate::utils::structs::{CompileError, CompileMsg, FileTokPos, TokPos};
 use lazy_regex::regex_captures;
 use logos::Logos;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EncodingPrefix {
     None,
     u8,
@@ -20,14 +20,14 @@ pub enum EncodingPrefix {
     L,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntegerSuffix {
     Unsigned,
     Long,
     LongLong,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FloatSuffix {
     None,
     F,
@@ -35,7 +35,7 @@ pub enum FloatSuffix {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[repr(isize)]
 pub enum Token {
     Eof = -1,
@@ -415,7 +415,7 @@ impl Token {
             Bel,
             #[regex(r"\\\\")]
             Backslash,
-            #[regex(r"\\?")]
+            #[regex(r"\\\?")]
             Question,
             #[regex(r"\\'")]
             SingleQuote,
@@ -423,7 +423,7 @@ impl Token {
             DoubleQuote,
             #[regex(r#"\\[0-7][0-7]?[0-7]?"#)]
             Octal,
-            #[regex(r#"\\x[\\h]+"#)]
+            #[regex(r#"\\x[0-9a-fA-F]+"#)]
             Hex,
             #[error]
             Error,
@@ -574,7 +574,7 @@ impl Token {
         tok: &FileTokPos<T>,
         string: &str,
     ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
-        if let Some((_, string, ub)) = regex_captures!(r"^((?:[\\x]*\.?[\\x]+|[\\x]+\.?[\\x]*)p[-+]?[\\d]+[fl]?)([_\\w].*)?$"i, string)
+        if let Some((_, string, ub)) = regex_captures!(r"^((?:[\da-f]*\.?[\da-f]+|[\da-f]+\.?[\da-f]*)p[-+]?[\d]+[fl]?)([a-z0-9_]*?)?$"i, string)
         {
             Self::parseHexFloat(tok, string, ub)
         } else {
@@ -629,7 +629,7 @@ impl Token {
         string: &str,
         radix: u32,
     ) -> Result<i128, Option<CompileMsg>> {
-        u128::from_str_radix(string.replace('\'', "").as_str(), radix)
+        u128::from_str_radix(string, radix)
             .map_err(|x| x.to_string())
             .and_then(|x| i128::try_from(x).map_err(|x| x.to_string()))
             .map_err(|err| {
@@ -644,7 +644,8 @@ impl Token {
         tok: &FileTokPos<T>,
         string: &str,
     ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
-        let (prefix, suffix, ud) = Self::parseIntSuffix(string, 16);
+        let string = string.replace('\'', "");
+        let (prefix, suffix, ud) = Self::parseIntSuffix(&string, 16);
         Self::parseBaseInt(tok, prefix, 16).map(|num| {
             FileTokPos::new_meta_c(
                 if let Some(ud) = ud {
@@ -661,7 +662,8 @@ impl Token {
         tok: &FileTokPos<T>,
         string: &str,
     ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
-        let (prefix, suffix, ud) = Self::parseIntSuffix(string, 2);
+        let string = string.replace('\'', "");
+        let (prefix, suffix, ud) = Self::parseIntSuffix(&string, 2);
         Self::parseBaseInt(tok, prefix, 2).map(|num| {
             FileTokPos::new_meta_c(
                 if let Some(ud) = ud {
@@ -678,7 +680,8 @@ impl Token {
         tok: &FileTokPos<T>,
         string: &str,
     ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
-        let (prefix, suffix, ud) = Self::parseIntSuffix(string, 8);
+        let string = string.replace('\'', "");
+        let (prefix, suffix, ud) = Self::parseIntSuffix(&string, 8);
         Self::parseBaseInt(tok, prefix, 8).map(|num| {
             FileTokPos::new_meta_c(
                 if let Some(ud) = ud {
@@ -695,7 +698,8 @@ impl Token {
         tok: &FileTokPos<T>,
         string: &str,
     ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
-        let (prefix, suffix, ud) = Self::parseIntSuffix(string, 10);
+        let string = string.replace('\'', "");
+        let (prefix, suffix, ud) = Self::parseIntSuffix(&string, 10);
         Self::parseBaseInt(tok, prefix, 10).map(|num| {
             FileTokPos::new_meta_c(
                 if let Some(ud) = ud {
@@ -751,10 +755,12 @@ impl Token {
         mut string: &str,
     ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
         let mut ub = None;
-        if let Some((_, string_, ub_)) = regex_captures!(r"^((?:(?:[\\d']*.[\\d']+|[\\d']+.)(?:e[+-]?[\\d']+)?|[\\d']+e[+-]?[\\d']+)[fl]?)([_\\w].*)$"i, string)
+        if let Some((_, string_, ub_)) = regex_captures!(r"^((?:(?:[\d']*\.[\d']+|[\d']+\.)(?:e[+-]?[\d']+)?|[\d']+e[+-]?[\d']+)[fl]?)([a-z0-9_]*?)$"i, string)
         {
-            string = string_;
-            ub = Some(ub_);
+            if !ub_.is_empty() {
+                string = string_;
+                ub = Some(ub_);
+            }
         }
 
         let (prefix, suffix) = Self::parseFloatSuffix(string);
@@ -806,6 +812,9 @@ impl Token {
             .chars()
             .rev()
             .take_while(|x| *x != '\'')
+            .collect::<String>()
+            .chars()
+            .rev()
             .collect::<String>();
 
         operator = operator[..operator.len() - ud.len()].trim_end();
@@ -826,6 +835,9 @@ impl Token {
             .chars()
             .rev()
             .take_while(|x| *x != '"')
+            .collect::<String>()
+            .chars()
+            .rev()
             .collect::<String>();
 
         operator = operator[..operator.len() - ud.len()].trim_end();

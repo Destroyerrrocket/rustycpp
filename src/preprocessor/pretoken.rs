@@ -184,7 +184,7 @@ pub enum PreTokenLexer {
     CharLiteral,
     #[regex(r#"(?:u8|u|U|L)?'(?:[\x20-\x7E&&[^'\\\n]]|\\[uU'"?\\abfnrtvx0-7])*'[a-zA-Z_[^\x00-\x7F]][a-zA-Z0-9_[^\x00-\x7F]]*"#)]
     UdCharLiteral,
-    #[regex(r#"[\.]?[0-9](:?'?[0-9]|'[a-zA-Z_]|[eEpP][+-]|\\u[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]|\\U[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9])*[\.]?"#)]
+    #[regex(r#"[\.]?[0-9](:?[eEpP][+-]|'?[a-zA-Z0-9_]|\.)*"#)]
     PPNumber,
     #[error]
     Error,
