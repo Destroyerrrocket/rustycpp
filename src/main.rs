@@ -25,7 +25,7 @@
     clippy::string_to_string,
     clippy::if_then_some_else_none,
     clippy::empty_structs_with_brackets,
-    //clippy::missing_docs_in_private_items
+    clippy::missing_docs_in_private_items
 )]
 #![allow(
     non_snake_case,

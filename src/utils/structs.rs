@@ -118,15 +118,15 @@ impl CompileMsg {
 
 impl ToString for CompileMsg {
     fn to_string(&self) -> String {
-        if self.file != Arc::default() {
+        if self.file == Arc::default() {
+            format!("{}:\n{}\n", self.kind.to_string(), self.msg)
+        } else {
             format!(
                 "{} at: {}\n{}\n",
                 self.kind.to_string(),
                 self.errorLocStr(),
                 self.msg
             )
-        } else {
-            format!("{}:\n{}\n", self.kind.to_string(), self.msg)
         }
     }
 }

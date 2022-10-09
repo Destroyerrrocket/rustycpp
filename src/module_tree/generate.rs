@@ -1,3 +1,4 @@
+//! Wrapper
 use std::sync::{Arc, Mutex};
 
 use crate::compiler::TranslationUnit;
@@ -9,6 +10,7 @@ use super::dependency_interpreter::generateNodes;
 use super::dependency_parser::parseModuleMacroOps;
 use super::structs::ModuleTree;
 
+/// Wrapper over all the functionality of the module tree generation.
 pub fn generateDependencyTree(
     mainTranslationUnits: &Vec<TranslationUnit>,
     compileFiles: &mut Arc<Mutex<FileMap>>,

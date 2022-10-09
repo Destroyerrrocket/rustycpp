@@ -99,6 +99,7 @@ impl Compiler {
         }
     }
 
+    /// Attempts to compile everything, until the last thing implemented.
     pub fn doTheThing(&mut self) {
         self.print_preprocessor();
     }

@@ -1,3 +1,4 @@
+//! Parse the files to search for dependency instructions.
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
@@ -11,6 +12,7 @@ use crate::utils::structs::{CompileError, CompileFile, CompileMsg, TokPos};
 
 use super::structs::ModuleOperator;
 
+/// When encountering a module operator, validates it can be used and parses it.
 fn parseModuleOp(
     lexer: &mut PreLexer,
     translationUnit: &Arc<CompileFile>,
@@ -77,6 +79,7 @@ fn parseModuleOp(
     return Ok(Some(ModuleOperator::Module(name)));
 }
 
+/// When encountering an import operator, validates it can be used and parses it.
 fn parseImportOp(
     lexer: &mut PreLexer,
     translationUnit: &Arc<CompileFile>,
@@ -144,6 +147,7 @@ fn parseImportOp(
     return Ok(Some(ModuleOperator::Import(name)));
 }
 
+/// When encountering an export operator, validates it can be used and parses it.
 fn parseExportOp(
     lexer: &mut PreLexer,
     translationUnit: &Arc<CompileFile>,

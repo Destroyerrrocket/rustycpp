@@ -1,3 +1,4 @@
+//! Iterates over a dependency tree as smartly as possible to reduce bottlenecks.
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
@@ -9,18 +10,29 @@ use crate::compiler::TranslationUnit;
 
 use super::structs::{ModuleDeclaration, ModuleTree, Node};
 
+/// Mutex-protected internal state, as `DependencyIterator` will be accessible
+/// from multiple threads.
 struct Data {
+    /// Roots that may not have completed their min stage required.
     rootsNotReady: Vec<Node>,
+    /// Roots that have completed their min stage required.
     rootsReady: PriorityQueue<Node, usize>,
+    /// Roots that have been sent to the consumer, but the consumer has not
+    /// notified it is done with it.
     rootsSentButNotDone: HashMap<TranslationUnit, Node>,
+    /// Child nodes that are not ready to be used yet.
     childModules: HashMap<ModuleDeclaration, Node>,
+    /// Minimum stage completed required before sending a TU.
     minStageCompleted: usize,
+    /// The total number of TU. Used for the heuristic of what to send.
     totalNumModules: usize,
 }
 
 /// Iterator over the dependency tree, with priorization based on depth and stage completed.
 pub struct DependencyIterator {
+    /// Condvar for waiting for new roots once all roots have been sent.
     waitForNewRoots: Condvar,
+    /// Mutex-protected internal state.
     d: Mutex<Data>,
 }
 
@@ -30,6 +42,7 @@ lazy_static! {
 }
 
 impl DependencyIterator {
+    /// Create a new `DependencyIterator` from a `ModuleTree`.
     pub fn new(dependencyTree: &ModuleTree, minStageCompleted: usize) -> Self {
         Self {
             waitForNewRoots: Condvar::new(),
@@ -44,6 +57,7 @@ impl DependencyIterator {
         }
     }
 
+    /// Check if any new TU have been updated to be ready to be sent. Checks for the stage completed.
     fn updateReadies(d: &mut Data) {
         let mut stillNotReady = Vec::new();
         for root in d.rootsNotReady.drain(..) {
@@ -58,6 +72,7 @@ impl DependencyIterator {
         d.rootsNotReady = stillNotReady;
     }
 
+    /// Mark a sent TU as done, allowing its childs to be used. Updates the stage completed.
     pub fn markDone(&self, translationUnit: &TranslationUnit, newCompletionState: usize) {
         {
             let mut d = self.d.lock().unwrap();
@@ -85,11 +100,14 @@ impl DependencyIterator {
         ALL_DEPENDENCY_ITERATORS_WAIT.notify_all();
     }
 
+    /// [DEBUGGING PURPOSES] Checks if calling next without marking anything as done would lock the iterator
     pub fn wouldLockIfNext(&self) -> bool {
         let d = self.d.lock().unwrap();
         d.rootsNotReady.is_empty() && d.rootsReady.is_empty() && !d.childModules.is_empty()
     }
 
+    /// Get next TU. Do note that this does not implement the trait `Iterator`.
+    /// This is because we don't want to require self to be mutable.
     pub fn next(&self) -> Option<TranslationUnit> {
         let d = self
             .waitForNewRoots

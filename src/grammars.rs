@@ -1,5 +1,10 @@
 //! All the grammars used by the compiler
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
+#![allow(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::missing_docs_in_private_items
+)]
 lalrpop_mod!(pub define, "/grammars/define.rs");
 
 pub mod defineast;

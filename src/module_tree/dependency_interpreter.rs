@@ -1,3 +1,4 @@
+//! Interprets dependency instructions to create the nodes of the tree
 use std::collections::{HashMap, HashSet};
 use std::slice;
 use std::sync::atomic::AtomicUsize;
@@ -68,7 +69,7 @@ where
             None => return Ok((None, imports)),
             Some(op) => match op {
                 ModuleOperator::Import(module) => {
-                    if let Some(module) = module.strip_prefix(":") {
+                    if let Some(module) = module.strip_prefix(':') {
                         imports.push(ModuleDeclaration::ExportPartition(
                             name.clone(),
                             module.to_string(),
