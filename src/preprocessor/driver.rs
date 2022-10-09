@@ -1,18 +1,16 @@
 //! The Preprocessor is responsible for evaluating the step 4 of the C++
 //! translation.
 
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::{Arc, Mutex},
+use crate::{
+    fileTokPosMatchArm,
+    utils::{compilerstate::CompilerState, structs::TokPos},
 };
+use std::collections::{HashMap, VecDeque};
 
 use crate::{
+    fileTokPosMatches,
     grammars::defineast::DefineAst,
-    utils::{
-        filemap::FileMap,
-        parameters::Parameters,
-        structs::{CompileError, CompileMsg, CompileWarning, FileTokPos},
-    },
+    utils::structs::{CompileError, CompileMsg, CompileWarning, FileTokPos},
 };
 
 use multiset::HashMultiSet;
@@ -50,8 +48,10 @@ enum ScopeStatus {
 /// original input file. It will report any preprocessing errors as it
 /// encounters them, previous to returning the possibly incorrect tokens.
 pub struct Preprocessor {
+    /// Main file TU
+    tu: String,
     /// Parameters of the compilation
-    parameters: Arc<Parameters>,
+    compilerState: CompilerState,
     /// The multilexer is the object that will generate the pretokens tokens
     multilexer: MultiLexer,
     /// The generated preprocessing tokens to be returned. This is a stash, as
@@ -73,10 +73,11 @@ pub struct Preprocessor {
 
 impl Preprocessor {
     /// Creates a new preprocessor from the given parameters, filemap and path
-    pub fn new(data: (Arc<Parameters>, Arc<Mutex<FileMap>>, &str)) -> Self {
+    pub fn new(data: (CompilerState, &str)) -> Self {
         Self {
-            parameters: data.0,
-            multilexer: MultiLexer::new((data.1, data.2)),
+            tu: data.1.to_string(),
+            compilerState: data.0.clone(),
+            multilexer: MultiLexer::new((data.0.compileFiles, data.1)),
             generated: VecDeque::new(),
             errors: VecDeque::new(),
             scope: vec![],
@@ -156,16 +157,18 @@ impl Preprocessor {
     }
 
     /// Reach the nl.
-    fn reachNl(&mut self) {
+    fn reachNl(&mut self) -> VecDeque<FileTokPos<PreToken>> {
+        let mut toks = VecDeque::new();
         loop {
             let inIdent = self.multilexer.next();
             match inIdent {
                 None => {
-                    return;
+                    return toks;
                 }
                 Some(ident) => {
-                    if ident.tokPos.tok == PreToken::Newline {
-                        return;
+                    toks.push_back(ident);
+                    if toks.back().unwrap().tokPos.tok == PreToken::Newline {
+                        return toks;
                     }
                 }
             }
@@ -178,6 +181,111 @@ impl Preprocessor {
             return self.definitions.contains_key(&macroName);
         }
         return false;
+    }
+
+    /// If applicable, generate a module token
+    fn moduleDirective(&mut self, module: FileTokPos<PreToken>) -> VecDeque<FileTokPos<PreToken>> {
+        let mut toks = self.reachNl();
+
+        let tokVal = toks
+            .iter()
+            .find(|x| !fileTokPosMatches!(x, PreToken::Whitespace(_)));
+
+        if let Some(moduleTok) = tokVal {
+            if *module.file.path() == self.tu
+                && fileTokPosMatches!(
+                    module,
+                    PreToken::OperatorPunctuator(":" | ";") | PreToken::Ident(_)
+                )
+            {
+                toks.push_front(FileTokPos::new_meta_c(PreToken::Module, moduleTok));
+                return toks;
+            }
+        }
+
+        self.atStartLine = false;
+        toks.push_front(module);
+        self.multilexer.pushTokensDec(toks);
+
+        return VecDeque::new();
+    }
+
+    /// If applicable, generate a import token
+    fn importDirective(&mut self, import: FileTokPos<PreToken>) -> VecDeque<FileTokPos<PreToken>> {
+        let mut toks = self.reachNl();
+        let tokVal = toks
+            .iter()
+            .find(|x| !fileTokPosMatches!(x, PreToken::Whitespace(_)));
+
+        if let Some(moduleTok) = tokVal {
+            if *import.file.path() == self.tu {
+                if fileTokPosMatches!(
+                    moduleTok,
+                    PreToken::OperatorPunctuator(":" | ";") | PreToken::Ident(_)
+                ) {
+                    toks.push_front(FileTokPos::new_meta_c(PreToken::Module, &import));
+                    return toks;
+                } else if let PreToken::HeaderName(ref header) = moduleTok.tokPos.tok {
+                    let fileHeader = self
+                        .compilerState
+                        .compileFiles
+                        .lock()
+                        .unwrap()
+                        .getFile(&header[1..header.len() - 1])
+                        .path()
+                        .clone();
+                    let otherDefinitions = self
+                        .compilerState
+                        .compileUnits
+                        .lock()
+                        .unwrap()
+                        .get(&fileHeader)
+                        .unwrap()
+                        .macroDefintionsAtTheEndOfTheFile
+                        .clone();
+                    self.definitions.extend(otherDefinitions);
+                    toks.push_front(FileTokPos::new_meta_c(PreToken::Module, &import));
+                    return toks;
+                }
+            }
+        }
+
+        self.atStartLine = false;
+        toks.push_front(import);
+        self.multilexer.pushTokensDec(toks);
+
+        return VecDeque::new();
+    }
+
+    /// If applicable, generate a module/import token
+    fn exportDirective(&mut self, export: FileTokPos<PreToken>) -> VecDeque<FileTokPos<PreToken>> {
+        let tok = loop {
+            let tok = self.multilexer.next();
+            if let Some(fileTokPosMatchArm!(PreToken::Whitespace(_))) = tok {
+                continue;
+            }
+            break tok;
+        };
+        if let Some(fileTokPosMatchArm!(ref tokie)) = tok {
+            let mut toks = match tokie {
+                PreToken::Ident(ref id) if id == "import" => self.importDirective(tok.unwrap()),
+                PreToken::Ident(ref id) if id == "module" => self.moduleDirective(tok.unwrap()),
+                _ => {
+                    self.atStartLine = false;
+                    self.multilexer.pushToken(export.clone());
+                    self.multilexer.pushToken(tok.unwrap());
+                    VecDeque::new()
+                }
+            };
+            if !toks.is_empty() {
+                toks.push_front(export);
+                return toks;
+            }
+        }
+
+        self.atStartLine = false;
+        self.multilexer.pushToken(export);
+        return VecDeque::new();
     }
 
     /// Encountered a preprocessor directive. Evaluate it accordingly, alering
@@ -385,6 +493,24 @@ impl Preprocessor {
                                 self.preprocessorDirective(newToken);
                                 break;
                             }
+
+                            // Module directives
+                            PreToken::Ident(ref import) if import == "import" => {
+                                let tokies = self.importDirective(newToken);
+                                self.generated.extend(tokies);
+                                break;
+                            }
+                            PreToken::Ident(ref module) if module == "module" => {
+                                let tokies = self.moduleDirective(newToken);
+                                self.generated.extend(tokies);
+                                break;
+                            }
+                            PreToken::Keyword("export") => {
+                                let tokies = self.exportDirective(newToken);
+                                self.generated.extend(tokies);
+                                break;
+                            }
+
                             _ => {
                                 self.atStartLine = false;
                                 continue;
@@ -438,6 +564,24 @@ impl Preprocessor {
                                 self.preprocessorDirective(newToken);
                                 break;
                             }
+
+                            // Module directives
+                            PreToken::Ident(ref import) if import == "import" => {
+                                let tokies = self.importDirective(newToken);
+                                self.generated.extend(tokies);
+                                break;
+                            }
+                            PreToken::Ident(ref module) if module == "module" => {
+                                let tokies = self.moduleDirective(newToken);
+                                self.generated.extend(tokies);
+                                break;
+                            }
+                            PreToken::Keyword("export") => {
+                                let tokies = self.exportDirective(newToken);
+                                self.generated.extend(tokies);
+                                break;
+                            }
+
                             _ => {
                                 self.atStartLine = false;
                                 break;
@@ -472,6 +616,14 @@ impl Iterator for Preprocessor {
                 }
                 None => match self.multilexer.next() {
                     None => {
+                        self.compilerState
+                            .compileUnits
+                            .lock()
+                            .unwrap()
+                            .get_mut(&self.tu)
+                            .unwrap()
+                            .macroDefintionsAtTheEndOfTheFile
+                            .extend(self.definitions.clone());
                         return None;
                     }
                     Some(token) => {

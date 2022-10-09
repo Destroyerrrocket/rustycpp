@@ -98,9 +98,7 @@ fn parseImportOp(
 
     if let Some(TokPos { tok, .. }) = toks.front() {
         match tok {
-            PreToken::HeaderName(_)
-            | PreToken::OperatorPunctuator(":" | ";")
-            | PreToken::Ident(_) => {}
+            PreToken::HeaderName(_) | PreToken::OperatorPunctuator(":") | PreToken::Ident(_) => {}
             _ => {
                 return Ok(None);
             }

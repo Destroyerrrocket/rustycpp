@@ -114,6 +114,16 @@ impl CompileMsg {
     pub const fn severity(&self) -> CompileMsgKind {
         self.kind
     }
+
+    /// Print the message
+    pub fn print(&self) {
+        match self.kind {
+            CompileMsgKind::Notice => log::info!("{}", self.to_string()),
+            CompileMsgKind::Warning => log::warn!("{}", self.to_string()),
+            CompileMsgKind::Error => log::error!("{}", self.to_string()),
+            CompileMsgKind::FatalError => log::error!("{}", self.to_string()),
+        }
+    }
 }
 
 impl ToString for CompileMsg {

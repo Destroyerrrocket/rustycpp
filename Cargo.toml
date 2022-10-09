@@ -29,3 +29,4 @@ antlr-rust = {version = "0.3.0-beta"}
 json = "0.12.4"
 f128 = "0.2.9"
 priority-queue = "1.2.3"
+threadpool = "1.8.1"

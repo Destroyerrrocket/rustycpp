@@ -50,6 +50,7 @@ mod test;
 use clap::Parser;
 use compiler::Compiler;
 use utils::parameters::Parameters;
+use utils::structs::CompileMsg;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -68,6 +69,18 @@ struct Args {
     preprocess: bool,
 }
 
+/// Wrapper for main, to allow for the use of `?` in main
+fn execCompiler(parameters: Parameters, args: Args) -> Result<(), Vec<CompileMsg>> {
+    let mut compiler = Compiler::new(parameters);
+    if args.printDependencyTree {
+        compiler.print_dependency_tree()
+    } else if args.preprocess {
+        compiler.print_preprocessor()
+    } else {
+        compiler.doTheThing()
+    }
+}
+
 fn main() {
     env_logger::init();
     let args = Args::parse();
@@ -77,13 +90,9 @@ fn main() {
     }
 
     let parameters = Parameters::new_file(&args.files).unwrap();
-
-    let mut compiler = Compiler::new(parameters);
-    if args.printDependencyTree {
-        compiler.print_dependency_tree();
-    } else if args.preprocess {
-        compiler.print_preprocessor();
-    } else {
-        compiler.doTheThing();
+    if let Err(errors) = execCompiler(parameters, args) {
+        for err in errors {
+            err.print();
+        }
     }
 }

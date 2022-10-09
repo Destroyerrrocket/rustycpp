@@ -5,4 +5,4 @@ mod dependency_interpreter;
 pub mod dependency_iterator;
 mod dependency_parser;
 pub mod generate;
-mod structs;
+pub mod structs;

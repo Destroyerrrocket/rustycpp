@@ -1,27 +1,58 @@
+use std::collections::HashMap;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use crate::preprocessor::pretoken::PreToken;
 use crate::preprocessor::Preprocessor;
+use crate::utils::compilerstate::CompilerState;
 use crate::utils::filemap::FileMap;
 use crate::utils::parameters::Parameters;
+use crate::utils::statecompileunit::StateCompileUnit;
 use crate::utils::structs::CompileMsg;
 
 use test_log::test;
 
-fn generateFileMap(
-    files: &[(&'static str, String)],
-) -> (Arc<Parameters>, Arc<Mutex<FileMap>>, &'static str) {
+fn generateFileMap(files: &[(&'static str, String)]) -> (CompilerState, &'static str) {
+    let mut params = Parameters::new();
+    params.includeDirs.push(
+        Path::new(file!())
+            .parent()
+            .unwrap()
+            .join("include")
+            .to_str()
+            .unwrap()
+            .to_string(),
+    );
+
+    for (filePath, _) in files {
+        params.translationUnits.push((*filePath).to_string());
+    }
+
+    let parameters = Arc::new(params);
     let testFile = files.first().unwrap().0;
-    let mut parameters = Parameters::new();
-    let fileMap = Arc::new(Mutex::new(FileMap::new(Arc::new(Parameters::new()))));
+    let fileMap = Arc::new(Mutex::new(FileMap::new(parameters.clone())));
+    let compileUnits = Arc::new(Mutex::new(HashMap::new()));
     for (filePath, fileContents) in files {
         fileMap
             .lock()
             .unwrap()
             .addTestFile((*filePath).to_string(), (*fileContents).clone());
-        parameters.translationUnits.push((*filePath).to_string());
+        compileUnits.lock().unwrap().insert(
+            (*filePath).to_string(),
+            StateCompileUnit {
+                macroDefintionsAtTheEndOfTheFile: HashMap::new(),
+            },
+        );
     }
-    return (Arc::new(parameters), fileMap, testFile);
+
+    return (
+        CompilerState {
+            parameters,
+            compileFiles: fileMap,
+            compileUnits,
+        },
+        testFile,
+    );
 }
 
 fn getToksPreprocessed(files: &[(&'static str, String)]) -> Vec<Result<PreToken, CompileMsg>> {
