@@ -2,10 +2,13 @@
 #![warn(missing_docs)]
 
 use std::collections::{HashMap, VecDeque};
+use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex};
+use std::thread;
 
 use threadpool::ThreadPool;
 
+use crate::lexer::lexer::Lexer;
 use crate::module_tree::dependency_iterator::DependencyIterator;
 use crate::module_tree::generate::generateDependencyTree;
 use crate::module_tree::structs::ModuleTree;
@@ -43,7 +46,11 @@ impl Compiler {
                 compileFiles: Arc::new(Mutex::new(compileFiles)),
                 compileUnits: Arc::new(Mutex::new(HashMap::new())),
             },
-            pool: ThreadPool::new(4),
+            pool: ThreadPool::new(
+                thread::available_parallelism()
+                    .unwrap_or(unsafe { NonZeroUsize::new_unchecked(1) })
+                    .get(),
+            ),
         }
     }
 
@@ -73,17 +80,18 @@ impl Compiler {
         let tree = self.prepareDependencyTreeAndSetupInitialState()?;
 
         let dependencyIterator = Arc::new(DependencyIterator::new(&tree, 0));
-        self.pool.set_num_threads(1);
+
         loop {
             let next = dependencyIterator.next();
             let dependencyIterator = dependencyIterator.clone();
             let compilerState = self.compilerState.clone();
             match next {
                 Some(tu) => self.pool.execute(move || {
+                    let mut output = format!("// file: {}\n", &tu);
                     for tok in Preprocessor::new((compilerState, &tu)) {
                         match tok {
                             Ok(tok) => {
-                                print!("{}", tok.tokPos.tok.to_str());
+                                output.push_str(tok.tokPos.tok.to_str());
                             }
                             Err(err) => {
                                 log::info!("{}", err.to_string());
@@ -92,34 +100,50 @@ impl Compiler {
                                 }
                             }
                         }
-                        dependencyIterator.markDone(&tu, 1);
                     }
+                    print!("{}", output);
+                    dependencyIterator.markDone(&tu, 1);
                 }),
                 None => break,
             }
         }
         self.pool.join();
-        /*
-        for compFile in &self.mainTranslationUnits {
-            log::info!("Applying preprocessor to: {}", &compFile);
-            print!("// Entering {}", compFile);
-            for prepro_token in
-                Preprocessor::new((self.parameters.clone(), self.compileFiles.clone(), compFile))
-            {
-                match prepro_token {
-                    Ok(tok) => {
-                        print!("{}", tok.tokPos.tok.to_str());
+        Ok(())
+    }
+
+    /// Executes the preprocessing stage
+    pub fn print_lexer(&mut self) -> Result<(), Vec<CompileMsg>> {
+        let tree = self.prepareDependencyTreeAndSetupInitialState()?;
+
+        let dependencyIterator = Arc::new(DependencyIterator::new(&tree, 0));
+
+        loop {
+            let next = dependencyIterator.next();
+            let dependencyIterator = dependencyIterator.clone();
+            let compilerState = self.compilerState.clone();
+            match next {
+                Some(tu) => self.pool.execute(move || {
+                    let mut output = format!("// file: {}\n", &tu);
+                    let preprocessor = Preprocessor::new((compilerState, &tu));
+                    let mut lexer = Lexer::new(preprocessor);
+                    for tok in &mut lexer {
+                        output.push_str(&format!("{:?}\n", tok.tokPos.tok));
                     }
-                    Err(err) => {
-                        log::info!("{}", err.to_string());
-                        if err.severity() == CompileMsgKind::FatalError {
-                            panic!("Force stop. Unrecoverable error");
+                    let errors = lexer.errors();
+                    if !errors.is_empty() {
+                        output.push('\n');
+                        for err in errors {
+                            output.push_str(&err.to_string());
+                            output.push('\n');
                         }
                     }
-                }
+                    print!("{}", output);
+                    dependencyIterator.markDone(&tu, 1);
+                }),
+                None => break,
             }
         }
-        */
+        self.pool.join();
         Ok(())
     }
 
@@ -152,6 +176,6 @@ impl Compiler {
 
     /// Attempts to compile everything, until the last thing implemented.
     pub fn doTheThing(&mut self) -> Result<(), Vec<CompileMsg>> {
-        self.print_preprocessor()
+        self.print_lexer()
     }
 }

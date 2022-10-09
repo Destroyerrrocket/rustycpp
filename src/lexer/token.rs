@@ -20,6 +20,18 @@ pub enum EncodingPrefix {
     L,
 }
 
+impl std::fmt::Display for EncodingPrefix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EncodingPrefix::None => write!(f, ""),
+            EncodingPrefix::u8 => write!(f, "u8"),
+            EncodingPrefix::u => write!(f, "u"),
+            EncodingPrefix::U => write!(f, "U"),
+            EncodingPrefix::L => write!(f, "L"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntegerSuffix {
     Unsigned,

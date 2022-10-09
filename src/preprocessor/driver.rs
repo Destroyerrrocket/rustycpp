@@ -69,6 +69,8 @@ pub struct Preprocessor {
     /// The preprocessor is at the start of a line. No tokens have been found
     /// yet in this one, except for whitespace.
     atStartLine: bool,
+    /// The preprocessor is at the end of the file. None already sent to next stage.
+    alreadyEmittedEnd: bool,
 }
 
 impl Preprocessor {
@@ -84,6 +86,7 @@ impl Preprocessor {
             definitions: HashMap::new(),
             disabledMacros: HashMultiSet::new(),
             atStartLine: true,
+            alreadyEmittedEnd: false,
         }
         .initCustomMacros()
     }
@@ -223,7 +226,7 @@ impl Preprocessor {
                     moduleTok,
                     PreToken::OperatorPunctuator(":" | ";") | PreToken::Ident(_)
                 ) {
-                    toks.push_front(FileTokPos::new_meta_c(PreToken::Module, &import));
+                    toks.push_front(FileTokPos::new_meta_c(PreToken::Import, &import));
                     return toks;
                 } else if let PreToken::HeaderName(ref header) = moduleTok.tokPos.tok {
                     let fileHeader = self
@@ -244,7 +247,7 @@ impl Preprocessor {
                         .macroDefintionsAtTheEndOfTheFile
                         .clone();
                     self.definitions.extend(otherDefinitions);
-                    toks.push_front(FileTokPos::new_meta_c(PreToken::Module, &import));
+                    toks.push_front(FileTokPos::new_meta_c(PreToken::Import, &import));
                     return toks;
                 }
             }
@@ -259,32 +262,51 @@ impl Preprocessor {
 
     /// If applicable, generate a module/import token
     fn exportDirective(&mut self, export: FileTokPos<PreToken>) -> VecDeque<FileTokPos<PreToken>> {
+        let mut whitespaces = VecDeque::new();
         let tok = loop {
             let tok = self.multilexer.next();
             if let Some(fileTokPosMatchArm!(PreToken::Whitespace(_))) = tok {
+                whitespaces.push_back(tok.unwrap());
                 continue;
             }
             break tok;
         };
         if let Some(fileTokPosMatchArm!(ref tokie)) = tok {
-            let mut toks = match tokie {
-                PreToken::Ident(ref id) if id == "import" => self.importDirective(tok.unwrap()),
-                PreToken::Ident(ref id) if id == "module" => self.moduleDirective(tok.unwrap()),
+            match tokie {
+                PreToken::Ident(ref id) if id == "import" => {
+                    let mut toks = self.importDirective(tok.unwrap());
+                    if !toks.is_empty() {
+                        for w in whitespaces {
+                            toks.push_front(w);
+                        }
+                        toks.push_front(export);
+                        return toks;
+                    }
+                }
+                PreToken::Ident(ref id) if id == "module" => {
+                    let mut toks = self.moduleDirective(tok.unwrap());
+                    if !toks.is_empty() {
+                        for w in whitespaces {
+                            toks.push_front(w);
+                        }
+                        toks.push_front(export);
+                        return toks;
+                    }
+                }
                 _ => {
                     self.atStartLine = false;
-                    self.multilexer.pushToken(export.clone());
-                    self.multilexer.pushToken(tok.unwrap());
-                    VecDeque::new()
+                    whitespaces.push_front(export);
+                    whitespaces.push_back(tok.unwrap());
+                    self.multilexer.pushTokensDec(whitespaces);
                 }
             };
-            if !toks.is_empty() {
-                toks.push_front(export);
-                return toks;
-            }
+        } else {
+            self.atStartLine = false;
+            whitespaces.push_front(export);
+            self.multilexer.pushTokensDec(whitespaces);
         }
 
         self.atStartLine = false;
-        self.multilexer.pushToken(export);
         return VecDeque::new();
     }
 
@@ -616,14 +638,17 @@ impl Iterator for Preprocessor {
                 }
                 None => match self.multilexer.next() {
                     None => {
-                        self.compilerState
-                            .compileUnits
-                            .lock()
-                            .unwrap()
-                            .get_mut(&self.tu)
-                            .unwrap()
-                            .macroDefintionsAtTheEndOfTheFile
-                            .extend(self.definitions.clone());
+                        if !self.alreadyEmittedEnd {
+                            self.compilerState
+                                .compileUnits
+                                .lock()
+                                .unwrap()
+                                .get_mut(&self.tu)
+                                .unwrap()
+                                .macroDefintionsAtTheEndOfTheFile
+                                .extend(self.definitions.clone());
+                            self.alreadyEmittedEnd = true;
+                        }
                         return None;
                     }
                     Some(token) => {

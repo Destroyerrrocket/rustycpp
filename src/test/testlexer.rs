@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::vec;
 
-use crate::lexer::tokens::{EncodingPrefix, FloatSuffix, IntegerSuffix, Token};
+use crate::lexer::token::{EncodingPrefix, FloatSuffix, IntegerSuffix, Token};
 use crate::preprocessor::pretoken::PreToken;
 use crate::preprocessor::Preprocessor;
 use crate::utils::compilerstate::CompilerState;

@@ -65,7 +65,9 @@ impl PreLexer {
     fn getNextTokenNonSpliced(&mut self) -> (Option<PreToken>, usize) {
         if self.enableHeader > 0 {
             if let Some(res) = regex_find!(r#"^(?:<[^\n>]+>|"[^\n"]+")"#, &self.current) {
-                return (Some(PreToken::HeaderName(res.to_string())), res.len());
+                let result = (Some(PreToken::HeaderName(res.to_string())), res.len());
+                self.doNotExpectHeader();
+                return result;
             }
         }
         let mut lexer = PreTokenLexer::lexer(&self.current);

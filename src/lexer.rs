@@ -1,3 +1,4 @@
 //! Responsible for passing from `PreTokens` to Tokens.
 
-pub mod tokens;
+pub mod lexer;
+pub mod token;
