@@ -5,7 +5,8 @@
     clippy::all,
     clippy::pedantic,
     clippy::nursery,
-    clippy::restriction
+    clippy::restriction,
+    unused_parens
 )]
 
 /// Include generated grammar

@@ -191,6 +191,7 @@ pub enum Token {
     Comma,
     // Module conditional token
     Import,
+    ImportableHeaderName(String),
     Module,
     // Literals
     IntegerLiteral(i128, Vec<IntegerSuffix>),
@@ -202,7 +203,7 @@ pub enum Token {
     UdIntegerLiteral(i128, Vec<IntegerSuffix>, String),
     UdFloatingPointLiteral(f128::f128, FloatSuffix, String),
     UdCharacterLiteral(EncodingPrefix, char, String),
-    UdStringLiteral(EncodingPrefix, String, String) = 141,
+    UdStringLiteral(EncodingPrefix, String, String) = 142,
 }
 
 impl Token {
@@ -238,6 +239,11 @@ impl Token {
             PreToken::ValidNop | PreToken::DisableMacro(_) | PreToken::EnableMacro(_) | PreToken::Newline | PreToken::Whitespace(_) => Err(None),
             PreToken::Module => Ok(FileTokPos::new_meta_c(Self::Module, &preTok)),
             PreToken::Import => Ok(FileTokPos::new_meta_c(Self::Import, &preTok)),
+            PreToken::ImportableHeaderName(text) => Ok(FileTokPos::new(preTok.file, TokPos {
+                tok: Self::ImportableHeaderName(text),
+                start: preTok.tokPos.start,
+                end: preTok.tokPos.end,
+            })),
         }
     }
 
@@ -1012,17 +1018,18 @@ impl HasEOF for Token {
             128 => Self::DoubleMinus,
             129 => Self::Comma,
             130 => Self::Import,
-            131 => Self::Module,
-            132 => Self::IntegerLiteral(0, Vec::new()),
-            133 => Self::FloatingPointLiteral(f128::f128::new(0), FloatSuffix::None),
-            134 => Self::CharacterLiteral(EncodingPrefix::None, '\0'),
-            135 => Self::StringLiteral(EncodingPrefix::None, String::new()),
-            136 => Self::BoolLiteral(false),
-            137 => Self::PointerLiteral,
-            138 => Self::UdIntegerLiteral(0, Vec::new(), String::new()),
-            139 => Self::UdFloatingPointLiteral(f128::f128::new(0), FloatSuffix::None, String::new()),
-            140 => Self::UdCharacterLiteral(EncodingPrefix::None, '\0', String::new()),
-            141 => Self::UdStringLiteral(EncodingPrefix::None, String::new(), String::new()),
+            131 => Self::ImportableHeaderName(String::new()),
+            132 => Self::Module,
+            133 => Self::IntegerLiteral(0, Vec::new()),
+            134 => Self::FloatingPointLiteral(f128::f128::new(0), FloatSuffix::None),
+            135 => Self::CharacterLiteral(EncodingPrefix::None, '\0'),
+            136 => Self::StringLiteral(EncodingPrefix::None, String::new()),
+            137 => Self::BoolLiteral(false),
+            138 => Self::PointerLiteral,
+            139 => Self::UdIntegerLiteral(0, Vec::new(), String::new()),
+            140 => Self::UdFloatingPointLiteral(f128::f128::new(0), FloatSuffix::None, String::new()),
+            141 => Self::UdCharacterLiteral(EncodingPrefix::None, '\0', String::new()),
+            142 => Self::UdStringLiteral(EncodingPrefix::None, String::new(), String::new()),
             _ => unreachable!(
                 "Invalid type number. You should not have been able to reach this branch."
             ),

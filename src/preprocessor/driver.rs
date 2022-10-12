@@ -247,6 +247,21 @@ impl Preprocessor {
                         .macroDefintionsAtTheEndOfTheFile
                         .clone();
                     self.definitions.extend(otherDefinitions);
+
+                    // Remove the header token
+                    let mut startingWhitespace = VecDeque::new();
+                    while let Some(x) = toks.pop_front() {
+                        if x.tokPos.tok != PreToken::Newline {
+                            break;
+                        }
+                        startingWhitespace.push_back(x);
+                    }
+                    // Insert whitespace back, and a new special token for the later stages
+                    toks.extend(startingWhitespace);
+                    toks.push_front(FileTokPos::new_meta_c(
+                        PreToken::ImportableHeaderName(fileHeader),
+                        &import,
+                    ));
                     toks.push_front(FileTokPos::new_meta_c(PreToken::Import, &import));
                     return toks;
                 }

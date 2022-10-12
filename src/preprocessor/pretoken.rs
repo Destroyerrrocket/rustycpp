@@ -239,6 +239,7 @@ pub enum PreToken {
     EnableMacro(String),
     Module,
     Import,
+    ImportableHeaderName(String),
     ValidNop,
 }
 
@@ -446,8 +447,9 @@ impl PreToken {
             Self::OperatorPunctuator(string) | Self::Keyword(string) => string,
             Self::Newline => "\n",
             Self::DisableMacro(_) | Self::EnableMacro(_) | Self::ValidNop => "",
-            Self::Import => "<import>",
-            Self::Module => "<module>",
+            Self::Import => "import",
+            Self::Module => "module",
+            Self::ImportableHeaderName(string) => string.as_str(),
         };
     }
     pub const fn isWhitespace(&self) -> bool {
