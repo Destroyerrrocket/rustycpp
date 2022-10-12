@@ -21,3 +21,4 @@ macro_rules! include_generated {
 }
 
 include_generated!(macrointconstantexpressionast);
+include_generated!(maincpp);

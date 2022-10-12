@@ -11,3 +11,4 @@ pub mod defineast;
 pub mod generated;
 pub mod macrointconstantexpressionast;
 use lalrpop_util::lalrpop_mod;
+pub mod mainCpp;

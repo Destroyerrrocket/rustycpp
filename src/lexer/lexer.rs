@@ -15,7 +15,7 @@ pub struct Lexer {
     /// The last tokens generated
     lastTokens: VecDeque<FileTokPos<Token>>,
     /// Errors generated
-    errors: VecDeque<CompileMsg>,
+    errors: Vec<CompileMsg>,
 }
 
 impl Lexer {
@@ -24,7 +24,7 @@ impl Lexer {
         Self {
             preprocessor,
             lastTokens: VecDeque::new(),
-            errors: VecDeque::new(),
+            errors: vec![],
         }
     }
 
@@ -145,7 +145,7 @@ impl Lexer {
             if let Err(err) = Self::doMergeStringLiterals(tok1, tok2.clone())
                 .map(|x| self.lastTokens.push_front(x))
             {
-                self.errors.push_back(err);
+                self.errors.push(err);
                 self.lastTokens.push_front(tok2);
             }
         }
@@ -161,11 +161,11 @@ impl Lexer {
         {
             match self.preprocessor.next() {
                 None => break,
-                Some(Err(err)) => self.errors.push_back(err),
+                Some(Err(err)) => self.errors.push(err),
                 Some(Ok(preTok)) => {
                     match Token::from_preToken(preTok).map(|x| self.lastTokens.push_back(x)) {
                         Err(None) | Ok(_) => {}
-                        Err(Some(err)) => self.errors.push_back(err),
+                        Err(Some(err)) => self.errors.push(err),
                     }
                 }
             }
@@ -186,7 +186,7 @@ impl Lexer {
     }
 
     /// Returns the errors of this [`Lexer`].
-    pub fn errors(&mut self) -> VecDeque<CompileMsg> {
+    pub fn errors(&mut self) -> Vec<CompileMsg> {
         self.errors.drain(..).collect()
     }
 }

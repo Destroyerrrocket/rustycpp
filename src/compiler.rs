@@ -12,6 +12,7 @@ use crate::lexer::lexer::Lexer;
 use crate::module_tree::dependency_iterator::DependencyIterator;
 use crate::module_tree::generate::generateDependencyTree;
 use crate::module_tree::structs::ModuleTree;
+use crate::parse::parse::Parser;
 use crate::preprocessor::Preprocessor;
 use crate::utils::compilerstate::CompilerState;
 use crate::utils::filemap::FileMap;
@@ -76,6 +77,33 @@ impl Compiler {
     }
 
     /// Executes the preprocessing stage
+    pub fn print_dependency_tree(&mut self) -> Result<(), Vec<CompileMsg>> {
+        let tree = self.prepareDependencyTreeAndSetupInitialState()?;
+        println!("Resulting module tree: {:?}", tree.roots);
+        let dependencyIterator = DependencyIterator::new(&tree, 0);
+        let mut tuDone = VecDeque::new();
+        loop {
+            while dependencyIterator.wouldLockIfNext() {
+                if tuDone.is_empty() {
+                    panic!("Internal error: Somehow we don't have any TU that are done left, but the dependency iterator is still locked!");
+                }
+                let tu = tuDone.pop_front().unwrap();
+                dependencyIterator.markDone(&tu, 0);
+                println!("=== Once {} completes ===", tu);
+            }
+            let next = dependencyIterator.next();
+            match next {
+                Some(tu) => {
+                    println!("{}", tu);
+                    tuDone.push_back(tu);
+                }
+                None => break,
+            }
+        }
+        Ok(())
+    }
+
+    /// Executes the preprocessing stage
     pub fn print_preprocessor(&mut self) -> Result<(), Vec<CompileMsg>> {
         let tree = self.prepareDependencyTreeAndSetupInitialState()?;
 
@@ -111,7 +139,7 @@ impl Compiler {
         Ok(())
     }
 
-    /// Executes the preprocessing stage
+    /// Executes the preprocessing stage and parses the tokens to its final token form
     pub fn print_lexer(&mut self) -> Result<(), Vec<CompileMsg>> {
         let tree = self.prepareDependencyTreeAndSetupInitialState()?;
 
@@ -147,35 +175,47 @@ impl Compiler {
         Ok(())
     }
 
-    /// Executes the preprocessing stage
-    pub fn print_dependency_tree(&mut self) -> Result<(), Vec<CompileMsg>> {
+    /// Parses the resulting tokens to an AST and prints it
+    pub fn print_parsed_tree(&mut self) -> Result<(), Vec<CompileMsg>> {
         let tree = self.prepareDependencyTreeAndSetupInitialState()?;
-        println!("Resulting module tree: {:?}", tree.roots);
-        let dependencyIterator = DependencyIterator::new(&tree, 0);
-        let mut tuDone = VecDeque::new();
+
+        let dependencyIterator = Arc::new(DependencyIterator::new(&tree, 0));
+
         loop {
-            while dependencyIterator.wouldLockIfNext() {
-                if tuDone.is_empty() {
-                    panic!("Internal error: Somehow we don't have any TU that are done left, but the dependency iterator is still locked!");
-                }
-                let tu = tuDone.pop_front().unwrap();
-                dependencyIterator.markDone(&tu, 0);
-                println!("=== Once {} completes ===", tu);
-            }
             let next = dependencyIterator.next();
+            let dependencyIterator = dependencyIterator.clone();
+            let compilerState = self.compilerState.clone();
             match next {
-                Some(tu) => {
-                    println!("{}", tu);
-                    tuDone.push_back(tu);
-                }
+                Some(tu) => self.pool.execute(move || {
+                    let mut output = format!("// file: {}\n", &tu);
+                    let preprocessor = Preprocessor::new((compilerState.clone(), &tu));
+                    let lexer = Lexer::new(preprocessor);
+                    let mut parser = Parser::new(lexer, tu.clone(), compilerState);
+                    match parser.parseStringTree() {
+                        Ok(ast) => {
+                            output.push_str(&ast);
+                            output.push('\n');
+                        }
+                        Err(errors) => {
+                            output.push('\n');
+                            for err in errors {
+                                output.push_str(&err.to_string());
+                                output.push('\n');
+                            }
+                        }
+                    }
+                    print!("{}", output);
+                    dependencyIterator.markDone(&tu, 1);
+                }),
                 None => break,
             }
         }
+        self.pool.join();
         Ok(())
     }
 
     /// Attempts to compile everything, until the last thing implemented.
     pub fn doTheThing(&mut self) -> Result<(), Vec<CompileMsg>> {
-        self.print_lexer()
+        self.print_parsed_tree()
     }
 }

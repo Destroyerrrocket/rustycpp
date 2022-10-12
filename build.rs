@@ -19,8 +19,8 @@ fn main() {
         )
         .unwrap();
 
-    let grammars = vec!["macrointconstantexpressionast"];
-    let additional_args = vec![&["-visitor"][..]];
+    let grammars = vec!["macrointconstantexpressionast", "mainCpp"];
+    let additional_args = vec![&["-visitor"][..], &["-visitor"][..]];
     let antlr_path = "./antlr4-4.8-2-SNAPSHOT-complete.jar";
 
     for (grammar, arg) in grammars.into_iter().zip(additional_args) {

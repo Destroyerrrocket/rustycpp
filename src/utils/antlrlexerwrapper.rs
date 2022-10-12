@@ -314,6 +314,69 @@ unsafe impl<'a, T: Clone + Debug + HasEOF + 'static> TidAble<'a> for AntlrLexerW
 }
 
 #[derive(Debug)]
+/// A wrapper over a token list, intended for use as input to antlr.
+pub struct AntlrLexerIteratorWrapper<
+    'a,
+    T: Clone + Debug + HasEOF,
+    Iter: Iterator<Item = FileTokPos<T>>,
+> {
+    /// The tokens to input.
+    tokens: &'a mut Iter,
+    /// Index of the current token.
+    idx: isize,
+    /// File name of the soure of tokens.
+    file: String,
+}
+
+impl<'a, T: Clone + Debug + HasEOF, Iter: Iterator<Item = FileTokPos<T>>>
+    AntlrLexerIteratorWrapper<'a, T, Iter>
+{
+    /// Create a new wrapper.
+    pub fn new(tokens: &'a mut Iter, file: String) -> Self {
+        Self {
+            tokens,
+            idx: 0,
+            file,
+        }
+    }
+}
+
+impl<'a, T: Clone + Debug + HasEOF + 'static, Iter: Iterator<Item = FileTokPos<T>>> TokenSource<'a>
+    for AntlrLexerIteratorWrapper<'a, T, Iter>
+{
+    type TF = AntlrLexerWrapperFactory<'a, T>;
+
+    fn next_token(&mut self) -> <Self::TF as TokenFactory<'a>>::Tok {
+        if let Some(tok) = self.tokens.next() {
+            self.idx += 1;
+            Box::new(AntlrToken::new(tok, self.idx))
+        } else {
+            Box::new(AntlrToken::new(FileTokPos::new_meta(T::getEOF()), self.idx))
+        }
+    }
+
+    fn get_input_stream(&mut self) -> Option<&mut dyn antlr_rust::int_stream::IntStream> {
+        unimplemented!()
+    }
+
+    fn get_source_name(&self) -> String {
+        self.file.clone()
+    }
+
+    fn get_token_factory(&self) -> &'a Self::TF {
+        &AntlrLexerWrapperFactory {
+            _phantom: &PhantomData,
+        }
+    }
+}
+
+unsafe impl<'a, T: Clone + Debug + HasEOF + 'static, Iter: Iterator<Item = FileTokPos<T>>>
+    TidAble<'a> for AntlrLexerIteratorWrapper<'a, T, Iter>
+{
+    type Static = ();
+}
+
+#[derive(Debug)]
 #[doc(hidden)]
 pub struct LexerWrapperErrorStrategy<'input, Ctx, Tok, Recognizer>
 where
