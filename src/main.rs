@@ -40,7 +40,7 @@
 
 mod compiler;
 mod grammars;
-mod lexer;
+mod lex;
 mod module_tree;
 mod parse;
 mod preprocessor;

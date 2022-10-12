@@ -1,6 +1,6 @@
 parser grammar mainCpp;
 @tokenfactory {
-pub type LocalTokenFactory<'input> = crate::utils::antlrlexerwrapper::AntlrLexerWrapperFactory<'input, crate::lexer::token::Token>;
+pub type LocalTokenFactory<'input> = crate::utils::antlrlexerwrapper::AntlrLexerWrapperFactory<'input, crate::lex::token::Token>;
 }
 tokens {
 	Identifier,

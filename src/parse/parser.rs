@@ -6,7 +6,7 @@ use antlr_rust::tree::ParseTree;
 
 use crate::grammars::generated::maincpp::mainCpp;
 use crate::grammars::generated::maincppparser::Translation_unitContextAll;
-use crate::lexer::lexer::Lexer;
+use crate::lex::lexer::Lexer;
 use crate::utils::antlrlexerwrapper::{AntlrLexerIteratorWrapper, LexerWrapperErrorStrategy};
 use crate::utils::compilerstate::CompilerState;
 use crate::utils::structs::CompileMsg;

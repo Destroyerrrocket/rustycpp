@@ -8,11 +8,11 @@ use std::thread;
 
 use threadpool::ThreadPool;
 
-use crate::lexer::lexer::Lexer;
+use crate::lex::lexer::Lexer;
 use crate::module_tree::dependency_iterator::DependencyIterator;
 use crate::module_tree::generate::generateDependencyTree;
 use crate::module_tree::structs::ModuleTree;
-use crate::parse::parse::Parser;
+use crate::parse::parser::Parser;
 use crate::preprocessor::Preprocessor;
 use crate::utils::compilerstate::CompilerState;
 use crate::utils::filemap::FileMap;

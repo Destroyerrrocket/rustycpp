@@ -441,7 +441,8 @@ impl PreToken {
             | Self::UdStringLiteral(string)
             | Self::RawStringLiteral(string)
             | Self::CharLiteral(string)
-            | Self::UdCharLiteral(string) => string.as_str(),
+            | Self::UdCharLiteral(string)
+            | Self::ImportableHeaderName(string) => string.as_str(),
             Self::Whitespace(string) => string.as_str(),
             Self::PreprocessingOperator(op) => op.as_str(),
             Self::OperatorPunctuator(string) | Self::Keyword(string) => string,
@@ -449,7 +450,6 @@ impl PreToken {
             Self::DisableMacro(_) | Self::EnableMacro(_) | Self::ValidNop => "",
             Self::Import => "import",
             Self::Module => "module",
-            Self::ImportableHeaderName(string) => string.as_str(),
         };
     }
     pub const fn isWhitespace(&self) -> bool {
