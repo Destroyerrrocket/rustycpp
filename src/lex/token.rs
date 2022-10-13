@@ -303,7 +303,7 @@ impl Token {
             r"--" => Ok(FileTokPos::new_meta_c(Self::DoubleMinus, tok)),
             r"," => Ok(FileTokPos::new_meta_c(Self::Comma, tok)),
             _ => Err(Some(CompileError::from_preTo(
-                format!("Unknown operator: {}", operator),
+                format!("Unknown operator: {operator}"),
                 tok,
             ))),
         }
@@ -396,7 +396,7 @@ impl Token {
             r"wchar_t" => Ok(FileTokPos::new_meta_c(Self::Wchar_t, tok)),
             r"while" => Ok(FileTokPos::new_meta_c(Self::While, tok)),
             _ => Err(Some(CompileError::from_preTo(
-                format!("Unknown token: {}", operator),
+                format!("Unknown token: {operator}"),
                 tok,
             ))),
         }
@@ -486,7 +486,7 @@ impl Token {
                     let octal = octal.unwrap();
                     let res = char::from_u32(octal);
                     if res.is_none() {
-                        return Err(format!("out of range octal escape for input: {}", octalNum));
+                        return Err(format!("out of range octal escape for input: {octalNum}"));
                     }
                     result.push(res.unwrap());
                 }
@@ -504,7 +504,7 @@ impl Token {
                     let hex = hex.unwrap();
                     let res = char::from_u32(hex);
                     if res.is_none() {
-                        return Err(format!("out of range hex escape for input: {}", hexNum));
+                        return Err(format!("out of range hex escape for input: {hexNum}"));
                     }
                     result.push(res.unwrap());
                 }
@@ -527,21 +527,21 @@ impl Token {
         let (encoding, message) = Self::getEncodingPrefix(operator);
         if message.len() < 3 {
             return Err(Some(CompileError::from_preTo(
-                format!("Invalid char literal: {}", operator),
+                format!("Invalid char literal: {operator}"),
                 tok,
             )));
         }
         let msg = &message[1..message.len() - 1];
         let msg = Self::escapeString(msg).map_err(|err| {
             Some(CompileError::from_preTo(
-                format!("Invalid char literal: {}", err),
+                format!("Invalid char literal: {err}"),
                 tok,
             ))
         })?;
 
         if msg.len() != 1 {
             return Err(Some(CompileError::from_preTo(
-                format!("Invalid char literal: {}", operator),
+                format!("Invalid char literal: {operator}"),
                 tok,
             )));
         }
@@ -559,7 +559,7 @@ impl Token {
         let msg = &message[1..message.len() - 1];
         let msg = Self::escapeString(msg).map_err(|err| {
             Some(CompileError::from_preTo(
-                format!("Invalid string literal: {}", err),
+                format!("Invalid string literal: {err}"),
                 tok,
             ))
         })?;
@@ -657,7 +657,7 @@ impl Token {
             .and_then(|x| i128::try_from(x).map_err(|x| x.to_string()))
             .map_err(|err| {
                 Some(CompileError::from_preTo(
-                    format!("Invalid number: {}, error: {}", string, err),
+                    format!("Invalid number: {string}, error: {err}"),
                     tok,
                 ))
             })
@@ -757,7 +757,7 @@ impl Token {
             .map_err(|x| x.to_string())
             .map_err(|err| {
                 Some(CompileError::from_preTo(
-                    format!("Invalid number: {}, error: {}", string, err),
+                    format!("Invalid number: {string}, error: {err}"),
                     tok,
                 ))
             })
@@ -791,7 +791,7 @@ impl Token {
             .map_err(|x| x.to_string())
             .map_err(|err| {
                 Some(CompileError::from_preTo(
-                    format!("Invalid number: {}, error: {}", string, err),
+                    format!("Invalid number: {string}, error: {err}"),
                     tok,
                 ))
             })

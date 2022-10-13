@@ -140,8 +140,8 @@ impl Preprocessor {
             ),
             ParseError::UnrecognizedToken { token, expected } => CompileError::from_at(
                 format!(
-                    "Found {:?} while expecting to find: {:?}",
-                    token.1, expected
+                    "Found {:?} while expecting to find: {expected:?}",
+                    token.1
                 ),
                 (token.0).1.clone(),
                 (token.0).0,

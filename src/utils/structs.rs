@@ -66,7 +66,7 @@ impl CompileFile {
             || self.path().clone(),
             |diff| {
                 let (r, c) = self.getRowColumn(diff);
-                format!("{}:{}:{}", self.path(), r, c)
+                format!("{}:{r}:{c}", self.path())
             },
         )
     }

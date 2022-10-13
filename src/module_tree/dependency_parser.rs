@@ -70,7 +70,7 @@ fn parseModuleOp(
         && name != ":private"
     {
         return Err(CompileError::from_at(
-            format!("The module name \"{}\" is invalid!", name),
+            format!("The module name \"{name}\" is invalid!"),
             translationUnit.clone(),
             at,
             Some(atEnd),
@@ -136,7 +136,7 @@ fn parseImportOp(
         &name
     ) {
         return Err(CompileError::from_at(
-            format!("The import name \"{}\" is invalid!", name),
+            format!("The import name \"{name}\" is invalid!"),
             translationUnit.clone(),
             at,
             Some(atEnd),

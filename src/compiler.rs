@@ -89,12 +89,12 @@ impl Compiler {
                 }
                 let tu = tuDone.pop_front().unwrap();
                 dependencyIterator.markDone(&tu, 0);
-                println!("=== Once {} completes ===", tu);
+                println!("=== Once {tu} completes ===");
             }
             let next = dependencyIterator.next();
             match next {
                 Some(tu) => {
-                    println!("{}", tu);
+                    println!("{tu}");
                     tuDone.push_back(tu);
                 }
                 None => break,
@@ -129,7 +129,7 @@ impl Compiler {
                             }
                         }
                     }
-                    print!("{}", output);
+                    print!("{output}");
                     dependencyIterator.markDone(&tu, 1);
                 }),
                 None => break,
@@ -165,7 +165,7 @@ impl Compiler {
                             output.push('\n');
                         }
                     }
-                    print!("{}", output);
+                    print!("{output}");
                     dependencyIterator.markDone(&tu, 1);
                 }),
                 None => break,
@@ -204,7 +204,7 @@ impl Compiler {
                             }
                         }
                     }
-                    print!("{}", output);
+                    print!("{output}");
                     dependencyIterator.markDone(&tu, 1);
                 }),
                 None => break,

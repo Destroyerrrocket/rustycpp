@@ -108,7 +108,7 @@ impl Preprocessor {
                 PreToken::Ident(id) => {
                     if self.definitions.remove(&id).is_none() {
                         self.errors.push_back(CompileError::from_preTo(
-                            format!("Macro {} is not defined when reached", id),
+                            format!("Macro {id} is not defined when reached"),
                             &preToken,
                         ));
                     }

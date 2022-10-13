@@ -106,7 +106,7 @@ fn preprocessAndStringify(string: &'static str) -> String {
 #[test]
 fn testMacroReplacement() {
     let toks = getToksPreprocessedNoWs(&[("test", "#define E e\nE\n")]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 1);
     assert_eq!(toks[0].to_str(), "e");
 }
@@ -114,7 +114,7 @@ fn testMacroReplacement() {
 #[test]
 fn testMacroDontReplaceOnMissingParen() {
     let toks = getToksPreprocessedNoWs(&[("test", "#define E() e\n#define A a\nE A")]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 2);
     assert_eq!(toks[0].to_str(), "E");
     assert_eq!(toks[1].to_str(), "a");
@@ -123,7 +123,7 @@ fn testMacroDontReplaceOnMissingParen() {
 #[test]
 fn testMacroFuncReplace() {
     let toks = getToksPreprocessedNoWs(&[("test", "#define E(a) a\nE(hola)")]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 1);
     assert_eq!(toks[0].to_str(), "hola");
 }
@@ -131,7 +131,7 @@ fn testMacroFuncReplace() {
 #[test]
 fn testMacroFuncReplaceRec() {
     let toks = getToksPreprocessedNoWs(&[("test", "#define E(a) a\nE(E(E(E(hola))))")]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 1);
     assert_eq!(toks[0].to_str(), "hola");
 }
@@ -140,7 +140,7 @@ fn testMacroFuncReplaceRec() {
 fn testMacroFuncReplaceRecComp() {
     let toks =
         getToksPreprocessedNoWs(&[("test", "#define E(a) a\n#define A(a) a\nE(A(E(A(hola))))")]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 1);
     assert_eq!(toks[0].to_str(), "hola");
 }
@@ -148,7 +148,7 @@ fn testMacroFuncReplaceRecComp() {
 #[test]
 fn testMacroFuncVariadic() {
     let toks = getToksPreprocessedNoWs(&[("test", "#define E(   hello...  ) hello \nE(a,b,c)")]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 5);
     assert_eq!(toks[0].to_str(), r#"a"#);
     assert_eq!(toks[1].to_str(), r#","#);
@@ -161,7 +161,7 @@ fn testMacroFuncVariadic() {
 fn testMacroFuncStringify() {
     let toks =
         getToksPreprocessedNoWs(&[("test", "#define E(a) a\n#define A(a) #a\nE(A(E(A(hola))))")]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 1);
     assert_eq!(toks[0].to_str(), r#""E(A(hola))""#);
 }
@@ -172,7 +172,7 @@ fn testMacroFuncStringifyVariable() {
         "test",
         "#define E(...) #   __VA_ARGS__\n\nE(elephant,num,6,class,thing)",
     )]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 1);
     assert_eq!(toks[0].to_str(), r#""elephant,num,6,class,thing""#);
 }
@@ -183,7 +183,7 @@ fn testMacroFuncStringifyVaOpt() {
         "test",
         "#define E(...) #   __VA_OPT__  ( , __VA_ARGS__  ) \n\nE(elephant ,num,6,class,thing)",
     )]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 1);
     assert_eq!(toks[0].to_str(), r#"", elephant,num,6,class,thing""#);
 }
@@ -192,7 +192,7 @@ fn testMacroFuncStringifyVaOpt() {
 fn testMacroFuncConcat() {
     let toks =
         getToksPreprocessedNoWs(&[("test", "#define E( a , b  )  a  ##   b\nE( =   , =  )")]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 1);
     assert_eq!(toks[0].to_str(), r#"=="#);
 }
@@ -203,7 +203,7 @@ fn testMacroFuncConcatVariable() {
         "test",
         "#define E( a , ...  )  a  ##   __VA_OPT__(__VA_ARGS__ nameBoi)\nE( =   , =  )",
     )]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 2);
     assert_eq!(toks[0].to_str(), r#"=="#);
     assert_eq!(toks[1].to_str(), r#"nameBoi"#);
@@ -215,7 +215,7 @@ fn testMacroExtensionGccComma() {
         "test",
         "#define E( a , ...  )  a ,  ##   __VA_ARGS__\nE( a ,b)E(a)",
     )]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 4);
     assert_eq!(toks[0].to_str(), r#"a"#);
     assert_eq!(toks[1].to_str(), r#","#);
@@ -226,7 +226,7 @@ fn testMacroExtensionGccComma() {
 #[test]
 fn testMacroDisable() {
     let toks = getToksPreprocessedNoWs(&[("test", "#define E( a )  E(a) \nE(E(a))")]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 7);
     assert_eq!(toks[0].to_str(), r#"E"#);
     assert_eq!(toks[1].to_str(), r#"("#);
@@ -241,7 +241,7 @@ fn testMacroDisable() {
 fn testMacroDisable2() {
     let toks =
         getToksPreprocessedNoWs(&[("test", "#define E( a )  A(E(a))\n #define A(a) a\nE(a)")]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 4);
     assert_eq!(toks[0].to_str(), r#"E"#);
     assert_eq!(toks[1].to_str(), r#"("#);

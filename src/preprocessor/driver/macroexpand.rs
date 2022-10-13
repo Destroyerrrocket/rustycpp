@@ -572,18 +572,18 @@ impl Preprocessor {
 
         if min == max {
             return Err(CompileError::from_preTo(
-                format!("Expected {} parameters. found {}", min, len),
+                format!("Expected {min} parameters. found {len}"),
                 &closeParen,
             ));
         }
         if len < min {
             return Err(CompileError::from_preTo(
-                format!("Expected at least {} parameters. found {}", min, len),
+                format!("Expected at least {min} parameters. found {len}"),
                 &closeParen,
             ));
         } else {
             return Err(CompileError::from_preTo(
-                format!("Expected at most {} parameters. found {}", max, len),
+                format!("Expected at most {max} parameters. found {len}"),
                 &closeParen,
             ));
         }

@@ -64,11 +64,11 @@ impl Parameters {
                 } else if let JsonValue::Short(str) = val {
                     res.push(str.to_string());
                 } else {
-                    return Err(format!("Invalid value for {}: {:?}", name, val));
+                    return Err(format!("Invalid value for {name}: {val:?}"));
                 }
             }
         } else {
-            return Err(format!("Invalid value for {}: {:?}", name, value));
+            return Err(format!("Invalid value for {name}: {value:?}"));
         }
         Ok(res)
     }

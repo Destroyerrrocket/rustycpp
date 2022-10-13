@@ -33,7 +33,8 @@
     clippy::needless_return,
     clippy::redundant_else,
     clippy::manual_assert,
-    clippy::needless_pass_by_value
+    clippy::needless_pass_by_value,
+    clippy::missing_const_for_fn // Bugged
 )]
 // These ones should be re-enabled, and possibly selectively disabled
 #![allow(clippy::too_many_lines)]

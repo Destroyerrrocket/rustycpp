@@ -36,7 +36,7 @@ impl<'a> FileMap {
         if let Some(v) = self.files.get(&path) {
             return v.clone();
         }
-        panic!("File not found in visited files: {}", path);
+        panic!("File not found in visited files: {path}");
     }
 
     /// Get file. If not present, open it. On error, crash.
@@ -164,7 +164,7 @@ impl<'a> FileMap {
                         .insert(path.canonicalize().unwrap().to_str().unwrap().to_string())
                         .clone());
                 }
-                return Err(format!("Could not find file {}", pathStr));
+                return Err(format!("Could not find file {pathStr}"));
             }
         }
     }

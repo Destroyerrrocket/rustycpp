@@ -107,7 +107,7 @@ fn preprocessAndStringify(string: &'static str) -> String {
 #[test]
 fn testHeaderOpening1() {
     let toks = getToksPreprocessedNoWs(&[("test", "#include <header.h>\n")]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 1);
     assert_eq!(toks[0].to_str(), "SUCCESS");
 }
@@ -115,7 +115,7 @@ fn testHeaderOpening1() {
 #[test]
 fn testHeaderOpening2() {
     let toks = getToksPreprocessedNoWs(&[("test", r#"#include "header.h"\n"#)]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 1);
     assert_eq!(toks[0].to_str(), "SUCCESS");
 }
@@ -129,7 +129,7 @@ fn testHeaderOpeningMacro() {
 #include HEADERIZE(header)
 "#,
     )]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 1);
     assert_eq!(toks[0].to_str(), "SUCCESS");
 }
@@ -143,7 +143,7 @@ fn testHeaderOpeningTwice() {
 #include <header.h>
 "#,
     )]);
-    println!("{:?}", toks);
+    println!("{toks:?}");
     assert_eq!(toks.len(), 2);
     assert_eq!(toks[0].to_str(), "SUCCESS");
     assert_eq!(toks[1].to_str(), "SUCCESS");

@@ -308,7 +308,7 @@ impl Preprocessor {
                                 .push_back(FileTokPos::new_meta_c(PreTokenIf::Num(num), token));
                         }
                         Err(err) => errors.push(CompileError::from_preTo(
-                            format!("Invalid number in if eval scope: {}", err),
+                            format!("Invalid number in if eval scope: {err}"),
                             token,
                         )),
                     }

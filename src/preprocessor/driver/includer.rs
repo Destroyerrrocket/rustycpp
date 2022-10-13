@@ -27,7 +27,7 @@ impl Preprocessor {
             self.multilexer.pushFile(file);
         } else {
             return Err(CompileError::from_preTo(
-                format!("Can't include the file in path: {}", file),
+                format!("Can't include the file in path: {file}"),
                 preToken,
             ));
         }

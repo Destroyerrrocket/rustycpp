@@ -33,7 +33,7 @@ fn parseGlobalPartOfModuleFile(
                 ModuleOperator::ImportHeader(path) => {
                     let mut fileMap = fileMap.lock().unwrap();
                     if !fileMap.hasFileAccess(&path[1..path.len() - 1]) {
-                        return Err(format!("Error resolving path to import header {}", path));
+                        return Err(format!("Error resolving path to import header {path}"));
                     }
                     let path = fileMap
                         .getAddFile(&path[1..path.len() - 1])
@@ -81,7 +81,7 @@ where
                 ModuleOperator::ImportHeader(path) => {
                     let mut fileMap = fileMap.lock().unwrap();
                     if !fileMap.hasFileAccess(&path[1..path.len() - 1]) {
-                        return Err(format!("Error resolving path to import header {}", path));
+                        return Err(format!("Error resolving path to import header {path}"));
                     }
                     let path = fileMap
                         .getAddFile(&path[1..path.len() - 1])
@@ -350,7 +350,7 @@ pub fn generateNodes(
                 .collect::<HashSet<_>>();
 
             err.push(CompileError::on_file(
-                format!("Missing modules: {:?}", missing),
+                format!("Missing modules: {missing:?}"),
                 fileMap
                     .lock()
                     .unwrap()

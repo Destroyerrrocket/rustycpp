@@ -466,7 +466,7 @@ where
             )
         };
 
-        format!("no viable alternative at input '{}'", input)
+        format!("no viable alternative at input '{input}'")
     }
 
     fn report_input_mismatch<
@@ -503,7 +503,7 @@ where
         let expecting = expecting.to_token_string(recognizer.get_vocabulary());
         let t = &**recognizer.get_current_token();
         let token_name = self.get_token_error_display(t);
-        let msg = format!("extraneous input {} expecting {}", token_name, expecting);
+        let msg = format!("extraneous input {token_name} expecting {expecting}");
         self.errorList
             .lock()
             .unwrap()
