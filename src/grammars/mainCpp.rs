@@ -57,6 +57,48 @@ where
     }
 }
 
+pub fn isTypedefName<'input, I>(recog: &mut BaseParserType<'input, I>) -> bool
+where
+    I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
+{
+    false
+}
+
+pub fn isNamespaceName<'input, I>(recog: &mut BaseParserType<'input, I>) -> bool
+where
+    I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
+{
+    false
+}
+
+pub fn isNamespaceAlias<'input, I>(recog: &mut BaseParserType<'input, I>) -> bool
+where
+    I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
+{
+    false
+}
+
+pub fn isClassName<'input, I>(recog: &mut BaseParserType<'input, I>) -> bool
+where
+    I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
+{
+    false
+}
+
+pub fn isEnumName<'input, I>(recog: &mut BaseParserType<'input, I>) -> bool
+where
+    I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
+{
+    false
+}
+
+pub fn isTemplateName<'input, I>(recog: &mut BaseParserType<'input, I>) -> bool
+where
+    I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
+{
+    false
+}
+
 pub struct Scopes;
 
 impl Scopes {

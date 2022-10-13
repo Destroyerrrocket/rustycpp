@@ -2,9 +2,9 @@
 use std::collections::VecDeque;
 use std::sync::Arc;
 
-use crate::fileTokPosMatches;
 use crate::preprocessor::Preprocessor;
 use crate::utils::structs::{CompileError, CompileFile, CompileMsg, FileTokPos, TokPos};
+use crate::{fileTokPosMatches};
 
 use super::token::{EncodingPrefix, Token};
 
@@ -16,6 +16,8 @@ pub struct Lexer {
     lastTokens: VecDeque<FileTokPos<Token>>,
     /// Errors generated
     errors: Vec<CompileMsg>,
+
+    greaterInLastToken: bool,
 }
 
 impl Lexer {
@@ -25,6 +27,7 @@ impl Lexer {
             preprocessor,
             lastTokens: VecDeque::new(),
             errors: vec![],
+            greaterInLastToken: false,
         }
     }
 
@@ -163,8 +166,28 @@ impl Lexer {
                 None => break,
                 Some(Err(err)) => self.errors.push(err),
                 Some(Ok(preTok)) => {
-                    match Token::from_preToken(preTok).map(|x| self.lastTokens.push_back(x)) {
-                        Err(None) | Ok(_) => {}
+                    match Token::from_preToken(preTok).map(|x| self.lastTokens.extend(x)) {
+                        Err(None) => {
+                            self.greaterInLastToken = false;
+                        }
+                        Ok(_) => {
+                            if self.greaterInLastToken {
+                                for tok in &mut self.lastTokens {
+                                    if matches!(
+                                        tok.tokPos.tok,
+                                        Token::SingleGreater | Token::FirstGreater
+                                    ) {
+                                        tok.tokPos.tok = Token::SecondGreater;
+                                    } else if matches!(tok.tokPos.tok, Token::Equal) {
+                                        tok.tokPos.tok = Token::StrippedGreaterEqual;
+                                    }
+                                }
+                            }
+                            self.greaterInLastToken = fileTokPosMatches!(
+                                self.lastTokens.back().unwrap(),
+                                Token::SecondGreater | Token::SingleGreater
+                            );
+                        }
                         Err(Some(err)) => self.errors.push(err),
                     }
                 }

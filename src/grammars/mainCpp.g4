@@ -123,19 +123,19 @@ tokens {
 	DoubleEqual,
 	ExclamationEqual,
 	Less,
-	Greater,
 	LessEqual,
-	GreaterEqual,
 	Spaceship,
 	DoubleAmpersand,
 	DoublePipe,
 	DoubleLess,
-	DoubleGreater,
 	DoubleLessEqual,
-	DoubleGreaterEqual,
 	DoublePlus,
 	DoubleMinus,
 	Comma,
+	SingleGreater,
+	FirstGreater,
+	SecondGreater,
+	StrippedGreaterEqual,
 	Import,
 	ImportableHeaderName,
 	Module,
@@ -151,6 +151,37 @@ tokens {
 	UdStringLiteral
 }
 
+// Fake tokens
+any_greater:
+	SingleGreater
+	| FirstGreater
+	| SecondGreater
+	;
+
+greater:
+	SecondGreater
+	| SingleGreater
+	;
+
+greaterEqual:
+	(SecondGreater | SingleGreater) StrippedGreaterEqual
+	;
+
+doubleGreater:
+	SingleGreater SecondGreater
+	| FirstGreater SecondGreater
+	| SecondGreater SecondGreater
+	;
+
+doubleGreaterEqual:
+	(SingleGreater SecondGreater | FirstGreater SecondGreater | SecondGreater SecondGreater) StrippedGreaterEqual
+	;
+
+equal:
+	Equal
+	| StrippedGreaterEqual
+	;
+
 ////////////////// Parser Rules ////////////////////////////////////////////////
 translation_unit[s: Arc<Mutex<Scopes>>]:
 	declaration_seq?
@@ -159,30 +190,30 @@ translation_unit[s: Arc<Mutex<Scopes>>]:
 
 // Start dynamic keywords
 typedef_name:
-	Identifier
+	{isTypedefName(recog)}? Identifier
 	| simple_template_id
 	;
 
 namespace_name:
-	Identifier
+	{isNamespaceName(recog)}? Identifier
 	| namespace_alias
 	;
 
 namespace_alias:
-	Identifier
+	{isNamespaceAlias(recog)}? Identifier
 	;
 
 class_name:
-	Identifier
+	{isClassName(recog)}? Identifier
 	| simple_template_id
 	;
 
 enum_name:
-	Identifier
+	{isEnumName(recog)}? Identifier
 	;
 
 template_name:
-	Identifier
+	{isTemplateName(recog)}? Identifier
 	;
 
 // Simpler dynamic keywords
@@ -315,7 +346,7 @@ nodeclspec_function_declaration:
 	;
 
 alias_declaration:
-	Using Identifier attribute_specifier_seq? Equal defining_type_id Semicolon
+	Using Identifier attribute_specifier_seq? equal defining_type_id Semicolon
 	;
 
 simple_declaration:
@@ -542,9 +573,9 @@ parameter_declaration_list:
 
 parameter_declaration:
 	attribute_specifier_seq? decl_specifier_seq declarator
-	| attribute_specifier_seq? decl_specifier_seq declarator Equal initializer_clause
+	| attribute_specifier_seq? decl_specifier_seq declarator equal initializer_clause
 	| attribute_specifier_seq? decl_specifier_seq abstract_declarator?
-	| attribute_specifier_seq? decl_specifier_seq abstract_declarator? Equal initializer_clause
+	| attribute_specifier_seq? decl_specifier_seq abstract_declarator? equal initializer_clause
 	;
 
 initializer:
@@ -553,7 +584,7 @@ initializer:
 	;
 
 brace_or_equal_initializer:
-	Equal initializer_clause
+	equal initializer_clause
 	| braced_init_list
 	;
 
@@ -597,8 +628,8 @@ function_definition:
 function_body:
 	ctor_initializer? compound_statement
 	| function_try_block
-	| Equal Default Semicolon
-	| Equal Delete Semicolon
+	| equal Default Semicolon
+	| equal Delete Semicolon
 	;
 
 enum_specifier:
@@ -634,7 +665,7 @@ enumerator_list:
 
 enumerator_definition:
 	enumerator
-	| enumerator Equal constant_expression
+	| enumerator equal constant_expression
 	;
 
 enumerator:
@@ -672,7 +703,7 @@ namespace_body:
 	;
 
 namespace_alias_definition:
-	Namespace Identifier Equal qualified_namespace_specifier Semicolon
+	Namespace Identifier equal qualified_namespace_specifier Semicolon
 	;
 
 qualified_namespace_specifier:
@@ -783,7 +814,7 @@ virt_specifier:
 	;
 
 pure_specifier:
-	Equal zero
+	equal zero
 	;
 
 conversion_function_id:
@@ -868,7 +899,7 @@ operator:
 	| Caret
 	| Ampersand
 	| Pipe
-	| Equal
+	| equal
 	| PlusEqual
 	| MinusEqual
 	| StarEqual
@@ -880,19 +911,19 @@ operator:
 	| DoubleEqual
 	| ExclamationEqual
 	| Less
-	| Greater
 	| LessEqual
-	| GreaterEqual
 	| Spaceship
 	| DoubleAmpersand
 	| DoublePipe
 	| DoubleLess
-	| DoubleGreater
 	| DoubleLessEqual
-	| DoubleGreaterEqual
 	| DoublePlus
 	| DoubleMinus
 	| Comma
+	| doubleGreaterEqual
+	| greaterEqual
+	| doubleGreater
+	| greater
 	;
 
 literal_operator_id:
@@ -909,7 +940,7 @@ template_declaration:
 	;
 
 template_head:
-	Template Less template_parameter_list Greater requires_clause?
+	Template Less template_parameter_list any_greater requires_clause?
 	;
 
 template_parameter_list:
@@ -935,11 +966,11 @@ template_parameter:
 
 type_parameter:
 	type_parameter_key ThreeDots? Identifier?
-	| type_parameter_key Identifier? Equal type_id
+	| type_parameter_key Identifier? equal type_id
 	| type_constraint ThreeDots? Identifier?
-	| type_constraint Identifier? Equal type_id
+	| type_constraint Identifier? equal type_id
 	| template_head type_parameter_key ThreeDots? Identifier?
-	| template_head type_parameter_key Identifier? Equal id_expression
+	| template_head type_parameter_key Identifier? equal id_expression
 	;
 
 type_parameter_key:
@@ -949,17 +980,17 @@ type_parameter_key:
 
 type_constraint:
 	nested_name_specifier? concept_name
-	| nested_name_specifier? concept_name Less template_argument_list? Greater
+	| nested_name_specifier? concept_name Less template_argument_list? any_greater
 	;
 
 simple_template_id:
-	template_name Less template_argument_list? Greater
+	template_name Less template_argument_list? any_greater
 	;
 
 template_id:
 	simple_template_id
-	| operator_function_id Less template_argument_list? Greater
-	| literal_operator_id Less template_argument_list? Greater
+	| operator_function_id Less template_argument_list? any_greater
+	| literal_operator_id Less template_argument_list? any_greater
 	;
 
 template_argument_list:
@@ -980,7 +1011,7 @@ deduction_guide:
 	explicit_specifier? template_name LParen parameter_declaration_clause RParen Arrow simple_template_id;
 
 concept_definition:
-	Concept concept_name Equal constraint_expression Semicolon
+	Concept concept_name equal constraint_expression Semicolon
 	;
 
 concept_name:
@@ -997,7 +1028,7 @@ explicit_instantiation:
 	;
 
 explicit_specialization:
-	Template Less Greater declaration
+	Template Less any_greater declaration
 	;
 // End templates
 
@@ -1150,7 +1181,7 @@ nested_name_specifier:
 
 lambda_expression:
 	lambda_introducer lambda_declarator? compound_statement
-	| lambda_introducer Less template_parameter_list Greater requires_clause? lambda_declarator? compound_statement
+	| lambda_introducer Less template_parameter_list any_greater requires_clause? lambda_declarator? compound_statement
 	;
 
 lambda_introducer:
@@ -1169,7 +1200,7 @@ lambda_capture:
 
 capture_default:
 	Ampersand
-	| Equal
+	| equal
 	;
 
 capture_list:
@@ -1209,7 +1240,6 @@ fold_operator:
 	| Ampersand
 	| Pipe
 	| DoubleLess
-	| DoubleGreater
 	| PlusEqual
 	| MinusEqual
 	| StarEqual
@@ -1218,19 +1248,20 @@ fold_operator:
 	| CaretEqual
 	| AmpersandEqual
 	| DoubleLessEqual
-	| DoubleGreaterEqual
-	| Equal
+	| equal
 	| DoubleEqual
 	| ExclamationEqual
 	| Less
-	| Greater
 	| LessEqual
-	| GreaterEqual
 	| DoubleAmpersand
 	| DoublePipe
 	| Comma
 	| DotStar
 	| ArrowStar
+	| doubleGreaterEqual
+	| greaterEqual
+	| doubleGreater
+	| greater
 	;
 
 requires_expression:
@@ -1288,10 +1319,10 @@ postfix_expression:
 	| postfix_expression Arrow Template? id_expression
 	| postfix_expression DoublePlus
 	| postfix_expression DoubleMinus
-	| Dynamic_cast Less type_id Greater LParen expression RParen
-	| Static_cast Less type_id Greater LParen expression RParen
-	| Reinterpret_cast Less type_id Greater LParen expression RParen
-	| Const_cast Less type_id Greater LParen expression RParen
+	| Dynamic_cast Less type_id any_greater LParen expression RParen
+	| Static_cast Less type_id any_greater LParen expression RParen
+	| Reinterpret_cast Less type_id any_greater LParen expression RParen
+	| Const_cast Less type_id any_greater LParen expression RParen
 	| Typeid LParen expression RParen
 	| Typeid LParen type_id RParen
 	;
@@ -1392,7 +1423,7 @@ additive_expression:
 shift_expression:
 	additive_expression
 	| shift_expression DoubleLess additive_expression
-	| shift_expression DoubleGreater additive_expression
+	| shift_expression doubleGreater additive_expression
 	;
 
 compare_expression:
@@ -1403,9 +1434,9 @@ compare_expression:
 relational_expression:
 	compare_expression
 	| relational_expression Less compare_expression
-	| relational_expression Greater compare_expression
+	| relational_expression greater compare_expression
 	| relational_expression LessEqual compare_expression
-	| relational_expression GreaterEqual compare_expression
+	| relational_expression greaterEqual compare_expression
 	;
 
 equality_expression:
@@ -1461,14 +1492,14 @@ assignment_expression:
 	;
 
 assignment_operator:
-	Equal
+	equal
 	| StarEqual
 	| SlashEqual
 	| PercentEqual
 	| PlusEqual
 	| MinusEqual
 	| DoubleLessEqual
-	| DoubleGreaterEqual
+	| doubleGreaterEqual
 	| AmpersandEqual
 	| CaretEqual
 	| PipeEqual

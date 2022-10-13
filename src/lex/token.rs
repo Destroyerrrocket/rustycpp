@@ -5,6 +5,8 @@
     non_camel_case_types
 )]
 
+use std::collections::VecDeque;
+
 use crate::preprocessor::pretoken::PreToken;
 use crate::utils::antlrlexerwrapper::HasEOF;
 use crate::utils::structs::{CompileError, CompileMsg, FileTokPos, TokPos};
@@ -176,19 +178,19 @@ pub enum Token {
     DoubleEqual,
     ExclamationEqual,
     Less,
-    Greater,
     LessEqual,
-    GreaterEqual,
     Spaceship,
     DoubleAmpersand,
     DoublePipe,
     DoubleLess,
-    DoubleGreater,
     DoubleLessEqual,
-    DoubleGreaterEqual,
     DoublePlus,
     DoubleMinus,
     Comma,
+    SingleGreater,
+    FirstGreater,
+    SecondGreater,
+    StrippedGreaterEqual,
     // Module conditional token
     Import,
     ImportableHeaderName(String),
@@ -209,7 +211,7 @@ pub enum Token {
 impl Token {
     pub fn from_preToken(
         preTok: FileTokPos<PreToken>,
-    ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
+    ) -> Result<VecDeque<FileTokPos<Self>>, Option<CompileMsg>> {
         match preTok.tokPos.tok {
             PreToken::Unknown(ref text) => Err(Some(CompileError::from_preTo(
                 format!("Unknown token: {text}"),
@@ -219,11 +221,11 @@ impl Token {
                 format!("Header name token cannot be used at the next step of the compilation. It should be used inside a #include directive, or in a __has_include macro. Header name: {text}"),
                 &preTok,
             ))),
-            PreToken::Ident(text) => Ok(FileTokPos::new(preTok.file, TokPos {
+            PreToken::Ident(text) => Ok({ let mut vec = VecDeque::new(); vec.push_back(FileTokPos::new(preTok.file, TokPos {
                 tok: Self::Identifier(text),
                 start: preTok.tokPos.start,
                 end: preTok.tokPos.end,
-            })),
+            })); vec}),
             PreToken::PreprocessingOperator(_) => Err(Some(CompileError::from_preTo(
                 "Preprocessing operators cannot be used at the next step of the compilation. Make sure that any stray # and ## are no longer present after preprocessing.",
                 &preTok,
@@ -237,82 +239,93 @@ impl Token {
             PreToken::UdCharLiteral(ref text) => Self::parseUdCharLiteral(&preTok, text),
             PreToken::UdStringLiteral(ref text) => Self::parseUdStringLiteral(&preTok, text),
             PreToken::ValidNop | PreToken::DisableMacro(_) | PreToken::EnableMacro(_) | PreToken::Newline | PreToken::Whitespace(_) => Err(None),
-            PreToken::Module => Ok(FileTokPos::new_meta_c(Self::Module, &preTok)),
-            PreToken::Import => Ok(FileTokPos::new_meta_c(Self::Import, &preTok)),
-            PreToken::ImportableHeaderName(text) => Ok(FileTokPos::new(preTok.file, TokPos {
+            PreToken::Module => Ok({let mut vec = VecDeque::new(); vec.push_back(FileTokPos::new_meta_c(Self::Module, &preTok)); vec}),
+            PreToken::Import => Ok({let mut vec = VecDeque::new(); vec.push_back(FileTokPos::new_meta_c(Self::Import, &preTok)); vec}),
+            PreToken::ImportableHeaderName(text) => Ok({let mut vec = VecDeque::new(); vec.push_back(FileTokPos::new(preTok.file, TokPos {
                 tok: Self::ImportableHeaderName(text),
                 start: preTok.tokPos.start,
                 end: preTok.tokPos.end,
-            })),
+            })); vec}),
         }
     }
 
     pub fn parseOperatorPunctuator<T: Clone + std::fmt::Debug>(
         tok: &FileTokPos<T>,
         operator: &str,
-    ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
+    ) -> Result<VecDeque<FileTokPos<Self>>, Option<CompileMsg>> {
         match operator {
-            r"{" | r"<%" => Ok(FileTokPos::new_meta_c(Self::LBrace, tok)),
-            r"}" | r"%>" => Ok(FileTokPos::new_meta_c(Self::RBrace, tok)),
-            r"[" | r"<:" => Ok(FileTokPos::new_meta_c(Self::LBracket, tok)),
-            r"]" | r":>" => Ok(FileTokPos::new_meta_c(Self::RBracket, tok)),
-            r"(" => Ok(FileTokPos::new_meta_c(Self::LParen, tok)),
-            r")" => Ok(FileTokPos::new_meta_c(Self::RParen, tok)),
-            r";" => Ok(FileTokPos::new_meta_c(Self::Semicolon, tok)),
-            r":" => Ok(FileTokPos::new_meta_c(Self::Colon, tok)),
-            r"..." => Ok(FileTokPos::new_meta_c(Self::ThreeDots, tok)),
-            r"?" => Ok(FileTokPos::new_meta_c(Self::Question, tok)),
-            r"::" => Ok(FileTokPos::new_meta_c(Self::DoubleColon, tok)),
-            r"." => Ok(FileTokPos::new_meta_c(Self::Dot, tok)),
-            r".*" => Ok(FileTokPos::new_meta_c(Self::DotStar, tok)),
-            r"->" => Ok(FileTokPos::new_meta_c(Self::Arrow, tok)),
-            r"->*" => Ok(FileTokPos::new_meta_c(Self::ArrowStar, tok)),
-            r"~" | r"compl" => Ok(FileTokPos::new_meta_c(Self::Tilde, tok)),
-            r"!" | r"not" => Ok(FileTokPos::new_meta_c(Self::Exclamation, tok)),
-            r"+" => Ok(FileTokPos::new_meta_c(Self::Plus, tok)),
-            r"-" => Ok(FileTokPos::new_meta_c(Self::Minus, tok)),
-            r"*" => Ok(FileTokPos::new_meta_c(Self::Star, tok)),
-            r"/" => Ok(FileTokPos::new_meta_c(Self::Slash, tok)),
-            r"%" => Ok(FileTokPos::new_meta_c(Self::Percent, tok)),
-            r"^" | r"xor" => Ok(FileTokPos::new_meta_c(Self::Caret, tok)),
-            r"&" | r"bitand" => Ok(FileTokPos::new_meta_c(Self::Ampersand, tok)),
-            r"|" | r"bitor" => Ok(FileTokPos::new_meta_c(Self::Pipe, tok)),
-            r"=" => Ok(FileTokPos::new_meta_c(Self::Equal, tok)),
-            r"+=" => Ok(FileTokPos::new_meta_c(Self::PlusEqual, tok)),
-            r"-=" => Ok(FileTokPos::new_meta_c(Self::MinusEqual, tok)),
-            r"*=" => Ok(FileTokPos::new_meta_c(Self::StarEqual, tok)),
-            r"/=" => Ok(FileTokPos::new_meta_c(Self::SlashEqual, tok)),
-            r"%=" => Ok(FileTokPos::new_meta_c(Self::PercentEqual, tok)),
-            r"^=" => Ok(FileTokPos::new_meta_c(Self::CaretEqual, tok)),
-            r"&=" => Ok(FileTokPos::new_meta_c(Self::AmpersandEqual, tok)),
-            r"|=" => Ok(FileTokPos::new_meta_c(Self::PipeEqual, tok)),
-            r"==" => Ok(FileTokPos::new_meta_c(Self::DoubleEqual, tok)),
-            r"!=" => Ok(FileTokPos::new_meta_c(Self::ExclamationEqual, tok)),
-            r"<" => Ok(FileTokPos::new_meta_c(Self::Less, tok)),
-            r">" => Ok(FileTokPos::new_meta_c(Self::Greater, tok)),
-            r"<=" => Ok(FileTokPos::new_meta_c(Self::LessEqual, tok)),
-            r">=" => Ok(FileTokPos::new_meta_c(Self::GreaterEqual, tok)),
-            r"<=>" => Ok(FileTokPos::new_meta_c(Self::Spaceship, tok)),
-            r"&&" | r"and" => Ok(FileTokPos::new_meta_c(Self::DoubleAmpersand, tok)),
-            r"||" | r"or" => Ok(FileTokPos::new_meta_c(Self::DoublePipe, tok)),
-            r"<<" => Ok(FileTokPos::new_meta_c(Self::DoubleLess, tok)),
-            r">>" => Ok(FileTokPos::new_meta_c(Self::DoubleGreater, tok)),
-            r"<<=" => Ok(FileTokPos::new_meta_c(Self::DoubleLessEqual, tok)),
-            r">>=" => Ok(FileTokPos::new_meta_c(Self::DoubleGreaterEqual, tok)),
-            r"++" => Ok(FileTokPos::new_meta_c(Self::DoublePlus, tok)),
-            r"--" => Ok(FileTokPos::new_meta_c(Self::DoubleMinus, tok)),
-            r"," => Ok(FileTokPos::new_meta_c(Self::Comma, tok)),
+            r"{" | r"<%" => Ok(vec![FileTokPos::new_meta_c(Self::LBrace, tok)]),
+            r"}" | r"%>" => Ok(vec![FileTokPos::new_meta_c(Self::RBrace, tok)]),
+            r"[" | r"<:" => Ok(vec![FileTokPos::new_meta_c(Self::LBracket, tok)]),
+            r"]" | r":>" => Ok(vec![FileTokPos::new_meta_c(Self::RBracket, tok)]),
+            r"(" => Ok(vec![FileTokPos::new_meta_c(Self::LParen, tok)]),
+            r")" => Ok(vec![FileTokPos::new_meta_c(Self::RParen, tok)]),
+            r";" => Ok(vec![FileTokPos::new_meta_c(Self::Semicolon, tok)]),
+            r":" => Ok(vec![FileTokPos::new_meta_c(Self::Colon, tok)]),
+            r"..." => Ok(vec![FileTokPos::new_meta_c(Self::ThreeDots, tok)]),
+            r"?" => Ok(vec![FileTokPos::new_meta_c(Self::Question, tok)]),
+            r"::" => Ok(vec![FileTokPos::new_meta_c(Self::DoubleColon, tok)]),
+            r"." => Ok(vec![FileTokPos::new_meta_c(Self::Dot, tok)]),
+            r".*" => Ok(vec![FileTokPos::new_meta_c(Self::DotStar, tok)]),
+            r"->" => Ok(vec![FileTokPos::new_meta_c(Self::Arrow, tok)]),
+            r"->*" => Ok(vec![FileTokPos::new_meta_c(Self::ArrowStar, tok)]),
+            r"~" | r"compl" => Ok(vec![FileTokPos::new_meta_c(Self::Tilde, tok)]),
+            r"!" | r"not" => Ok(vec![FileTokPos::new_meta_c(Self::Exclamation, tok)]),
+            r"+" => Ok(vec![FileTokPos::new_meta_c(Self::Plus, tok)]),
+            r"-" => Ok(vec![FileTokPos::new_meta_c(Self::Minus, tok)]),
+            r"*" => Ok(vec![FileTokPos::new_meta_c(Self::Star, tok)]),
+            r"/" => Ok(vec![FileTokPos::new_meta_c(Self::Slash, tok)]),
+            r"%" => Ok(vec![FileTokPos::new_meta_c(Self::Percent, tok)]),
+            r"^" | r"xor" => Ok(vec![FileTokPos::new_meta_c(Self::Caret, tok)]),
+            r"&" | r"bitand" => Ok(vec![FileTokPos::new_meta_c(Self::Ampersand, tok)]),
+            r"|" | r"bitor" => Ok(vec![FileTokPos::new_meta_c(Self::Pipe, tok)]),
+            r"=" => Ok(vec![FileTokPos::new_meta_c(Self::Equal, tok)]),
+            r"+=" => Ok(vec![FileTokPos::new_meta_c(Self::PlusEqual, tok)]),
+            r"-=" => Ok(vec![FileTokPos::new_meta_c(Self::MinusEqual, tok)]),
+            r"*=" => Ok(vec![FileTokPos::new_meta_c(Self::StarEqual, tok)]),
+            r"/=" => Ok(vec![FileTokPos::new_meta_c(Self::SlashEqual, tok)]),
+            r"%=" => Ok(vec![FileTokPos::new_meta_c(Self::PercentEqual, tok)]),
+            r"^=" => Ok(vec![FileTokPos::new_meta_c(Self::CaretEqual, tok)]),
+            r"&=" => Ok(vec![FileTokPos::new_meta_c(Self::AmpersandEqual, tok)]),
+            r"|=" => Ok(vec![FileTokPos::new_meta_c(Self::PipeEqual, tok)]),
+            r"==" => Ok(vec![FileTokPos::new_meta_c(Self::DoubleEqual, tok)]),
+            r"!=" => Ok(vec![FileTokPos::new_meta_c(Self::ExclamationEqual, tok)]),
+            r"<" => Ok(vec![FileTokPos::new_meta_c(Self::Less, tok)]),
+            r">" => Ok(vec![FileTokPos::new_meta_c(Self::SingleGreater, tok)]),
+            r"<=" => Ok(vec![FileTokPos::new_meta_c(Self::LessEqual, tok)]),
+            r">=" => Ok(vec![
+                FileTokPos::new_meta_c(Self::SingleGreater, tok),
+                FileTokPos::new_meta_c(Self::StrippedGreaterEqual, tok),
+            ]),
+            r"<=>" => Ok(vec![FileTokPos::new_meta_c(Self::Spaceship, tok)]),
+            r"&&" | r"and" => Ok(vec![FileTokPos::new_meta_c(Self::DoubleAmpersand, tok)]),
+            r"||" | r"or" => Ok(vec![FileTokPos::new_meta_c(Self::DoublePipe, tok)]),
+            r"<<" => Ok(vec![FileTokPos::new_meta_c(Self::DoubleLess, tok)]),
+            r">>" => Ok(vec![
+                FileTokPos::new_meta_c(Self::FirstGreater, tok),
+                FileTokPos::new_meta_c(Self::SecondGreater, tok),
+            ]),
+            r"<<=" => Ok(vec![FileTokPos::new_meta_c(Self::DoubleLessEqual, tok)]),
+            r">>=" => Ok(vec![
+                FileTokPos::new_meta_c(Self::FirstGreater, tok),
+                FileTokPos::new_meta_c(Self::SecondGreater, tok),
+                FileTokPos::new_meta_c(Self::StrippedGreaterEqual, tok),
+            ]),
+            r"++" => Ok(vec![FileTokPos::new_meta_c(Self::DoublePlus, tok)]),
+            r"--" => Ok(vec![FileTokPos::new_meta_c(Self::DoubleMinus, tok)]),
+            r"," => Ok(vec![FileTokPos::new_meta_c(Self::Comma, tok)]),
             _ => Err(Some(CompileError::from_preTo(
                 format!("Unknown operator: {operator}"),
                 tok,
             ))),
         }
+        .map(VecDeque::from)
     }
 
     pub fn parseKeyword<T: Clone + std::fmt::Debug>(
         tok: &FileTokPos<T>,
         operator: &str,
-    ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
+    ) -> Result<VecDeque<FileTokPos<Self>>, Option<CompileMsg>> {
         match operator {
             r"alignas" => Ok(FileTokPos::new_meta_c(Self::Alignas, tok)),
             r"alignof" => Ok(FileTokPos::new_meta_c(Self::Alignof, tok)),
@@ -400,6 +413,11 @@ impl Token {
                 tok,
             ))),
         }
+        .map(|x| {
+            let mut vec = VecDeque::new();
+            vec.push_back(x);
+            vec
+        })
     }
 
     fn getEncodingPrefix(string: &str) -> (EncodingPrefix, &str) {
@@ -523,7 +541,7 @@ impl Token {
     pub fn parseCharLiteral<T: Clone + std::fmt::Debug>(
         tok: &FileTokPos<T>,
         operator: &str,
-    ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
+    ) -> Result<VecDeque<FileTokPos<Self>>, Option<CompileMsg>> {
         let (encoding, message) = Self::getEncodingPrefix(operator);
         if message.len() < 3 {
             return Err(Some(CompileError::from_preTo(
@@ -549,12 +567,17 @@ impl Token {
             Self::CharacterLiteral(encoding, msg.as_str().chars().next().unwrap()),
             tok,
         ))
+        .map(|x| {
+            let mut vec = VecDeque::new();
+            vec.push_back(x);
+            vec
+        })
     }
 
     pub fn parseStringLiteral<T: Clone + std::fmt::Debug>(
         tok: &FileTokPos<T>,
         operator: &str,
-    ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
+    ) -> Result<VecDeque<FileTokPos<Self>>, Option<CompileMsg>> {
         let (encoding, message) = Self::getEncodingPrefix(operator);
         let msg = &message[1..message.len() - 1];
         let msg = Self::escapeString(msg).map_err(|err| {
@@ -568,13 +591,18 @@ impl Token {
             Self::StringLiteral(encoding, msg),
             tok,
         ))
+        .map(|x| {
+            let mut vec = VecDeque::new();
+            vec.push_back(x);
+            vec
+        })
     }
 
     #[allow(clippy::unnecessary_wraps)]
     pub fn parseRawStringLiteral<T: Clone + std::fmt::Debug>(
         tok: &FileTokPos<T>,
         string: &str,
-    ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
+    ) -> Result<VecDeque<FileTokPos<Self>>, Option<CompileMsg>> {
         let (ud, _) = string.char_indices().rev().find(|x| x.1 == '"').unwrap();
         let string = &string[..ud];
         let ud = &string[ud..];
@@ -590,7 +618,12 @@ impl Token {
                 Self::UdStringLiteral(prefix, string.to_owned(), ud.to_owned())
             },
             tok,
-        ));
+        ))
+        .map(|x| {
+            let mut vec = VecDeque::new();
+            vec.push_back(x);
+            vec
+        });
     }
 
     fn parseHexNumber<T: Clone + std::fmt::Debug>(
@@ -808,29 +841,36 @@ impl Token {
     pub fn parsePPNumber<T: Clone + std::fmt::Debug>(
         tok: &FileTokPos<T>,
         string: &str,
-    ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
-        #[allow(clippy::option_if_let_else)]
-        if let Some(res) = string.strip_prefix("0x") {
-            Self::parseHexNumber(tok, res)
-        } else if let Some(res) = string.strip_prefix("0X") {
-            Self::parseHexNumber(tok, res)
-        } else if let Some(res) = string.strip_prefix("0b") {
-            Self::parseBinInt(tok, res)
-        } else if let Some(res) = string.strip_prefix("0B") {
-            Self::parseBinInt(tok, res)
-        } else if string.contains('.') || string.contains('e') || string.contains('E') {
-            Self::parseDecimalFloating(tok, string)
-        } else if string.starts_with('0') {
-            Self::parseOctalInt(tok, string)
-        } else {
-            Self::parseDecimalInt(tok, string)
+    ) -> Result<VecDeque<FileTokPos<Self>>, Option<CompileMsg>> {
+        {
+            #[allow(clippy::option_if_let_else)]
+            if let Some(res) = string.strip_prefix("0x") {
+                Self::parseHexNumber(tok, res)
+            } else if let Some(res) = string.strip_prefix("0X") {
+                Self::parseHexNumber(tok, res)
+            } else if let Some(res) = string.strip_prefix("0b") {
+                Self::parseBinInt(tok, res)
+            } else if let Some(res) = string.strip_prefix("0B") {
+                Self::parseBinInt(tok, res)
+            } else if string.contains('.') || string.contains('e') || string.contains('E') {
+                Self::parseDecimalFloating(tok, string)
+            } else if string.starts_with('0') {
+                Self::parseOctalInt(tok, string)
+            } else {
+                Self::parseDecimalInt(tok, string)
+            }
         }
+        .map(|x| {
+            let mut vec = VecDeque::new();
+            vec.push_back(x);
+            vec
+        })
     }
 
     pub fn parseUdCharLiteral<T: Clone + std::fmt::Debug>(
         tok: &FileTokPos<T>,
         mut operator: &str,
-    ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
+    ) -> Result<VecDeque<FileTokPos<Self>>, Option<CompileMsg>> {
         let ud = operator
             .chars()
             .rev()
@@ -842,8 +882,14 @@ impl Token {
 
         operator = operator[..operator.len() - ud.len()].trim_end();
         Self::parseCharLiteral(tok, operator).map(|x| {
-            if let Self::CharacterLiteral(enc, str) = x.tokPos.tok {
-                FileTokPos::new_meta_c(Self::UdCharacterLiteral(enc, str, ud), &x)
+            if let Self::CharacterLiteral(enc, str) = x.front().unwrap().tokPos.tok {
+                let tok = FileTokPos::new_meta_c(
+                    Self::UdCharacterLiteral(enc, str, ud),
+                    x.front().unwrap(),
+                );
+                let mut vec = VecDeque::new();
+                vec.push_back(tok);
+                vec
             } else {
                 unreachable!()
             }
@@ -853,7 +899,7 @@ impl Token {
     pub fn parseUdStringLiteral<T: Clone + std::fmt::Debug>(
         tok: &FileTokPos<T>,
         mut operator: &str,
-    ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
+    ) -> Result<VecDeque<FileTokPos<Self>>, Option<CompileMsg>> {
         let ud = operator
             .chars()
             .rev()
@@ -865,8 +911,14 @@ impl Token {
 
         operator = operator[..operator.len() - ud.len()].trim_end();
         Self::parseStringLiteral(tok, operator).map(|x| {
-            if let Self::StringLiteral(enc, str) = &x.tokPos.tok {
-                FileTokPos::new_meta_c(Self::UdStringLiteral(*enc, str.clone(), ud), &x)
+            if let Self::StringLiteral(enc, str) = &x.front().unwrap().tokPos.tok {
+                let tok = FileTokPos::new_meta_c(
+                    Self::UdStringLiteral(*enc, str.clone(), ud),
+                    x.front().unwrap(),
+                );
+                let mut vec = VecDeque::new();
+                vec.push_back(tok);
+                vec
             } else {
                 unreachable!()
             }
@@ -1004,19 +1056,19 @@ impl HasEOF for Token {
             114 => Self::DoubleEqual,
             115 => Self::ExclamationEqual,
             116 => Self::Less,
-            117 => Self::Greater,
-            118 => Self::LessEqual,
-            119 => Self::GreaterEqual,
-            120 => Self::Spaceship,
-            121 => Self::DoubleAmpersand,
-            122 => Self::DoublePipe,
-            123 => Self::DoubleLess,
-            124 => Self::DoubleGreater,
-            125 => Self::DoubleLessEqual,
-            126 => Self::DoubleGreaterEqual,
-            127 => Self::DoublePlus,
-            128 => Self::DoubleMinus,
-            129 => Self::Comma,
+            117 => Self::LessEqual,
+            118 => Self::Spaceship,
+            119 => Self::DoubleAmpersand,
+            120 => Self::DoublePipe,
+            121 => Self::DoubleLess,
+            122 => Self::DoubleLessEqual,
+            123 => Self::DoublePlus,
+            124 => Self::DoubleMinus,
+            125 => Self::Comma,
+            126 => Self::SingleGreater,
+            127 => Self::FirstGreater,
+            128 => Self::SecondGreater,
+            129 => Self::StrippedGreaterEqual,
             130 => Self::Import,
             131 => Self::ImportableHeaderName(String::new()),
             132 => Self::Module,

@@ -109,6 +109,8 @@ fn toTok(text: &'static str) -> Vec<Token> {
         .map(|x| {
             Token::from_preToken(FileTokPos::new_meta(x))
                 .unwrap()
+                .pop_front()
+                .unwrap()
                 .tokPos
                 .tok
         })
