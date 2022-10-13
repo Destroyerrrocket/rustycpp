@@ -6,7 +6,7 @@
 #![feature(
     option_result_contains,
     iter_collect_into,
-    is_some_with,
+    is_some_and,
     unwrap_infallible,
     new_uninit,
     arbitrary_enum_discriminant,

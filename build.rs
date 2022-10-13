@@ -70,7 +70,7 @@ fn gen_for_parser_grammar(
     let mut f = File::create(
         generated_path
             .join(grammar_file_name.to_owned().to_lowercase())
-            .with_extension("mod"),
+            .with_extension("rs"),
     )
     .unwrap();
 

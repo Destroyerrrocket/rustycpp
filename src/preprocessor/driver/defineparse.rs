@@ -39,7 +39,7 @@ impl Preprocessor {
                     start: tok.tokPos.start,
                     tok: match tok.tokPos.tok {
                         PreToken::Ident(s) => {
-                            if parse.param.is_some_and(|param| param.contains(&s)) {
+                            if parse.param.as_ref().is_some_and(|param| param.contains(&s)) {
                                 PreTokenDefinePreParse::Arg(s)
                             } else if s.as_str() == variadicStr || s.as_str() == "__VA_ARGS__" {
                                 PreTokenDefinePreParse::VariadicArg

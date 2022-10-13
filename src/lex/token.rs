@@ -212,11 +212,11 @@ impl Token {
     ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
         match preTok.tokPos.tok {
             PreToken::Unknown(ref text) => Err(Some(CompileError::from_preTo(
-                format!("Unknown token: {}", text),
+                format!("Unknown token: {text}"),
                 &preTok,
             ))),
             PreToken::HeaderName(ref text) => Err(Some(CompileError::from_preTo(
-                format!("Header name token cannot be used at the next step of the compilation. It should be used inside a #include directive, or in a __has_include macro. Header name: {}", text),
+                format!("Header name token cannot be used at the next step of the compilation. It should be used inside a #include directive, or in a __has_include macro. Header name: {text}"),
                 &preTok,
             ))),
             PreToken::Ident(text) => Ok(FileTokPos::new(preTok.file, TokPos {

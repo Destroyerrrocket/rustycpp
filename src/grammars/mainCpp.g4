@@ -1,7 +1,11 @@
 parser grammar mainCpp;
+
 @tokenfactory {
+use crate::grammars::mainCpp::*;
+use std::sync::Mutex;
 pub type LocalTokenFactory<'input> = crate::utils::antlrlexerwrapper::AntlrLexerWrapperFactory<'input, crate::lex::token::Token>;
 }
+
 tokens {
 	Identifier,
 	Alignas,
@@ -148,7 +152,7 @@ tokens {
 }
 
 ////////////////// Parser Rules ////////////////////////////////////////////////
-translation_unit:
+translation_unit[s: Arc<Mutex<Scopes>>]:
 	declaration_seq?
 	| global_module_fragment? module_declaration declaration_seq? private_module_fragment?
 	;
@@ -183,11 +187,11 @@ template_name:
 
 // Simpler dynamic keywords
 final__:
-	Identifier
+	{isFinal(recog)}? f=Identifier
 	;
 
 override__:
-	Identifier
+	{isOverride(recog)}? f=Identifier
 	;
 
 zero:
@@ -1029,18 +1033,18 @@ noexcept_specifier:
 // Start statements
 statement:
 	labeled_statement
+	| declaration_statement
 	| attribute_specifier_seq? expression_statement
 	| attribute_specifier_seq? compound_statement
 	| attribute_specifier_seq? selection_statement
 	| attribute_specifier_seq? iteration_statement
 	| attribute_specifier_seq? jump_statement
-	| declaration_statement
 	| attribute_specifier_seq? try_block
 	;
 
 init_statement:
-	expression_statement
-	| simple_declaration
+	simple_declaration
+	| expression_statement
 	;
 
 condition:

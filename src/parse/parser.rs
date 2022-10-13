@@ -1,11 +1,12 @@
 use std::rc::Rc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use antlr_rust::common_token_stream::CommonTokenStream;
 use antlr_rust::tree::ParseTree;
 
 use crate::grammars::generated::maincpp::mainCpp;
 use crate::grammars::generated::maincppparser::Translation_unitContextAll;
+use crate::grammars::mainCpp::Scopes;
 use crate::lex::lexer::Lexer;
 use crate::utils::antlrlexerwrapper::{AntlrLexerIteratorWrapper, LexerWrapperErrorStrategy};
 use crate::utils::compilerstate::CompilerState;
@@ -48,7 +49,9 @@ impl Parser {
                 LexerWrapperErrorStrategy::new(errors.clone(), compileFile),
             );
 
-            basicParser.translation_unit().unwrap()
+            basicParser
+                .translation_unit(Arc::new(Mutex::new(Scopes::new())))
+                .unwrap()
         };
 
         let errorsLexer = self.lexer.errors();
@@ -87,7 +90,7 @@ impl Parser {
             );
 
             basicParser
-                .translation_unit()
+                .translation_unit(Arc::new(Mutex::new(Scopes::new())))
                 .unwrap()
                 .to_string_tree(&*basicParser)
         };

@@ -16,7 +16,7 @@ macro_rules! include_generated {
             env!("OUT_DIR"),
             "/generated/",
             stringify!($name),
-            ".mod"
+            ".rs"
         ));
     };
 }

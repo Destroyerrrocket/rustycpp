@@ -212,7 +212,10 @@ impl Iterator for PreLexer {
     type Item = TokPos<PreToken>;
     fn next(&mut self) -> Option<Self::Item> {
         let res = self.doNext();
-        if res.is_some_and(|x| matches!(x.tok, PreToken::Newline)) {
+        if res
+            .as_ref()
+            .is_some_and(|x| matches!(x.tok, PreToken::Newline))
+        {
             self.lastNl = true;
             return res;
         }
