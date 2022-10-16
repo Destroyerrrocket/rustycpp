@@ -366,20 +366,38 @@ attribute_declaration:
 	attribute_specifier_seq Semicolon
 	;
 
-decl_specifier_seq:
-	decl_specifier+ attribute_specifier_seq?
+decl_specifier_seq locals[inTypedef: bool, foundHardDefiningTypeSpecifier: bool, foundAnyDefiningTypeSpecifierOtherThanCVQualifier: bool]:
+	 decl_specifier+ attribute_specifier_seq?
 	;
 
+// Rules checked:
+/*
+If a type-name is encountered while parsing a decl-specifier-seq, it is interpreted as part of the decl-specifier-seq
+if and only if there is no previous defining-type-specifier other than a cv-qualifier in the decl-specifier-seq. The
+sequence shall be self-consistent as described below.
+
+The typedef specifier shall not be combined in a declspecifier-seq with any other kind of specifier except a defining-type-specifier
+
+As a general rule, at most one defining-type-specifier is allowed in the complete decl-specifier-seq of a declaration
+or in a defining-type-specifier-seq, and at most one type-specifier is allowed in a type-specifier-seq. The only
+exceptions to this rule are the following:
+(2.1) — const can be combined with any type specifier except itself.
+(2.2) — volatile can be combined with any type specifier except itself.
+(2.3) — signed or unsigned can be combined with char, long, short, or int.
+(2.4) — short or long can be combined with int.
+(2.5) — long can be combined with double.
+(2.6) — long can be combined with long
+*/
 decl_specifier:
-	storage_class_specifier
-	| defining_type_specifier
-	| function_specifier
-	| Friend
-	| Typedef
-	| Constexpr
-	| Consteval
-	| Constinit
-	| Inline
+	{!inTypedef(recog)}? storage_class_specifier
+	| {generalRuleOneDefiningTypeSpecifierDecl(recog)}? defining_type_specifier {enableGeneralRuleOneDefiningTypeSpecifierDecl(recog)}
+	| {!inTypedef(recog)}? function_specifier
+	| {!inTypedef(recog)}? Friend
+	| {validateTypedef(recog)}? Typedef {enableTypedef(recog)}
+	| {!inTypedef(recog)}? Constexpr
+	| {!inTypedef(recog)}? Consteval
+	| {!inTypedef(recog)}? Constinit
+	| {!inTypedef(recog)}? Inline
 	;
 
 storage_class_specifier:
@@ -399,8 +417,12 @@ explicit_specifier:
 	| Explicit (LParen constant_expression RParen)
 	;
 
-defining_type_specifier_seq:
-	defining_type_specifier+ attribute_specifier_seq?
+defining_type_specifier_seq locals[foundHardDefiningTypeSpecifier: bool]:
+	defining_type_specifier_seq_aux+ attribute_specifier_seq?
+	;
+
+defining_type_specifier_seq_aux:
+	{generalRuleOneDefiningTypeSpecifierInSeq(recog)}? defining_type_specifier {enableGeneralRuleOneDefiningTypeSpecifierInSeq(recog)}
 	;
 
 defining_type_specifier:
@@ -409,8 +431,12 @@ defining_type_specifier:
 	| enum_specifier
 	;
 
-type_specifier_seq:
-	type_specifier+ attribute_specifier_seq?
+type_specifier_seq locals[foundHardDefiningTypeSpecifier: bool]:
+	type_specifier_seq_aux+ attribute_specifier_seq?
+	;
+
+type_specifier_seq_aux:
+	{generalRuleOneTypeSpecifierInSeq(recog)}? type_specifier {enableGeneralRuleOneTypeSpecifierInSeq(recog)}
 	;
 
 type_specifier:
@@ -421,7 +447,7 @@ type_specifier:
 	;
 
 simple_type_specifier:
-	nested_name_specifier? type_name
+	{inDeclTypeSpeficierSeqButValid(recog)}? nested_name_specifier? type_name
 	| nested_name_specifier Template simple_template_id
 	| decltype_specifier
 	| placeholder_type_specifier
@@ -572,10 +598,14 @@ parameter_declaration_list:
 	;
 
 parameter_declaration:
-	attribute_specifier_seq? decl_specifier_seq declarator
-	| attribute_specifier_seq? decl_specifier_seq declarator equal initializer_clause
-	| attribute_specifier_seq? decl_specifier_seq abstract_declarator?
-	| attribute_specifier_seq? decl_specifier_seq abstract_declarator? equal initializer_clause
+	attribute_specifier_seq? decl_specifier_seq parameter_declaration_aux
+	;
+
+parameter_declaration_aux:
+	abstract_declarator? equal initializer_clause
+	| abstract_declarator?
+	| declarator equal initializer_clause
+	| declarator
 	;
 
 initializer:
@@ -1050,8 +1080,8 @@ handler:
 	;
 
 exception_declaration:
-	attribute_specifier_seq? type_specifier_seq declarator
-	| attribute_specifier_seq? type_specifier_seq abstract_declarator?
+	attribute_specifier_seq? type_specifier_seq abstract_declarator?
+	| attribute_specifier_seq? type_specifier_seq declarator
 	| ThreeDots
 	;
 

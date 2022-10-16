@@ -170,8 +170,9 @@ pub enum PreTokenLexer {
     #[regex(r"[\t \x0B\x0C]")]
     Whitespace,
     #[regex(r"//[^\n]*\n?")]
-    #[regex(r"/\*[^\*/]*\*/")]
     Comment,
+    #[regex(r"/\*")]
+    CommentBlock,
     /* Lmao, no repetition ranges ???*/
     // Normal strings
     #[regex(r#"(?:u8|u|U|L)?"(?:[\x20-\x7E&&[^"\\\n]]|\\[uU'"?\\abfnrtvx0-7])*""#)]
@@ -429,6 +430,7 @@ impl PreToken {
             PreTokenLexer::UdCharLiteral => Self::UdCharLiteral(content),
             PreTokenLexer::PPNumber => Self::PPNumber(content),
             PreTokenLexer::Error => Self::Unknown(content),
+            PreTokenLexer::CommentBlock => unreachable!(),
         }
     }
     pub fn to_str(&self) -> &str {

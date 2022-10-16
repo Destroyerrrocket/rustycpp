@@ -95,6 +95,21 @@ impl PreLexer {
                         }
                     }
                 }
+                PreTokenLexer::CommentBlock => {
+                    if let Some(position) = self.current.find("*/") {
+                        let content = self.current[0..position + 2].to_string();
+                        let contentLen = content.len();
+                        return (
+                            Some(PreToken::Whitespace(WhiteCom::Comment(content))),
+                            contentLen,
+                        );
+                    } else {
+                        let errContent = lexer.slice().to_string();
+                        let len = errContent.len();
+                        return (Some(PreToken::Unknown(errContent)), len);
+                    }
+                }
+
                 PreTokenLexer::Error => {
                     let errContent = lexer.slice().to_string();
                     let len = errContent.len();

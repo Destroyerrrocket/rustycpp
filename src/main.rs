@@ -11,7 +11,8 @@
     new_uninit,
     arbitrary_enum_discriminant,
     map_try_insert,
-    map_many_mut
+    map_many_mut,
+    get_mut_unchecked
 )]
 #![warn(
     missing_docs,
