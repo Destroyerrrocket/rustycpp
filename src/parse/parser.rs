@@ -4,8 +4,7 @@ use std::sync::{Arc, Mutex};
 use antlr_rust::common_token_stream::CommonTokenStream;
 use antlr_rust::tree::ParseTree;
 
-use crate::grammars::generated::maincpp::mainCpp;
-use crate::grammars::generated::maincppparser::Translation_unitContextAll;
+use crate::grammars::generated::maincppparser::{mainCpp, Translation_unitContextAll};
 use crate::grammars::mainCpp::Scopes;
 use crate::lex::lexer::Lexer;
 use crate::utils::antlrlexerwrapper::{AntlrLexerIteratorWrapper, LexerWrapperErrorStrategy};

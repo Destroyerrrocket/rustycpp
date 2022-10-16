@@ -656,7 +656,7 @@ function_definition:
 	;
 
 function_body:
-	ctor_initializer? compound_statement
+	ctor_initializer? compound_statement_unevaluated
 	| function_try_block
 	| equal Default Semicolon
 	| equal Delete Semicolon
@@ -1068,7 +1068,7 @@ try_block:
 	;
 
 function_try_block:
-	Try ctor_initializer? compound_statement handler_seq
+	Try ctor_initializer? compound_statement_unevaluated handler_seq
 	;
 
 handler_seq:
@@ -1125,6 +1125,11 @@ expression_statement:
 
 compound_statement:
 	LBrace statement_seq? RBrace
+	;
+
+// Equivalent to a compound statement, but the inner statements are not evaluated yet.
+compound_statement_unevaluated:
+	LBrace balanced_token_seq? RBrace
 	;
 
 statement_seq:

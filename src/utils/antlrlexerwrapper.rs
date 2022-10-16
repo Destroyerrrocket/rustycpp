@@ -14,7 +14,7 @@ use antlr_rust::{TidAble, TokenSource};
 
 use std::borrow::Borrow;
 use std::collections::VecDeque;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use std::ops::{Index, Range, RangeFrom};
 use std::rc::Rc;
@@ -64,7 +64,7 @@ pub trait HasEOF {
 
 #[derive(Debug, Clone)]
 /// Wrapper over a token, so we also store its index
-pub struct AntlrToken<T: Clone + Debug + HasEOF> {
+pub struct AntlrToken<T: Clone + Debug + HasEOF + Display> {
     /// The token
     pub data: FileTokPos<T>,
     /// Error in case it is found
@@ -72,7 +72,7 @@ pub struct AntlrToken<T: Clone + Debug + HasEOF> {
     index: Arc<AtomicIsize>,
 }
 
-impl<T: Clone + Debug + HasEOF> AntlrToken<T> {
+impl<T: Clone + Debug + HasEOF + Display> AntlrToken<T> {
     /// new token with index
     pub fn new(data: FileTokPos<T>, index: isize) -> Self {
         Self {
@@ -82,13 +82,13 @@ impl<T: Clone + Debug + HasEOF> AntlrToken<T> {
     }
 }
 
-impl<T: Clone + Debug + HasEOF> std::fmt::Display for AntlrToken<T> {
+impl<T: Clone + Debug + HasEOF + Display> std::fmt::Display for AntlrToken<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.data.tokPos.tok.fmt(f)
+        std::fmt::Display::fmt(&self.data.tokPos.tok, f)
     }
 }
 
-impl<T: Clone + Debug + HasEOF + 'static> Token for AntlrToken<T> {
+impl<T: Clone + Debug + HasEOF + Display + 'static> Token for AntlrToken<T> {
     type Data = Self;
 
     fn get_channel(&self) -> isize {
@@ -147,7 +147,7 @@ impl<T: Clone + Debug + HasEOF + 'static> Token for AntlrToken<T> {
     }
 }
 
-impl<T: Clone + Debug + HasEOF + 'static> InputData for AntlrToken<T> {
+impl<T: Clone + Debug + HasEOF + Display + 'static> InputData for AntlrToken<T> {
     // fn to_indexed_vec(&self) -> Vec<(u32, u32)>;
 
     #[doc(hidden)]
@@ -183,11 +183,11 @@ impl<T: Clone + Debug + HasEOF + 'static> InputData for AntlrToken<T> {
 
     #[doc(hidden)]
     fn to_display(&self) -> String {
-        return format!("{:?}", self.data.tokPos.tok);
+        return format!("{}", self.data.tokPos.tok);
     }
 }
 
-impl<T: Clone + Debug + HasEOF + 'static> Index<Range<usize>> for AntlrToken<T> {
+impl<T: Clone + Debug + HasEOF + Display + 'static> Index<Range<usize>> for AntlrToken<T> {
     type Output = Self;
 
     fn index(&self, _: Range<usize>) -> &Self::Output {
@@ -195,7 +195,7 @@ impl<T: Clone + Debug + HasEOF + 'static> Index<Range<usize>> for AntlrToken<T> 
     }
 }
 
-impl<T: Clone + Debug + HasEOF + 'static> Index<RangeFrom<usize>> for AntlrToken<T> {
+impl<T: Clone + Debug + HasEOF + Display + 'static> Index<RangeFrom<usize>> for AntlrToken<T> {
     type Output = Self;
 
     fn index(&self, _: RangeFrom<usize>) -> &Self::Output {
@@ -206,12 +206,14 @@ impl<T: Clone + Debug + HasEOF + 'static> Index<RangeFrom<usize>> for AntlrToken
 #[derive(Debug)]
 /// A fake factory of tokens. Never actually used in our code, but it is refered
 /// in antlr code generated so it knows the token type, and `create_invalid` sometimes is called.
-pub struct AntlrLexerWrapperFactory<'a, U: Clone + Debug + HasEOF> {
+pub struct AntlrLexerWrapperFactory<'a, U: Clone + Debug + HasEOF + Display> {
     /// Fake a lifetime need.
     _phantom: &'a PhantomData<U>,
 }
 
-impl<'a, U: Clone + Debug + HasEOF + 'static> TokenFactory<'a> for AntlrLexerWrapperFactory<'a, U> {
+impl<'a, U: Clone + Debug + HasEOF + Display + 'static> TokenFactory<'a>
+    for AntlrLexerWrapperFactory<'a, U>
+{
     type Inner = AntlrToken<U>;
 
     type Tok = Box<Self::Inner>;
@@ -251,7 +253,7 @@ impl<'a, U: Clone + Debug + HasEOF + 'static> TokenFactory<'a> for AntlrLexerWra
     }
 }
 
-unsafe impl<'a, T: Clone + Debug + HasEOF + 'static> TidAble<'a>
+unsafe impl<'a, T: Clone + Debug + HasEOF + Display + 'static> TidAble<'a>
     for AntlrLexerWrapperFactory<'a, T>
 {
     type Static = ();
@@ -259,7 +261,7 @@ unsafe impl<'a, T: Clone + Debug + HasEOF + 'static> TidAble<'a>
 
 #[derive(Debug)]
 /// A wrapper over a token list, intended for use as input to antlr.
-pub struct AntlrLexerWrapper<'a, T: Clone + Debug + HasEOF> {
+pub struct AntlrLexerWrapper<'a, T: Clone + Debug + HasEOF + Display> {
     /// Fake a lifetime need.
     pd: &'a PhantomData<AntlrToken<T>>,
     /// The tokens to input.
@@ -270,7 +272,7 @@ pub struct AntlrLexerWrapper<'a, T: Clone + Debug + HasEOF> {
     file: String,
 }
 
-impl<'a, T: Clone + Debug + HasEOF> AntlrLexerWrapper<'a, T> {
+impl<'a, T: Clone + Debug + HasEOF + Display> AntlrLexerWrapper<'a, T> {
     /// Create a new wrapper.
     pub const fn new(tokens: VecDeque<FileTokPos<T>>, file: String) -> Self {
         Self {
@@ -282,7 +284,9 @@ impl<'a, T: Clone + Debug + HasEOF> AntlrLexerWrapper<'a, T> {
     }
 }
 
-impl<'a, T: Clone + Debug + HasEOF + 'static> TokenSource<'a> for AntlrLexerWrapper<'a, T> {
+impl<'a, T: Clone + Debug + HasEOF + Display + 'static> TokenSource<'a>
+    for AntlrLexerWrapper<'a, T>
+{
     type TF = AntlrLexerWrapperFactory<'a, T>;
 
     fn next_token(&mut self) -> <Self::TF as TokenFactory<'a>>::Tok {
@@ -309,7 +313,9 @@ impl<'a, T: Clone + Debug + HasEOF + 'static> TokenSource<'a> for AntlrLexerWrap
     }
 }
 
-unsafe impl<'a, T: Clone + Debug + HasEOF + 'static> TidAble<'a> for AntlrLexerWrapper<'a, T> {
+unsafe impl<'a, T: Clone + Debug + Display + HasEOF + 'static> TidAble<'a>
+    for AntlrLexerWrapper<'a, T>
+{
     type Static = ();
 }
 
@@ -317,7 +323,7 @@ unsafe impl<'a, T: Clone + Debug + HasEOF + 'static> TidAble<'a> for AntlrLexerW
 /// A wrapper over a token list, intended for use as input to antlr.
 pub struct AntlrLexerIteratorWrapper<
     'a,
-    T: Clone + Debug + HasEOF,
+    T: Clone + Debug + HasEOF + Display,
     Iter: Iterator<Item = FileTokPos<T>>,
 > {
     /// The tokens to input.
@@ -328,7 +334,7 @@ pub struct AntlrLexerIteratorWrapper<
     file: String,
 }
 
-impl<'a, T: Clone + Debug + HasEOF, Iter: Iterator<Item = FileTokPos<T>>>
+impl<'a, T: Clone + Debug + Display + HasEOF, Iter: Iterator<Item = FileTokPos<T>>>
     AntlrLexerIteratorWrapper<'a, T, Iter>
 {
     /// Create a new wrapper.
@@ -341,8 +347,8 @@ impl<'a, T: Clone + Debug + HasEOF, Iter: Iterator<Item = FileTokPos<T>>>
     }
 }
 
-impl<'a, T: Clone + Debug + HasEOF + 'static, Iter: Iterator<Item = FileTokPos<T>>> TokenSource<'a>
-    for AntlrLexerIteratorWrapper<'a, T, Iter>
+impl<'a, T: Clone + Debug + HasEOF + Display + 'static, Iter: Iterator<Item = FileTokPos<T>>>
+    TokenSource<'a> for AntlrLexerIteratorWrapper<'a, T, Iter>
 {
     type TF = AntlrLexerWrapperFactory<'a, T>;
 
@@ -370,7 +376,7 @@ impl<'a, T: Clone + Debug + HasEOF + 'static, Iter: Iterator<Item = FileTokPos<T
     }
 }
 
-unsafe impl<'a, T: Clone + Debug + HasEOF + 'static, Iter: Iterator<Item = FileTokPos<T>>>
+unsafe impl<'a, T: Clone + Debug + HasEOF + Display + 'static, Iter: Iterator<Item = FileTokPos<T>>>
     TidAble<'a> for AntlrLexerIteratorWrapper<'a, T, Iter>
 {
     type Static = ();
@@ -381,7 +387,7 @@ unsafe impl<'a, T: Clone + Debug + HasEOF + 'static, Iter: Iterator<Item = FileT
 pub struct LexerWrapperErrorStrategy<'input, Ctx, Tok, Recognizer>
 where
     Ctx: ParserNodeType<'input>,
-    Tok: Clone + Debug + HasEOF + 'input,
+    Tok: Clone + Debug + HasEOF + Display + 'input,
     Recognizer: Parser<'input, Node = Ctx, TF = AntlrLexerWrapperFactory<'input, Tok>>,
 {
     error_recovery_mode: bool,
@@ -399,7 +405,7 @@ unsafe impl<'input, Ctx, Tok, Recognizer> TidAble<'input>
     for LexerWrapperErrorStrategy<'input, Ctx, Tok, Recognizer>
 where
     Ctx: ParserNodeType<'input>,
-    Tok: Clone + Debug + HasEOF,
+    Tok: Clone + Debug + HasEOF + Display,
     Recognizer: Parser<'input, Node = Ctx, TF = AntlrLexerWrapperFactory<'input, Tok>> + 'input,
 {
     type Static = ();
@@ -409,7 +415,7 @@ where
 impl<'input, Ctx, Tok, Recognizer> LexerWrapperErrorStrategy<'input, Ctx, Tok, Recognizer>
 where
     Ctx: ParserNodeType<'input>,
-    Tok: Clone + Debug + HasEOF + 'static,
+    Tok: Clone + Debug + HasEOF + Display + 'static,
     Recognizer: Parser<'input, Node = Ctx, TF = AntlrLexerWrapperFactory<'input, Tok>> + 'input,
 {
     fn escape_whitespaces(data: impl Borrow<str>, escape_spaces: bool) -> String {
@@ -642,7 +648,7 @@ where
 impl<
         'a,
         Ctx: ParserNodeType<'a>,
-        Tok: Clone + Debug + HasEOF + 'static,
+        Tok: Clone + Debug + HasEOF + Display + 'static,
         T: Parser<'a, Node = Ctx, TF = AntlrLexerWrapperFactory<'a, Tok>> + 'a,
     > ErrorStrategy<'a, T> for LexerWrapperErrorStrategy<'a, Ctx, Tok, T>
 {

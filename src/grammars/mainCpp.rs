@@ -4,7 +4,6 @@ use std::rc::Rc;
 use super::generated::maincppparser::*;
 use crate::grammars::generated::maincpplistener::mainCppListener;
 use crate::lex::token::Token;
-use antlr_rust::parser_rule_context::ParserRuleContext;
 use antlr_rust::token_stream::TokenStream;
 use antlr_rust::tree::Tree;
 use antlr_rust::TidExt;
@@ -69,7 +68,7 @@ pub fn isClassName<'input, I>(this: &mut BaseParserType<'input, I>) -> bool
 where
     I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
 {
-    false
+    true
 }
 
 pub fn isEnumName<'input, I>(this: &mut BaseParserType<'input, I>) -> bool
@@ -91,6 +90,7 @@ where
     I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
 {
     let ctx = this.ctx.clone().unwrap();
+    #[allow(non_upper_case_globals)]
     return match ctx.get_rule_index() {
         RULE_decl_specifier => ctx
             .downcast_rc::<Decl_specifierContext>()
@@ -112,6 +112,7 @@ where
     I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
 {
     let ctx = this.ctx.clone().unwrap();
+    #[allow(non_upper_case_globals)]
     return match ctx.get_rule_index() {
         RULE_decl_specifier => ctx
             .downcast_rc::<Decl_specifierContext>()
@@ -170,6 +171,7 @@ where
         return true;
     }
 
+    #[allow(non_upper_case_globals)]
     return match ctx.get_rule_index() {
         RULE_decl_specifier => ctx
             .downcast_rc::<Decl_specifierContext>()
@@ -214,6 +216,7 @@ where
         return true;
     }
 
+    #[allow(non_upper_case_globals)]
     return match ctx.get_rule_index() {
         RULE_defining_type_specifier_seq_aux => ctx
             .downcast_rc::<Defining_type_specifier_seq_auxContext>()
@@ -255,6 +258,7 @@ where
     ) {
         return true;
     }
+    #[allow(non_upper_case_globals)]
     return match ctx.get_rule_index() {
         RULE_type_specifier_seq_aux => {
             ctx.downcast_rc::<Type_specifier_seq_auxContext>()
@@ -414,6 +418,7 @@ where
 {
     let ctx = this.ctx.clone().unwrap();
 
+    #[allow(non_upper_case_globals)]
     return match ctx.get_rule_index() {
         RULE_decl_specifier_seq => {
             ctx.downcast_ref::<Decl_specifier_seqContext>()

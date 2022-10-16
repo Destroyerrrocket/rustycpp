@@ -66,6 +66,55 @@ pub enum PreTokenIf {
     NotEq = 40,
 }
 
+impl std::fmt::Display for PreTokenIf {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PreTokenIf::EOF => write!(f, "EOF"),
+            PreTokenIf::Invalid => write!(f, "Invalid"),
+            PreTokenIf::Num(n) => write!(f, "{}", n),
+            PreTokenIf::LParen => write!(f, "("),
+            PreTokenIf::RParen => write!(f, ")"),
+            PreTokenIf::Colon => write!(f, ":"),
+            PreTokenIf::Question => write!(f, "?"),
+            PreTokenIf::Tilde => write!(f, "~"),
+            PreTokenIf::Exclamation => write!(f, "!"),
+            PreTokenIf::Plus => write!(f, "+"),
+            PreTokenIf::Minus => write!(f, "-"),
+            PreTokenIf::Star => write!(f, "*"),
+            PreTokenIf::Slash => write!(f, "/"),
+            PreTokenIf::Percent => write!(f, "%"),
+            PreTokenIf::Caret => write!(f, "^"),
+            PreTokenIf::Ampersand => write!(f, "&"),
+            PreTokenIf::Pipe => write!(f, "|"),
+            PreTokenIf::DoubleEqual => write!(f, "=="),
+            PreTokenIf::ExclamationEqual => write!(f, "!="),
+            PreTokenIf::Less => write!(f, "<"),
+            PreTokenIf::Greater => write!(f, ">"),
+            PreTokenIf::LessEqual => write!(f, "<="),
+            PreTokenIf::GreaterEqual => write!(f, ">="),
+            PreTokenIf::Spaceship => write!(f, "<=>"),
+            PreTokenIf::DoubleAmpersand => write!(f, "&&"),
+            PreTokenIf::DoublePipe => write!(f, "||"),
+            PreTokenIf::DoubleLess => write!(f, "<<"),
+            PreTokenIf::DoubleGreater => write!(f, ">>"),
+            PreTokenIf::DoublePlus => write!(f, "++"),
+            PreTokenIf::DoubleMinus => write!(f, "--"),
+            PreTokenIf::Comma => write!(f, ","),
+            PreTokenIf::And => write!(f, "and"),
+            PreTokenIf::Or => write!(f, "or"),
+            PreTokenIf::Xor => write!(f, "xor"),
+            PreTokenIf::Not => write!(f, "not"),
+            PreTokenIf::Bitand => write!(f, "bitand"),
+            PreTokenIf::Bitor => write!(f, "bitor"),
+            PreTokenIf::Compl => write!(f, "compl"),
+            PreTokenIf::AndEq => write!(f, "and_eq"),
+            PreTokenIf::OrEq => write!(f, "or_eq"),
+            PreTokenIf::XorEq => write!(f, "xor_eq"),
+            PreTokenIf::NotEq => write!(f, "not_eq"),
+        }
+    }
+}
+
 impl PreTokenIf {
     #[doc(hidden)]
     pub fn stringToPreTokenIfOperator(s: &str) -> PreTokenIf {
