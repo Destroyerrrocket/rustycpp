@@ -60,10 +60,17 @@ fn gen_for_parser_grammar(
         .canonicalize()
         .unwrap();
 
-    let s = fs::read_to_string(filepath).unwrap().replace(
+    let mut s = fs::read_to_string(filepath).unwrap().replace(
         &(grammar_file_name.to_owned() + "ParserContext"),
         &(grammar_file_name.to_owned() + "Context"),
     );
+    if s.contains(&format!("new_{grammar_file_name}")) {
+        s = s.replace(
+            &(grammar_file_name.to_owned() + "Ext{\n\t\t\t\t\t_pd: Default::default(),\n\t\t\t\t}"),
+            &format!("{grammar_file_name}Ext::new_{grammar_file_name}Ext()")
+        );
+    }
+
     fs::remove_file(filepath)?;
     fs::write(filepath, s)?;
 

@@ -1,3 +1,6 @@
 [submodule "lalrpop"]
 	path = lalrpop
 	url = https://github.com/Destroyerrrocket/lalrpop.git
+[submodule "antlr4rust"]
+	path = antlr4rust
+	url = https://github.com/Destroyerrrocket/antlr4rust.git

@@ -1,11 +1,11 @@
+use std::ops::Deref;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use antlr_rust::common_token_stream::CommonTokenStream;
 use antlr_rust::tree::ParseTree;
 
 use crate::grammars::generated::maincppparser::{mainCpp, Translation_unitContextAll};
-use crate::grammars::mainCpp::Scopes;
 use crate::lex::lexer::Lexer;
 use crate::utils::antlrlexerwrapper::{AntlrLexerIteratorWrapper, LexerWrapperErrorStrategy};
 use crate::utils::compilerstate::CompilerState;
@@ -48,9 +48,7 @@ impl Parser {
                 LexerWrapperErrorStrategy::new(errors.clone(), compileFile),
             );
 
-            basicParser
-                .translation_unit(Arc::new(Mutex::new(Scopes::new())))
-                .unwrap()
+            basicParser.translation_unit().unwrap()
         };
 
         let errorsLexer = self.lexer.errors();
@@ -87,11 +85,14 @@ impl Parser {
                 tokenStream,
                 LexerWrapperErrorStrategy::new(errors.clone(), compileFile),
             );
-
-            basicParser
-                .translation_unit(Arc::new(Mutex::new(Scopes::new())))
-                .unwrap()
-                .to_string_tree(&*basicParser)
+            format!(
+                "Tree:\n{}\n\nScopes:\n{:?}",
+                basicParser
+                    .translation_unit()
+                    .unwrap()
+                    .to_string_tree(&*basicParser),
+                basicParser.deref().s.borrow()
+            )
         };
 
         let errorsLexer = self.lexer.errors();

@@ -5,6 +5,17 @@ use crate::grammars::mainCpp::*;
 use std::sync::Mutex;
 pub type LocalTokenFactory<'input> = crate::utils::antlrlexerwrapper::AntlrLexerWrapperFactory<'input, crate::lex::token::Token>;
 }
+@parser::fields {
+pub s: Rc<RefCell<Scopes<\'input>>>,
+}
+@parser::members {
+fn new_mainCppExt() -> Self{
+	Self{
+		_pd: Default::default(),
+		s: Default::default(),
+	}
+}
+}
 
 tokens {
 	Identifier,
@@ -183,7 +194,7 @@ equal:
 	;
 
 ////////////////// Parser Rules ////////////////////////////////////////////////
-translation_unit[s: Arc<Mutex<Scopes>>]:
+translation_unit:
 	declaration_seq?
 	| global_module_fragment? module_declaration declaration_seq? private_module_fragment?
 	;
@@ -214,6 +225,10 @@ enum_name:
 
 template_name:
 	{isTemplateName(recog)}? Identifier
+	;
+
+concept_name:
+	{isConceptName(recog)}? Identifier
 	;
 
 // Simpler dynamic keywords
@@ -350,8 +365,8 @@ alias_declaration:
 	;
 
 simple_declaration:
-	decl_specifier_seq init_declarator_list? Semicolon
-	| attribute_specifier_seq decl_specifier_seq init_declarator_list Semicolon
+	decl_specifier_seq init_declarator_list? Semicolon {simpleDeclarationDeclareTypedef(recog)}
+	| attribute_specifier_seq decl_specifier_seq init_declarator_list Semicolon {simpleDeclarationDeclareTypedef(recog)}
 	| attribute_specifier_seq? decl_specifier_seq ref_qualifier? LBrace identifier_list RBrace initializer Semicolon
 	;
 
@@ -810,7 +825,7 @@ member_specification:
 	;
 
 member_declaration:
-	attribute_specifier_seq? decl_specifier_seq? member_declarator_list? Semicolon
+	attribute_specifier_seq? decl_specifier_seq? member_declarator_list? Semicolon {memberDeclarationDeclareTypedef(recog)}
 	| function_definition
 	| using_declaration
 	| using_enum_declaration
@@ -831,9 +846,8 @@ member_declarator:
 	declarator virt_specifier_seq? pure_specifier?
 	| declarator requires_clause
 	| declarator brace_or_equal_initializer?
-	| Identifier? attribute_specifier_seq? Colon constant_expression brace_or_equal_initializer?
+	| Identifier? attribute_specifier_seq? Colon constant_expression brace_or_equal_initializer? // Bitfields
 	;
-
 virt_specifier_seq:
 	virt_specifier+
 	;
@@ -1042,10 +1056,6 @@ deduction_guide:
 
 concept_definition:
 	Concept concept_name equal constraint_expression Semicolon
-	;
-
-concept_name:
-	Identifier
 	;
 
 typename_specifier:
