@@ -29,9 +29,7 @@ impl Display for ModuleDeclaration {
         match self {
             Self::ExportPrimary(module) => format!("export module {module}").fmt(f),
             Self::Primary(module) => format!("module {module}").fmt(f),
-            Self::ExportPartition(module, part) => {
-                format!("export module {module}:{part}").fmt(f)
-            }
+            Self::ExportPartition(module, part) => format!("export module {module}:{part}").fmt(f),
             Self::Partition(module, part) => format!("export module {module}:{part}").fmt(f),
             Self::ModuleHeaderUnit(path) => format!("<{path}>").fmt(f),
             Self::Global(path) => format!("Global module file {path}").fmt(f),
@@ -53,7 +51,7 @@ pub enum ModuleOperator {
 }
 
 /// A node holds all the relevant dependency information of a TU.
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub struct Node {
     /// The module of the TU, if any
     pub module: Arc<(ModuleDeclaration, TranslationUnit)>,
@@ -79,6 +77,7 @@ pub struct Node {
     pub stepsCompleted: Arc<AtomicUsize>,
 }
 
+impl Eq for Node {}
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
         self.module == other.module

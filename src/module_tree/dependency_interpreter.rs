@@ -24,8 +24,7 @@ fn parseGlobalPartOfModuleFile(
                 ModuleOperator::Import(module) => {
                     if module.starts_with(':') {
                         return Err(format!(
-                            "Can't import partitions in global module. Tried to import: {}",
-                            module
+                            "Can't import partitions in global module. Tried to import: {module}"
                         ));
                     }
                     imports.push(ModuleDeclaration::ExportPrimary(module.clone()));

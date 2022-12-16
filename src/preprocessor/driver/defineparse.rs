@@ -1,17 +1,16 @@
 //! Parser of `#define` directives.
 
-use lalrpop_util::ParseError;
+use std::collections::VecDeque;
 
 use crate::{
     fileTokPosMatchArm,
     grammars::{
-        define,
         defineast::{DefineAst, IsVariadic, PreTokenDefine, PreTokenDefinePreParse},
+        defineparser,
     },
     preprocessor::pretoken::{PreToken, PreprocessingOperator},
     utils::{
         funcs::all_unique_elements,
-        lalrpoplexerwrapper::LalrPopLexerWrapper,
         structs::{CompileError, CompileMsg, CompileWarning, FileTokPos, TokPos},
     },
 };
@@ -31,7 +30,7 @@ impl Preprocessor {
             ""
         };
         let mut vaOptExpectParen: Vec<i32> = vec![];
-        let mut toksPre: Vec<FileTokPos<PreTokenDefinePreParse>> = tokens
+        let toksPre: Vec<FileTokPos<PreTokenDefinePreParse>> = tokens
             .into_iter()
             .map(|tok| FileTokPos {
                 file: tok.file,
@@ -92,7 +91,7 @@ impl Preprocessor {
 
         let mut inHashHash = false;
 
-        toksPre = toksPre
+        let mut toksPre = toksPre
             .into_iter()
             .rev()
             .filter(|x| match x.tokPos.tok {
@@ -106,51 +105,13 @@ impl Preprocessor {
                     true
                 }
             })
-            .collect::<Vec<FileTokPos<PreTokenDefinePreParse>>>()
+            .collect::<Vec<_>>()
             .into_iter()
             .rev()
-            .collect::<Vec<FileTokPos<PreTokenDefinePreParse>>>();
+            .collect::<VecDeque<_>>();
 
-        let lexer = LalrPopLexerWrapper::new(toksPre.as_slice());
-        let res = define::DefineStmtParser::new().parse(lexer);
-        return res.map_err(|err| match err {
-            ParseError::ExtraToken { token } => CompileError::from_at(
-                format!(
-                    "Found token {:?} when I wasn't expecting any other tokens",
-                    token.1
-                ),
-                (token.0).1.clone(),
-                (token.0).0,
-                Some((token.2).0),
-            ),
-            ParseError::InvalidToken { location } => CompileError::from_at(
-                "Found invalid token".to_string(),
-                (location.1).clone(),
-                location.0,
-                None,
-            ),
-            ParseError::UnrecognizedEOF { location, expected } => CompileError::from_at(
-                format!(
-                    "Found early end of file while expecting to find: {:?}",
-                    expected
-                ),
-                (location.1).clone(),
-                location.0,
-                None,
-            ),
-            ParseError::UnrecognizedToken { token, expected } => CompileError::from_at(
-                format!(
-                    "Found {:?} while expecting to find: {expected:?}",
-                    token.1
-                ),
-                (token.0).1.clone(),
-                (token.0).0,
-                Some((token.2).0),
-            ),
-            ParseError::User { .. } => {
-                unreachable!("I haven't defined a custom parsing error. This is odd")
-            }
-        });
+        let res = defineparser::parseMacroDefinition(&mut toksPre);
+        return res;
     }
 
     /// Generate the definition info of the macro, mainly the name and the
@@ -233,8 +194,7 @@ impl Preprocessor {
                             _ => {
                                 return Err(CompileError::from_preTo(
                                     format!(
-                                        "Non-valid parameter to function-like macro: {:?}",
-                                        identParamTokens
+                                        "Non-valid parameter to function-like macro: {identParamTokens:?}"
                                     ),
                                     initialToken,
                                 ));

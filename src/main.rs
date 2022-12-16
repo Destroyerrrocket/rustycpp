@@ -9,7 +9,6 @@
     is_some_and,
     unwrap_infallible,
     new_uninit,
-    arbitrary_enum_discriminant,
     map_try_insert,
     map_many_mut,
     get_mut_unchecked

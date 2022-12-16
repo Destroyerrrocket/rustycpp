@@ -45,11 +45,7 @@ impl<'a> FileMap {
         if self.files.contains_key(path) {
         } else {
             if let Err(error) = self.hasFileAccessImpl(path) {
-                panic!(
-                    "Could not open {file}. Error: {error}",
-                    file = path,
-                    error = error
-                );
+                panic!("Could not open {path}. Error: {error}");
             }
             let mut filecontents: String = String::new();
             if let Err(err) = self
@@ -58,11 +54,7 @@ impl<'a> FileMap {
                 .unwrap()
                 .read_to_string(&mut filecontents)
             {
-                panic!(
-                    "Error reading {file}. Error: {error}",
-                    file = path,
-                    error = err
-                );
+                panic!("Error reading {path}. Error: {err}");
             }
             self.files.insert(
                 path.to_string(),

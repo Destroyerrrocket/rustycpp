@@ -8,7 +8,6 @@
 use std::collections::VecDeque;
 
 use crate::preprocessor::pretoken::PreToken;
-use crate::utils::antlrlexerwrapper::HasEOF;
 use crate::utils::structs::{CompileError, CompileMsg, FileTokPos, TokPos};
 use lazy_regex::regex_captures;
 use logos::Logos;
@@ -785,8 +784,10 @@ impl Token {
         tok: &FileTokPos<T>,
         string: &str,
     ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
-        if let Some((_, string, ub)) = regex_captures!(r"^((?:[\da-f]*\.?[\da-f]+|[\da-f]+\.?[\da-f]*)p[-+]?[\d]+[fl]?)([a-z0-9_]*?)?$"i, string)
-        {
+        if let Some((_, string, ub)) = regex_captures!(
+            r"^((?:[\da-f]*\.?[\da-f]+|[\da-f]+\.?[\da-f]*)p[-+]?[\d]+[fl]?)([a-z0-9_]*?)?$"i,
+            string
+        ) {
             Self::parseHexFloat(tok, string, ub)
         } else {
             Self::parseHexInt(tok, string)
@@ -966,8 +967,10 @@ impl Token {
         mut string: &str,
     ) -> Result<FileTokPos<Self>, Option<CompileMsg>> {
         let mut ub = None;
-        if let Some((_, string_, ub_)) = regex_captures!(r"^((?:(?:[\d']*\.[\d']+|[\d']+\.)(?:e[+-]?[\d']+)?|[\d']+e[+-]?[\d']+)[fl]?)([a-z0-9_]*?)$"i, string)
-        {
+        if let Some((_, string_, ub_)) = regex_captures!(
+            r"^((?:(?:[\d']*\.[\d']+|[\d']+\.)(?:e[+-]?[\d']+)?|[\d']+e[+-]?[\d']+)[fl]?)([a-z0-9_]*?)$"i,
+            string
+        ) {
             if !ub_.is_empty() {
                 string = string_;
                 ub = Some(ub_);
@@ -1078,168 +1081,5 @@ impl Token {
                 unreachable!()
             }
         })
-    }
-}
-
-impl HasEOF for Token {
-    fn getEOF() -> Self {
-        Self::Eof
-    }
-
-    fn getInvalid() -> Self {
-        Self::Invalid
-    }
-
-    #[rustfmt::skip]
-    fn getFromTType(ttype: isize) -> Self {
-        match ttype {
-            -1 => Self::Eof,
-            0 => Self::Invalid,
-            1 => Self::Identifier(String::new()),
-            2 => Self::Alignas,
-            3 => Self::Alignof,
-            4 => Self::Asm,
-            5 => Self::Auto,
-            6 => Self::Bool,
-            7 => Self::Break,
-            8 => Self::Case,
-            9 => Self::Catch,
-            10 => Self::Char,
-            11 => Self::Char8_t,
-            12 => Self::Char16_t,
-            13 => Self::Char32_t,
-            14 => Self::Class,
-            15 => Self::Concept,
-            16 => Self::Const,
-            17 => Self::Consteval,
-            18 => Self::Constexpr,
-            19 => Self::Constinit,
-            20 => Self::Const_cast,
-            21 => Self::Continue,
-            22 => Self::Co_await,
-            23 => Self::Co_return,
-            24 => Self::Co_yield,
-            25 => Self::Decltype,
-            26 => Self::Default,
-            27 => Self::Delete,
-            28 => Self::Do,
-            29 => Self::Double,
-            30 => Self::Dynamic_cast,
-            31 => Self::Else,
-            32 => Self::Enum,
-            33 => Self::Explicit,
-            34 => Self::Export,
-            35 => Self::Extern,
-            36 => Self::Float,
-            37 => Self::For,
-            38 => Self::Friend,
-            39 => Self::Goto,
-            40 => Self::If,
-            41 => Self::Inline,
-            42 => Self::Int,
-            43 => Self::Long,
-            44 => Self::Mutable,
-            45 => Self::Namespace,
-            46 => Self::New,
-            47 => Self::Noexcept,
-            48 => Self::Operator,
-            49 => Self::Private,
-            50 => Self::Protected,
-            51 => Self::Public,
-            52 => Self::Register,
-            53 => Self::Reinterpret_cast,
-            54 => Self::Requires,
-            55 => Self::Return,
-            56 => Self::Short,
-            57 => Self::Signed,
-            58 => Self::Sizeof,
-            59 => Self::Static,
-            60 => Self::Static_assert,
-            61 => Self::Static_cast,
-            62 => Self::Struct,
-            63 => Self::Switch,
-            64 => Self::Template,
-            65 => Self::This,
-            66 => Self::Thread_local,
-            67 => Self::Throw,
-            68 => Self::Try,
-            69 => Self::Typedef,
-            70 => Self::Typeid,
-            71 => Self::Typename,
-            72 => Self::Union,
-            73 => Self::Unsigned,
-            74 => Self::Using,
-            75 => Self::Virtual,
-            76 => Self::Void,
-            77 => Self::Volatile,
-            78 => Self::Wchar_t,
-            79 => Self::While,
-            80 => Self::LBrace,
-            81 => Self::RBrace,
-            82 => Self::LBracket,
-            83 => Self::RBracket,
-            84 => Self::LParen,
-            85 => Self::RParen,
-            86 => Self::Semicolon,
-            87 => Self::Colon,
-            88 => Self::ThreeDots,
-            89 => Self::Question,
-            90 => Self::DoubleColon,
-            91 => Self::Dot,
-            92 => Self::DotStar,
-            93 => Self::Arrow,
-            94 => Self::ArrowStar,
-            95 => Self::Tilde,
-            96 => Self::Exclamation,
-            97 => Self::Plus,
-            98 => Self::Minus,
-            99 => Self::Star,
-            100 => Self::Slash,
-            101 => Self::Percent,
-            102 => Self::Caret,
-            103 => Self::Ampersand,
-            104 => Self::Pipe,
-            105 => Self::Equal,
-            106 => Self::PlusEqual,
-            107 => Self::MinusEqual,
-            108 => Self::StarEqual,
-            109 => Self::SlashEqual,
-            110 => Self::PercentEqual,
-            111 => Self::CaretEqual,
-            112 => Self::AmpersandEqual,
-            113 => Self::PipeEqual,
-            114 => Self::DoubleEqual,
-            115 => Self::ExclamationEqual,
-            116 => Self::Less,
-            117 => Self::LessEqual,
-            118 => Self::Spaceship,
-            119 => Self::DoubleAmpersand,
-            120 => Self::DoublePipe,
-            121 => Self::DoubleLess,
-            122 => Self::DoubleLessEqual,
-            123 => Self::DoublePlus,
-            124 => Self::DoubleMinus,
-            125 => Self::Comma,
-            126 => Self::SingleGreater,
-            127 => Self::FirstGreater,
-            128 => Self::SecondGreater,
-            129 => Self::StrippedGreaterEqual,
-            130 => Self::Import,
-            131 => Self::ImportableHeaderName(String::new()),
-            132 => Self::Module,
-            133 => Self::IntegerLiteral(0, Vec::new()),
-            134 => Self::FloatingPointLiteral(f128::f128::new(0), FloatSuffix::None),
-            135 => Self::CharacterLiteral(EncodingPrefix::None, '\0'),
-            136 => Self::StringLiteral(EncodingPrefix::None, String::new()),
-            137 => Self::BoolLiteral(false),
-            138 => Self::PointerLiteral,
-            139 => Self::UdIntegerLiteral(0, Vec::new(), String::new()),
-            140 => Self::UdFloatingPointLiteral(f128::f128::new(0), FloatSuffix::None, String::new()),
-            141 => Self::UdCharacterLiteral(EncodingPrefix::None, '\0', String::new()),
-            142 => Self::UdStringLiteral(EncodingPrefix::None, String::new(), String::new()),
-            _ => unreachable!(
-                "Invalid type number. You should not have been able to reach this branch."
-            ),
-        }
     }
 }

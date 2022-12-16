@@ -1,16 +1,12 @@
 //! Macro constant integer expression evaluation
 use std::collections::VecDeque;
-use std::rc::Rc;
-use std::sync::Mutex;
 
-use crate::grammars::generated::macrointconstantexpressionastparser::macrointconstantexpressionast;
-use crate::grammars::macrointconstantexpressionast::{PreTokenIf, VisitorEvaluator};
+use crate::grammars::macrointconstantexpressionast::PreTokenIf;
+use crate::grammars::macrointconstantexpressionparser;
 use crate::preprocessor::multilexer::MultiLexer;
 use crate::preprocessor::pretoken::PreToken;
-use crate::utils::antlrlexerwrapper::{AntlrLexerWrapper, LexerWrapperErrorStrategy};
 use crate::utils::structs::{CompileError, CompileMsg, FileTokPos, TokPos};
 use crate::{fileTokPosMatchArm, fileTokPosMatches};
-use antlr_rust::common_token_stream::CommonTokenStream;
 
 use super::Preprocessor;
 
@@ -340,29 +336,10 @@ impl Preprocessor {
     pub fn evalIfScope(
         sequence: VecDeque<FileTokPos<PreToken>>,
         token: &FileTokPos<PreToken>,
-    ) -> Result<bool, Vec<CompileMsg>> {
-        let numSequence = Self::transformToParserTokens(&sequence, token)?;
-        let tokenStream = CommonTokenStream::new(AntlrLexerWrapper::new(
-            numSequence,
-            token.file.path().clone(),
-        ));
+    ) -> Result<(bool, Vec<CompileMsg>), Vec<CompileMsg>> {
+        let mut numSequence = Self::transformToParserTokens(&sequence, token)?;
 
-        let errors = Rc::new(Mutex::new(vec![]));
-
-        let mut basicParser = macrointconstantexpressionast::with_strategy(
-            tokenStream,
-            LexerWrapperErrorStrategy::new(errors.clone(), token.file.clone()),
-        );
-
-        let tree = basicParser.exprRes().unwrap();
-
-        let errors = errors.lock().unwrap();
-        if !errors.is_empty() {
-            return Err(errors.clone());
-        }
-
-        let mut visitor = VisitorEvaluator::new();
-        visitor.visit_start(&tree);
-        return Ok(visitor.res() != 0);
+        let (n, err) = macrointconstantexpressionparser::exprRes(&mut numSequence)?;
+        Ok((n != 0, err))
     }
 }

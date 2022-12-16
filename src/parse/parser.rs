@@ -1,13 +1,4 @@
-use std::ops::Deref;
-use std::rc::Rc;
-use std::sync::Mutex;
-
-use antlr_rust::common_token_stream::CommonTokenStream;
-use antlr_rust::tree::ParseTree;
-
-use crate::grammars::generated::maincppparser::{mainCpp, Translation_unitContextAll};
 use crate::lex::lexer::Lexer;
-use crate::utils::antlrlexerwrapper::{AntlrLexerIteratorWrapper, LexerWrapperErrorStrategy};
 use crate::utils::compilerstate::CompilerState;
 use crate::utils::structs::CompileMsg;
 
@@ -27,7 +18,7 @@ impl Parser {
     }
 
     // TODO: If all the grammar errors were recoverable, we should still report them with the lexical errors.
-    pub fn parse(&mut self) -> Result<Rc<Translation_unitContextAll>, Vec<CompileMsg>> {
+    /*pub fn parse(&mut self) -> Result<Rc<Translation_unitContextAll>, Vec<CompileMsg>> {
         let errors = Rc::new(Mutex::new(vec![]));
 
         let tree = {
@@ -62,11 +53,11 @@ impl Parser {
         } else {
             Err(errorsLexer)
         }
-    }
+    }*/
 
     // TODO: If all the grammar errors were recoverable, we should still report them with the lexical errors.
     pub fn parseStringTree(&mut self) -> Result<String, Vec<CompileMsg>> {
-        let errors = Rc::new(Mutex::new(vec![]));
+        /*let errors = Rc::new(Mutex::new(vec![]));
 
         let tree = {
             let tokenStream = CommonTokenStream::new(AntlrLexerIteratorWrapper::new(
@@ -105,6 +96,7 @@ impl Parser {
             }
         } else {
             Err(errorsLexer)
-        }
+        }*/
+        Ok(String::new())
     }
 }

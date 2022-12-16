@@ -2,9 +2,9 @@
 use std::collections::VecDeque;
 use std::sync::Arc;
 
+use crate::fileTokPosMatches;
 use crate::preprocessor::Preprocessor;
 use crate::utils::structs::{CompileError, CompileFile, CompileMsg, FileTokPos, TokPos};
-use crate::{fileTokPosMatches};
 
 use super::token::{EncodingPrefix, Token};
 
@@ -54,10 +54,7 @@ impl Lexer {
             (EncodingPrefix::None | EncodingPrefix::L, EncodingPrefix::L)
             | (EncodingPrefix::L, EncodingPrefix::None) => Ok(EncodingPrefix::L),
             (e1, e2) => Err(CompileError::from_at(
-                format!(
-                    "Incompatible encoding prefixes between '{}' and '{}'",
-                    e1, e2
-                ),
+                format!("Incompatible encoding prefixes between '{e1}' and '{e2}'"),
                 file,
                 at,
                 Some(atEnd),
@@ -106,8 +103,7 @@ impl Lexer {
                 } else {
                     Err(CompileError::from_at(
                         format!(
-                            "Incompatible user defined string literals between '{}' and '{}'",
-                            ud1, ud2
+                            "Incompatible user defined string literals between '{ud1}' and '{ud2}'"
                         ),
                         file,
                         start,
