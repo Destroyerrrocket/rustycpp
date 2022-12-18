@@ -75,8 +75,8 @@ macro_rules! pvec_accumulate_while {
             let mut res = vec![];
             while $eval(input) {
                 let r = $parser(input);
-                if r.is_err() {
-                    return Ok(res);
+                if let Err(err) = r {
+                    return Err(err);
                 }
                 res.push(r.unwrap());
             }

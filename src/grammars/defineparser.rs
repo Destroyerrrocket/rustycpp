@@ -55,10 +55,6 @@ fn normal(input: FileTokPos<PreTokenDefinePreParse>) -> PreTokenDefine {
 }
 
 fn ReTokWhiteSp(input: In) -> ParseRes {
-    matches!(
-        input[0].tokPos.tok,
-        PreTokenDefinePreParse::Normal(PreToken::Whitespace(_))
-    );
     if matchesPP!(
         input,
         PreTokenDefinePreParse::Normal(PreToken::Whitespace(_))
@@ -168,6 +164,13 @@ fn MaybeHashHash(input: In) -> ParseRes {
             &hashHash,
         ));
     }
+    if matchesPP!(input, PreTokenDefinePreParse::HashHash) {
+        let unexpectedHashHash = input.pop_front().unwrap();
+        return Err(CompileError::from_preTo(
+            "Expected an argument or token previous to this ##".to_string(),
+            &unexpectedHashHash,
+        ));
+    }
     let argOrTok = p_guard_condition_select!(
         In,
         |input: In| {
@@ -214,6 +217,7 @@ fn MaybeHashHash(input: In) -> ParseRes {
 }
 
 fn NoWhiteSp(input: In) -> ParseRes {
+    println!("{input:?}");
     let onHashPrecondition = wrap!(
         In,
         p_alt!(In, MaybeHashHash, |input: In| {
@@ -249,5 +253,7 @@ fn parseElem(input: In) -> ParseRes {
 pub fn parseMacroDefinition(
     input: &mut VecDeque<FileTokPos<PreTokenDefinePreParse>>,
 ) -> Result<Vec<PreTokenDefine>, CompileMsg> {
-    pvec_accumulate_while!(In, parseElem, |input: In| { !input.is_empty() })(input)
+    pvec_accumulate_while!(In, parseElem, |input: In| {
+        !input.is_empty() && !matchesPP!(input, PreTokenDefinePreParse::VariadicOptParenR)
+    })(input)
 }

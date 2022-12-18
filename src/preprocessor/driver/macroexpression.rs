@@ -338,8 +338,8 @@ impl Preprocessor {
         token: &FileTokPos<PreToken>,
     ) -> Result<(bool, Vec<CompileMsg>), Vec<CompileMsg>> {
         let mut numSequence = Self::transformToParserTokens(&sequence, token)?;
-
-        let (n, err) = macrointconstantexpressionparser::exprRes(&mut numSequence)?;
+        let last = numSequence.back().unwrap().clone();
+        let (n, err) = macrointconstantexpressionparser::exprRes((&mut numSequence, &last))?;
         Ok((n != 0, err))
     }
 }
