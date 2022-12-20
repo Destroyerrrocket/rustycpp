@@ -42,16 +42,14 @@ impl MultiLexer {
     }
 
     /// Creates a new multilexer with the starting file
-    pub fn new((files, file): (Arc<Mutex<FileMap>>, &str)) -> Self {
-        let lexer = {
-            let currFile = files.lock().unwrap().getFile(file);
-            PreLexer::new(currFile.content().clone())
-        };
+    pub fn new((files, file): (Arc<Mutex<FileMap>>, u64)) -> Self {
+        let currFile = files.lock().unwrap().getOpenedFile(file);
+        let lexer = PreLexer::new(currFile.content().clone());
 
         Self {
             fileMapping: files,
             files: vec![FileLexer {
-                compFile: file.to_string(),
+                compFile: currFile.path().clone(),
                 lexer,
             }],
             pushedTokens: VecDeque::new(),
@@ -86,7 +84,7 @@ impl MultiLexer {
                 self.fileMapping
                     .lock()
                     .unwrap()
-                    .getAddFile(path.as_str())
+                    .getAddFileRef(path.as_str())
                     .content()
                     .to_string(),
             ),
@@ -129,7 +127,7 @@ impl Iterator for MultiLexer {
                             self.fileMapping
                                 .lock()
                                 .expect("Thread panic")
-                                .getFile(&lexer.compFile),
+                                .getAddFile(&lexer.compFile),
                             tok,
                         ));
                     }

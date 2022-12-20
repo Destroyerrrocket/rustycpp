@@ -61,8 +61,8 @@ macro_rules! declCMVar {
     };
 }
 declCMVar! {__DATE__, |_| Local::now().format("%b %e %y")}
-declCMVar! {__FILE__, |expandData: &ExpandData| expandData.newToken.file.path().to_string()}
-declCMVar! {__LINE__, |expandData: &ExpandData| expandData.newToken.file.getRowColumn(expandData.newToken.tokPos.start).0}
+declCMVar! {__FILE__, |expandData: &ExpandData| expandData.compilerState.compileFiles.lock().unwrap().getOpenedFile(expandData.newToken.file).path().to_string()}
+declCMVar! {__LINE__, |expandData: &ExpandData| expandData.compilerState.compileFiles.lock().unwrap().getOpenedFile(expandData.newToken.file).getRowColumn(expandData.newToken.tokPos.start).0}
 declCMVar! {__STDC_HOSTED__, |_| "1"}
 declCMVar! {__STDCPP_DEFAULT_NEW_ALIGNMENT__, |_| "1"}
 declCMVar! {__TIME__, |_| Local::now().format("%H:%M:%S")}
@@ -135,6 +135,7 @@ impl CustomMacro for __has_include {
         }
 
         let path = Preprocessor::tokensToValidIncludeablePath(
+            expandData.compilerState,
             expandData.lexer,
             expandData.definitions,
             expandData.disabledMacros,

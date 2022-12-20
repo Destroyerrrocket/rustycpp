@@ -9,7 +9,10 @@ use crate::{
     preprocessor::{
         multilexer::MultiLexer, prelexer::PreLexer, pretoken::PreToken, structs::ExpandData,
     },
-    utils::structs::{CompileError, CompileMsg, FileTokPos, TokPos},
+    utils::{
+        compilerstate::CompilerState,
+        structs::{CompileError, CompileMsg, FileTokPos, TokPos},
+    },
 };
 
 use super::Preprocessor;
@@ -30,6 +33,7 @@ impl Preprocessor {
 
     /// Expands a sequence of self contained tokens. Won't affect the state of the parser.
     pub fn expandASequenceOfTokens(
+        compilerState: &CompilerState,
         mut selfContainedLexer: MultiLexer,
         macros: &HashMap<String, DefineAst>,
         disabledMacros: &HashMultiSet<String>,
@@ -48,6 +52,7 @@ impl Preprocessor {
                 }
                 fileTokPosMatchArm!(PreToken::Ident(_)) => {
                     let toks = Self::macroExpandInternal(
+                        compilerState,
                         macros,
                         &paramDisabledMacros,
                         &mut selfContainedLexer,
@@ -82,6 +87,7 @@ impl Preprocessor {
             let mut paramLexer = MultiLexer::new_def(expandData.lexer.fileMapping());
             paramLexer.pushTokensVec(expandData.namedArgs.get(&a.tokPos.tok).unwrap().clone());
             let mut preproTokie = Self::expandASequenceOfTokens(
+                expandData.compilerState,
                 paramLexer,
                 expandData.definitions,
                 expandData.disabledMacros,
@@ -151,6 +157,7 @@ impl Preprocessor {
                 let mut paramLexer = MultiLexer::new_def(expandData.lexer.fileMapping());
                 paramLexer.pushTokensVec(expandData.variadic[posVariadic].clone());
                 let mut preproTokie = Self::expandASequenceOfTokens(
+                    expandData.compilerState,
                     paramLexer,
                     expandData.definitions,
                     expandData.disabledMacros,
@@ -208,6 +215,7 @@ impl Preprocessor {
             variadic: expandData.variadic,
             astId: expandData.astId,
             replacement: tokie,
+            compilerState: expandData.compilerState,
             expandArg: false,
             newToken: expandData.newToken,
         })?;
@@ -283,6 +291,7 @@ impl Preprocessor {
                 variadic: expandData.variadic,
                 astId: expandData.astId,
                 replacement: right,
+                compilerState: expandData.compilerState,
                 expandArg: true,
                 newToken: expandData.newToken,
             })?;
@@ -309,6 +318,7 @@ impl Preprocessor {
                 variadic: expandData.variadic,
                 astId: expandData.astId,
                 replacement: left,
+                compilerState: expandData.compilerState,
                 expandArg: true,
                 newToken: expandData.newToken,
             })?;
@@ -322,6 +332,7 @@ impl Preprocessor {
                 variadic: expandData.variadic,
                 astId: expandData.astId,
                 replacement: right,
+                compilerState: expandData.compilerState,
                 expandArg: true,
                 newToken: expandData.newToken,
             })?;
@@ -374,6 +385,7 @@ impl Preprocessor {
             variadic: expandData.variadic,
             astId: expandData.astId,
             replacement: &vec![PreTokenDefine::VariadicArg(pos.clone())],
+            compilerState: expandData.compilerState,
             expandArg: true,
             newToken: expandData.newToken,
         })
@@ -398,6 +410,7 @@ impl Preprocessor {
                 variadic: expandData.variadic,
                 astId: expandData.astId,
                 replacement: tokies,
+                compilerState: expandData.compilerState,
                 expandArg: expandData.expandArg,
                 newToken: expandData.newToken,
             })?;
@@ -591,6 +604,7 @@ impl Preprocessor {
 
     /// Internal function to expand a macro invocation. See `Preprocessor::macroExpand` for more information.
     pub fn macroExpandInternal(
+        compilerState: &CompilerState,
         definitions: &HashMap<String, DefineAst>,
         disabledMacros: &HashMultiSet<String>,
         lexer: &mut MultiLexer,
@@ -650,6 +664,7 @@ impl Preprocessor {
                         variadic: &variadic,
                         astId: &macroAst.id,
                         replacement: &macroAst.replacement,
+                        compilerState,
                         expandArg: true,
                         newToken: &newToken,
                     })?;
@@ -684,6 +699,7 @@ impl Preprocessor {
                         variadic: &vec![],
                         astId: &macroAst.id,
                         replacement: &macroAst.replacement,
+                        compilerState,
                         expandArg: true,
                         newToken: &newToken,
                     })?;
@@ -713,6 +729,7 @@ impl Preprocessor {
         newToken: FileTokPos<PreToken>,
     ) -> Result<Vec<FileTokPos<PreToken>>, CompileMsg> {
         Self::macroExpandInternal(
+            &self.compilerState,
             &self.definitions,
             &self.disabledMacros,
             &mut self.multilexer,

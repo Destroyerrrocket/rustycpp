@@ -79,7 +79,7 @@ fn dfsLoops(tree: &mut ModuleTree, files: &mut FileMap) -> Result<(), Vec<Compil
                         &stack.iter(),
                         &next.module.0
                     ),
-                    files.getFile(&next.module.1),
+                    next.module.1,
                 ));
                 continue;
             }

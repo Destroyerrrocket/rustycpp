@@ -51,8 +51,6 @@ pub enum FloatSuffix {
 #[derive(Debug, Clone, PartialEq)]
 #[repr(isize)]
 pub enum Token {
-    Eof = -1,
-    Invalid = 0,
     // Identifiers
     Identifier(String) = 1,
 
@@ -210,8 +208,6 @@ pub enum Token {
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Eof => write!(f, "<EOF>"),
-            Self::Invalid => write!(f, "<Invalid>"),
             Self::Identifier(s) => write!(f, "{s}"),
             Self::Alignas => write!(f, "alignas"),
             Self::Alignof => write!(f, "alignof"),

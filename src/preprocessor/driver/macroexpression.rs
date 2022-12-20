@@ -176,6 +176,7 @@ impl Preprocessor {
                         }
                     } else {
                         let toks = Self::macroExpandInternal(
+                            &self.compilerState,
                             &self.definitions,
                             &paramDisabledMacros,
                             &mut self.multilexer,

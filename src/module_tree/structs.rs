@@ -19,9 +19,9 @@ pub enum ModuleDeclaration {
     /// Holds module name + partition
     Partition(String, String),
     /// Holds resolved path
-    ModuleHeaderUnit(String),
+    ModuleHeaderUnit(u64),
     /// Holds resolved path
-    Global(String),
+    Global(u64),
 }
 
 impl Display for ModuleDeclaration {

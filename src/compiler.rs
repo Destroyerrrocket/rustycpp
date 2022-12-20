@@ -21,7 +21,7 @@ use crate::utils::statecompileunit::StateCompileUnit;
 use crate::utils::structs::{CompileMsg, CompileMsgKind};
 
 /// Path to a translation unit
-pub type TranslationUnit = String;
+pub type TranslationUnit = u64;
 
 /// Main driver of the compilation. It coordinates to compilation of the various
 /// translation untis
@@ -77,8 +77,10 @@ impl Compiler {
     }
 
     /// Executes the preprocessing stage
-    pub fn print_dependency_tree(&mut self) -> Result<(), Vec<CompileMsg>> {
-        let tree = self.prepareDependencyTreeAndSetupInitialState()?;
+    pub fn print_dependency_tree(&mut self) -> Result<(), (CompilerState, Vec<CompileMsg>)> {
+        let tree = self
+            .prepareDependencyTreeAndSetupInitialState()
+            .map_err(|err| (self.compilerState.clone(), err))?;
         println!("Resulting module tree: {:?}", tree.roots);
         let dependencyIterator = DependencyIterator::new(&tree, 0);
         let mut tuDone = VecDeque::new();
@@ -104,8 +106,10 @@ impl Compiler {
     }
 
     /// Executes the preprocessing stage
-    pub fn print_preprocessor(&mut self) -> Result<(), Vec<CompileMsg>> {
-        let tree = self.prepareDependencyTreeAndSetupInitialState()?;
+    pub fn print_preprocessor<'me>(&'me mut self) -> Result<(), (CompilerState, Vec<CompileMsg>)> {
+        let tree = self
+            .prepareDependencyTreeAndSetupInitialState()
+            .map_err(|err| (self.compilerState.clone(), err))?;
 
         let dependencyIterator = Arc::new(DependencyIterator::new(&tree, 0));
 
@@ -116,13 +120,13 @@ impl Compiler {
             match next {
                 Some(tu) => self.pool.execute(move || {
                     let mut output = format!("// file: {}\n", &tu);
-                    for tok in Preprocessor::new((compilerState, &tu)) {
+                    for tok in Preprocessor::new((compilerState.clone(), tu)) {
                         match tok {
                             Ok(tok) => {
                                 output.push_str(tok.tokPos.tok.to_str());
                             }
                             Err(err) => {
-                                log::info!("{}", err.to_string());
+                                log::info!("{}", err.to_string(&compilerState.compileFiles));
                                 if err.severity() == CompileMsgKind::FatalError {
                                     panic!("Force stop. Unrecoverable error");
                                 }
@@ -140,8 +144,10 @@ impl Compiler {
     }
 
     /// Executes the preprocessing stage and parses the tokens to its final token form
-    pub fn print_lexer(&mut self) -> Result<(), Vec<CompileMsg>> {
-        let tree = self.prepareDependencyTreeAndSetupInitialState()?;
+    pub fn print_lexer(&mut self) -> Result<(), (CompilerState, Vec<CompileMsg>)> {
+        let tree = self
+            .prepareDependencyTreeAndSetupInitialState()
+            .map_err(|err| (self.compilerState.clone(), err))?;
 
         let dependencyIterator = Arc::new(DependencyIterator::new(&tree, 0));
 
@@ -152,7 +158,7 @@ impl Compiler {
             match next {
                 Some(tu) => self.pool.execute(move || {
                     let mut output = format!("// file: {}\n", &tu);
-                    let preprocessor = Preprocessor::new((compilerState, &tu));
+                    let preprocessor = Preprocessor::new((compilerState.clone(), tu));
                     let mut lexer = Lexer::new(preprocessor);
                     for tok in &mut lexer {
                         output.push_str(&format!("{:?}\n", tok.tokPos.tok));
@@ -161,7 +167,7 @@ impl Compiler {
                     if !errors.is_empty() {
                         output.push('\n');
                         for err in errors {
-                            output.push_str(&err.to_string());
+                            output.push_str(&err.to_string(&compilerState.compileFiles));
                             output.push('\n');
                         }
                     }
@@ -176,8 +182,10 @@ impl Compiler {
     }
 
     /// Parses the resulting tokens to an AST and prints it
-    pub fn print_parsed_tree(&mut self) -> Result<(), Vec<CompileMsg>> {
-        let tree = self.prepareDependencyTreeAndSetupInitialState()?;
+    pub fn print_parsed_tree(&mut self) -> Result<(), (CompilerState, Vec<CompileMsg>)> {
+        let tree = self
+            .prepareDependencyTreeAndSetupInitialState()
+            .map_err(|err| (self.compilerState.clone(), err))?;
 
         let dependencyIterator = Arc::new(DependencyIterator::new(&tree, 0));
 
@@ -188,9 +196,9 @@ impl Compiler {
             match next {
                 Some(tu) => self.pool.execute(move || {
                     let mut output = format!("// file: {}\n", &tu);
-                    let preprocessor = Preprocessor::new((compilerState.clone(), &tu));
+                    let preprocessor = Preprocessor::new((compilerState.clone(), tu));
                     let lexer = Lexer::new(preprocessor);
-                    let mut parser = Parser::new(lexer, tu.clone(), compilerState);
+                    let mut parser = Parser::new(lexer, tu.clone(), compilerState.clone());
                     match parser.parseStringTree() {
                         Ok(ast) => {
                             output.push_str(&ast);
@@ -199,7 +207,7 @@ impl Compiler {
                         Err(errors) => {
                             output.push('\n');
                             for err in errors {
-                                output.push_str(&err.to_string());
+                                output.push_str(&err.to_string(&compilerState.compileFiles));
                                 output.push('\n');
                             }
                         }
@@ -215,7 +223,7 @@ impl Compiler {
     }
 
     /// Attempts to compile everything, until the last thing implemented.
-    pub fn doTheThing(&mut self) -> Result<(), Vec<CompileMsg>> {
+    pub fn doTheThing(&mut self) -> Result<(), (CompilerState, Vec<CompileMsg>)> {
         self.print_parsed_tree()
     }
 }

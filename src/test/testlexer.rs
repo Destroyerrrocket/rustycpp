@@ -15,7 +15,7 @@ use crate::utils::structs::{CompileMsg, FileTokPos};
 use ::f128::{f128, f128_inner};
 use test_log::test;
 
-fn generateFileMap(files: &[(&'static str, &'static str)]) -> (CompilerState, &'static str) {
+fn generateFileMap(files: &[(&'static str, &'static str)]) -> (CompilerState, u64) {
     let mut params = Parameters::new();
     params.includeDirs.push(
         Path::new(file!())
@@ -32,16 +32,15 @@ fn generateFileMap(files: &[(&'static str, &'static str)]) -> (CompilerState, &'
     }
 
     let parameters = Arc::new(params);
-    let testFile = files.first().unwrap().0;
     let fileMap = Arc::new(Mutex::new(FileMap::new(parameters.clone())));
     let compileUnits = Arc::new(Mutex::new(HashMap::new()));
-    for (filePath, fileContents) in files {
+    for (i, (filePath, fileContents)) in files.iter().enumerate() {
         fileMap
             .lock()
             .unwrap()
             .addTestFile((*filePath).to_string(), (*fileContents).to_string());
         compileUnits.lock().unwrap().insert(
-            (*filePath).to_string(),
+            i as u64 + 1,
             StateCompileUnit {
                 macroDefintionsAtTheEndOfTheFile: HashMap::new(),
             },
@@ -54,17 +53,18 @@ fn generateFileMap(files: &[(&'static str, &'static str)]) -> (CompilerState, &'
             compileFiles: fileMap,
             compileUnits,
         },
-        testFile,
+        1,
     );
 }
 
 fn getToksPreprocessed(files: &[(&'static str, &'static str)]) -> Vec<PreToken> {
-    let prep = Preprocessor::new(generateFileMap(files));
+    let f = generateFileMap(files);
+    let prep = Preprocessor::new(f.clone());
     return prep
         .filter_map(|x: Result<FileTokPos<PreToken>, CompileMsg>| {
             x.map_or_else(
                 |err| {
-                    log::error!("{}", err.to_string());
+                    log::error!("{}", err.to_string(&f.0.compileFiles));
                     None
                 },
                 Some,
@@ -81,6 +81,7 @@ fn getErrsPreprocessed(files: &[(&'static str, &'static str)]) -> Vec<CompileMsg
 
 fn getToksPreprocessedNoWs(files: &[(&'static str, &'static str)]) -> Vec<PreToken> {
     let mut res = getToksPreprocessed(files);
+    println!("Toks: {:?}", res);
     res.retain(|x| {
         !matches!(
             x,

@@ -8,14 +8,14 @@ use crate::compiler::TranslationUnit;
 use crate::preprocessor::prelexer::PreLexer;
 use crate::preprocessor::pretoken::PreToken;
 use crate::utils::filemap::FileMap;
-use crate::utils::structs::{CompileError, CompileFile, CompileMsg, TokPos};
+use crate::utils::structs::{CompileError, CompileMsg, TokPos};
 
 use super::structs::ModuleOperator;
 
 /// When encountering a module operator, validates it can be used and parses it.
 fn parseModuleOp(
     lexer: &mut PreLexer,
-    translationUnit: &Arc<CompileFile>,
+    translationUnit: u64,
 ) -> Result<Option<ModuleOperator>, CompileMsg> {
     let mut toks = lexer
         .take_while(|x| x.tok != PreToken::Newline)
@@ -82,7 +82,7 @@ fn parseModuleOp(
 /// When encountering an import operator, validates it can be used and parses it.
 fn parseImportOp(
     lexer: &mut PreLexer,
-    translationUnit: &Arc<CompileFile>,
+    translationUnit: u64,
 ) -> Result<Option<ModuleOperator>, CompileMsg> {
     lexer.expectHeader();
     let mut toks = lexer
@@ -148,7 +148,7 @@ fn parseImportOp(
 /// When encountering an export operator, validates it can be used and parses it.
 fn parseExportOp(
     lexer: &mut PreLexer,
-    translationUnit: &Arc<CompileFile>,
+    translationUnit: u64,
 ) -> Result<Option<ModuleOperator>, CompileMsg> {
     let tok = loop {
         let tok = lexer.next();
@@ -183,12 +183,20 @@ fn parseExportOp(
 
 /// Extract the module, export, import operations only rellevant for dependency scanning of a single file
 fn parseModuleMacroOp(
-    translationUnit: Arc<CompileFile>,
+    translationUnit: u64,
+    fileMap: &mut Arc<Mutex<FileMap>>,
 ) -> Result<Vec<ModuleOperator>, Vec<CompileMsg>> {
     let mut err = vec![];
     let mut res = vec![];
     {
-        let mut lexer = PreLexer::new(translationUnit.content().clone());
+        let mut lexer = PreLexer::new(
+            fileMap
+                .lock()
+                .unwrap()
+                .getOpenedFile(translationUnit)
+                .content()
+                .clone(),
+        );
         let mut atStartLine = true;
         while let Some(TokPos { tok, .. }) = lexer.next() {
             if tok.isWhitespace() {
@@ -203,7 +211,7 @@ fn parseModuleMacroOp(
                 atStartLine = false;
                 match tok {
                     PreToken::Ident(str) if str == "module" => {
-                        match parseModuleOp(&mut lexer, &translationUnit) {
+                        match parseModuleOp(&mut lexer, translationUnit) {
                             Ok(None) => continue,
                             Ok(Some(v)) => {
                                 atStartLine = true;
@@ -213,7 +221,7 @@ fn parseModuleMacroOp(
                         };
                     }
                     PreToken::Keyword("export") => {
-                        match parseExportOp(&mut lexer, &translationUnit) {
+                        match parseExportOp(&mut lexer, translationUnit) {
                             Ok(None) => continue,
                             Ok(Some(v)) => {
                                 atStartLine = true;
@@ -223,7 +231,7 @@ fn parseModuleMacroOp(
                         };
                     }
                     PreToken::Ident(str) if str == "import" => {
-                        match parseImportOp(&mut lexer, &translationUnit) {
+                        match parseImportOp(&mut lexer, translationUnit) {
                             Ok(None) => continue,
                             Ok(Some(v)) => {
                                 atStartLine = true;
@@ -252,9 +260,8 @@ pub fn parseModuleMacroOps(
 ) -> Result<Vec<(TranslationUnit, Vec<ModuleOperator>)>, Vec<CompileMsg>> {
     let mut err = vec![];
     let mut res = vec![];
-    for translationUnit in translationUnits {
-        let file = fileMap.lock().unwrap().getAddFile(translationUnit);
-        match parseModuleMacroOp(file) {
+    for translationUnit in translationUnits.iter().cloned() {
+        match parseModuleMacroOp(translationUnit, fileMap) {
             Ok(node) => res.push((translationUnit.clone(), node)),
             Err(mut err2) => err.append(&mut err2),
         }

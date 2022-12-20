@@ -53,15 +53,15 @@ fn literal(i: In) -> Out {
             return Ok((n, vec![]));
         }
     }
-    if !i.is_empty() {
+    if i.is_empty() {
         Err(vec![CompileError::from_preTo(
-            "expected a number, instead found",
-            &i[0],
+            "expected a number at the end of this expression:",
+            s,
         )])
     } else {
         Err(vec![CompileError::from_preTo(
-            "expected a number at the end of this expression:",
-            &s,
+            "expected a number, instead found",
+            &i[0],
         )])
     }
 }
@@ -117,7 +117,7 @@ fn conditional_expression(i: In) -> Out {
             err.push(CompileError::from_preTo("expected a ':'", &i[0]));
             Err(err)
         } else {
-            err.push(CompileError::from_preTo("expected a ':'", &s));
+            err.push(CompileError::from_preTo("expected a ':'", s));
             Err(err)
         }
     } else {

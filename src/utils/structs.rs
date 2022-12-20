@@ -1,8 +1,10 @@
 //! A varitety of structs used throughout the compiler.
 use std::fmt::Debug;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use colored::Colorize;
+
+use super::filemap::FileMap;
 
 #[derive(Debug, Default, Eq)]
 /// A file to be compiled
@@ -99,15 +101,16 @@ impl ToString for CompileMsgKind {
 pub struct CompileMsg {
     kind: CompileMsgKind,
     msg: String,
-    file: Arc<CompileFile>,
+    file: u64,
     at: Option<usize>,
     atEnd: Option<usize>,
 }
 
 impl CompileMsg {
     /// Location of the message
-    pub fn errorLocStr(&self) -> String {
-        self.file.getLocStr(self.at)
+    pub fn errorLocStr(&self, fileMap: &Arc<Mutex<FileMap>>) -> String {
+        let file = fileMap.lock().unwrap().getOpenedFile(self.file);
+        file.getLocStr(self.at)
     }
 
     /// Severity of the message
@@ -116,25 +119,23 @@ impl CompileMsg {
     }
 
     /// Print the message
-    pub fn print(&self) {
+    pub fn print(&self, fileMap: &Arc<Mutex<FileMap>>) {
         match self.kind {
-            CompileMsgKind::Notice => log::info!("{}", self.to_string()),
-            CompileMsgKind::Warning => log::warn!("{}", self.to_string()),
-            CompileMsgKind::Error => log::error!("{}", self.to_string()),
-            CompileMsgKind::FatalError => log::error!("{}", self.to_string()),
+            CompileMsgKind::Notice => log::info!("{}", self.to_string(fileMap)),
+            CompileMsgKind::Warning => log::warn!("{}", self.to_string(fileMap)),
+            CompileMsgKind::Error => log::error!("{}", self.to_string(fileMap)),
+            CompileMsgKind::FatalError => log::error!("{}", self.to_string(fileMap)),
         }
     }
-}
 
-impl ToString for CompileMsg {
-    fn to_string(&self) -> String {
-        if self.file == Arc::default() {
+    pub fn to_string(&self, fileMap: &Arc<Mutex<FileMap>>) -> String {
+        if self.file == 0 {
             format!("{}:\n{}\n", self.kind.to_string(), self.msg)
         } else {
             format!(
                 "{} at: {}\n{}\n",
                 self.kind.to_string(),
-                self.errorLocStr(),
+                self.errorLocStr(fileMap),
                 self.msg
             )
         }
@@ -149,14 +150,14 @@ impl CompileError {
     pub fn unlocated<T: ToString>(msg: T) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
-            file: Arc::default(),
+            file: 0,
             at: None,
             atEnd: None,
             kind: CompileMsgKind::Error,
         }
     }
 
-    pub fn on_file<T: ToString>(msg: T, file: Arc<CompileFile>) -> CompileMsg {
+    pub fn on_file<T: ToString>(msg: T, file: u64) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
             file,
@@ -179,12 +180,7 @@ impl CompileError {
         }
     }
 
-    pub fn from_at<T: ToString>(
-        msg: T,
-        file: Arc<CompileFile>,
-        at: usize,
-        atEnd: Option<usize>,
-    ) -> CompileMsg {
+    pub fn from_at<T: ToString>(msg: T, file: u64, at: usize, atEnd: Option<usize>) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
             file,
@@ -202,14 +198,14 @@ impl CompileWarning {
     pub fn unlocated<T: ToString>(msg: T) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
-            file: Arc::default(),
+            file: 0,
             at: None,
             atEnd: None,
             kind: CompileMsgKind::Warning,
         }
     }
 
-    pub fn on_file<T: ToString>(msg: T, file: Arc<CompileFile>) -> CompileMsg {
+    pub fn on_file<T: ToString>(msg: T, file: u64) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
             file,
@@ -232,7 +228,7 @@ impl CompileWarning {
         }
     }
 
-    pub fn from_at(msg: String, file: Arc<CompileFile>, at: usize, atEnd: usize) -> CompileMsg {
+    pub fn from_at(msg: String, file: u64, at: usize, atEnd: usize) -> CompileMsg {
         CompileMsg {
             msg,
             file,
@@ -248,10 +244,10 @@ impl CompileWarning {
 pub struct TokPos<T: Clone + Debug> {
     /// Start of the token in the file
     pub start: usize,
-    /// The token
-    pub tok: T,
     /// End of the token in the file
     pub end: usize,
+    /// The token
+    pub tok: T,
 }
 impl<T: Clone + Debug> TokPos<T> {
     /// Token to string. Use the debug impl
@@ -264,25 +260,25 @@ impl<T: Clone + Debug> TokPos<T> {
 /// A token position and its file
 pub struct FileTokPos<T: Clone + Debug> {
     /// file of the token
-    pub file: Arc<CompileFile>,
+    pub file: u64,
     /// token + position
     pub tokPos: TokPos<T>,
 }
 
 impl<T: Clone + Debug> FileTokPos<T> {
     /// New token
-    pub fn new(file: Arc<CompileFile>, tok: TokPos<T>) -> Self {
+    pub fn new(file: u64, tok: TokPos<T>) -> Self {
         Self { file, tokPos: tok }
     }
 
     /// New meta token. It is not located anywhere
     pub fn new_meta(tok: T) -> Self {
         Self {
-            file: Arc::new(CompileFile::default()),
+            file: 0,
             tokPos: TokPos {
                 start: 0,
-                tok,
                 end: 0,
+                tok,
             },
         }
     }
@@ -294,8 +290,8 @@ impl<T: Clone + Debug> FileTokPos<T> {
             file: other.file.clone(),
             tokPos: TokPos {
                 start: other.tokPos.start,
-                tok,
                 end: other.tokPos.end,
+                tok,
             },
         }
     }

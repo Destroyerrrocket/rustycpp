@@ -2,6 +2,7 @@
 //! translation.
 
 use crate::{
+    compiler::TranslationUnit,
     fileTokPosMatchArm,
     utils::{compilerstate::CompilerState, structs::TokPos},
 };
@@ -49,7 +50,7 @@ enum ScopeStatus {
 /// encounters them, previous to returning the possibly incorrect tokens.
 pub struct Preprocessor {
     /// Main file TU
-    tu: String,
+    tu: u64,
     /// Parameters of the compilation
     compilerState: CompilerState,
     /// The multilexer is the object that will generate the pretokens tokens
@@ -75,9 +76,9 @@ pub struct Preprocessor {
 
 impl Preprocessor {
     /// Creates a new preprocessor from the given parameters, filemap and path
-    pub fn new(data: (CompilerState, &str)) -> Self {
+    pub fn new(data: (CompilerState, TranslationUnit)) -> Self {
         Self {
-            tu: data.1.to_string(),
+            tu: data.1,
             compilerState: data.0.clone(),
             multilexer: MultiLexer::new((data.0.compileFiles, data.1)),
             generated: VecDeque::new(),
@@ -195,7 +196,7 @@ impl Preprocessor {
             .find(|x| !fileTokPosMatches!(x, PreToken::Whitespace(_)));
 
         if let Some(moduleTok) = tokVal {
-            if *module.file.path() == self.tu
+            if module.file == self.tu
                 && fileTokPosMatches!(
                     module,
                     PreToken::OperatorPunctuator(":" | ";") | PreToken::Ident(_)
@@ -221,7 +222,7 @@ impl Preprocessor {
             .find(|x| !fileTokPosMatches!(x, PreToken::Whitespace(_)));
 
         if let Some(moduleTok) = tokVal {
-            if *import.file.path() == self.tu {
+            if import.file == self.tu {
                 if fileTokPosMatches!(
                     moduleTok,
                     PreToken::OperatorPunctuator(":" | ";") | PreToken::Ident(_)
@@ -229,20 +230,18 @@ impl Preprocessor {
                     toks.push_front(FileTokPos::new_meta_c(PreToken::Import, &import));
                     return toks;
                 } else if let PreToken::HeaderName(ref header) = moduleTok.tokPos.tok {
-                    let fileHeader = self
-                        .compilerState
-                        .compileFiles
-                        .lock()
-                        .unwrap()
-                        .getFile(&header[1..header.len() - 1])
-                        .path()
-                        .clone();
+                    let (tu, fileHeader) = {
+                        let mut compileFiles = self.compilerState.compileFiles.lock().unwrap();
+                        let tu = compileFiles.getAddFile(&header[1..header.len() - 1]);
+                        let fileHeader = compileFiles.getOpenedFile(tu);
+                        (tu, fileHeader)
+                    };
                     let otherDefinitions = self
                         .compilerState
                         .compileUnits
                         .lock()
                         .unwrap()
-                        .get(&fileHeader)
+                        .get(&tu)
                         .unwrap()
                         .macroDefintionsAtTheEndOfTheFile
                         .clone();
@@ -259,7 +258,7 @@ impl Preprocessor {
                     // Insert whitespace back, and a new special token for the later stages
                     toks.extend(startingWhitespace);
                     toks.push_front(FileTokPos::new_meta_c(
-                        PreToken::ImportableHeaderName(fileHeader),
+                        PreToken::ImportableHeaderName(fileHeader.path().clone()),
                         &import,
                     ));
                     toks.push_front(FileTokPos::new_meta_c(PreToken::Import, &import));

@@ -26,9 +26,6 @@ f128 = "0.2.9"
 priority-queue = "1.2.3"
 threadpool = "1.8.1"
 
-[profile.dev]
-codegen-units = 1024
-
 [profile.release]
 lto = true
 codegen-units = 1

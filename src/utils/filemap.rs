@@ -1,5 +1,7 @@
 //! Map of paths to files
-use std::path::Path;
+#![allow(clippy::verbose_file_reads, clippy::cast_possible_truncation)]
+
+use std::path::{Path, PathBuf};
 use std::{collections::HashMap, fs::File, fs::OpenOptions, io::Read, sync::Arc};
 
 use crate::utils::structs::CompileFile;
@@ -7,73 +9,98 @@ use crate::utils::structs::CompileFile;
 use super::parameters::Parameters;
 
 #[derive(Debug)]
+enum Either {
+    CompileFile(Arc<CompileFile>),
+    NotReadFile(Option<File>),
+}
+
+#[derive(Debug)]
 /// A map of all the files that are being used. This is used to avoid opening the same file twice.
 pub struct FileMap {
     /// Parameters of the compilation
     params: Arc<Parameters>,
-    /// Files opened, but not read yet
-    openedButNotRead: HashMap<String, File>,
     /// Files opened
-    files: HashMap<String, Arc<CompileFile>>,
+    files: Vec<Either>,
     /// Resolved paths
-    resolvedPaths: HashMap<String, String>,
+    resolvedPaths: HashMap<String, u64>,
 }
 
 impl<'a> FileMap {
     /// New file map.
     pub fn new(params: Arc<Parameters>) -> Self {
-        Self {
+        let mut me = Self {
             params,
-            openedButNotRead: HashMap::new(),
-            files: HashMap::new(),
+            files: vec![],
             resolvedPaths: HashMap::new(),
+        };
+        me.files.push(Either::CompileFile(Arc::new(CompileFile::new(
+            "<unknown>".to_string(),
+            "You are trying to read an invalid file".to_owned(),
+        ))));
+        me.resolvedPaths.insert("<unknown>".to_owned(), 0);
+        me
+    }
+
+    fn internalReadFile(&mut self, path: u64, mut file: &File) -> Arc<CompileFile> {
+        let mut filecontents: String = String::new();
+        if let Err(err) = file.read_to_string(&mut filecontents) {
+            for (pathStr, index) in &self.resolvedPaths {
+                if path == *index {
+                    panic!("Error reading {pathStr}. Error: {err}");
+                }
+            }
+            panic!("Error reading file with idx {path} (this is a bug, you should not be able to read this. Report this please). Error: {err}");
         }
+        let res = Arc::new(CompileFile::new(path.to_string(), filecontents));
+        self.files
+            .insert(path as usize, Either::CompileFile(res.clone()));
+        return res;
     }
 
     /// Get an already opened file. On error, crash.
-    pub fn getFile(&mut self, path: &str) -> Arc<CompileFile> {
-        let path = self.getPath(path).unwrap();
-        if let Some(v) = self.files.get(&path) {
-            return v.clone();
+    pub fn getOpenedFile(&mut self, path: u64) -> Arc<CompileFile> {
+        match self.files.get_mut(path as usize) {
+            Some(Either::CompileFile(v)) => return v.clone(),
+            Some(Either::NotReadFile(file)) => {
+                let fileRef = file.take().unwrap();
+                return self.internalReadFile(path, &fileRef);
+            }
+            _ => panic!("File not found in visited files: {path}"),
         }
-        panic!("File not found in visited files: {path}");
     }
 
     /// Get file. If not present, open it. On error, crash.
-    pub fn getAddFile(&'a mut self, path: &str) -> Arc<CompileFile> {
-        let path = &self.getPath(path).unwrap();
-        if self.files.contains_key(path) {
+    pub fn getAddFile(&'a mut self, path: &str) -> u64 {
+        return self.getPath(path).unwrap();
+    }
+
+    /// Get file. If not present, open it. On error, crash.
+    pub fn getAddFileRef(&'a mut self, path: &str) -> Arc<CompileFile> {
+        let index = &self.getPath(path).unwrap();
+        if let Some(file) = self.files.get_mut(*index as usize) {
+            match file {
+                Either::CompileFile(file) => {
+                    return file.clone();
+                }
+                Either::NotReadFile(file) => {
+                    let fileRef = file.take().unwrap();
+                    return self.internalReadFile(*index, &fileRef);
+                }
+            }
         } else {
-            if let Err(error) = self.hasFileAccessImpl(path) {
-                panic!("Could not open {path}. Error: {error}");
-            }
-            let mut filecontents: String = String::new();
-            if let Err(err) = self
-                .openedButNotRead
-                .get(path)
-                .unwrap()
-                .read_to_string(&mut filecontents)
-            {
-                panic!("Error reading {path}. Error: {err}");
-            }
-            self.files.insert(
-                path.to_string(),
-                Arc::new(CompileFile::new(path.to_string(), filecontents)),
-            );
+            panic!("File not found in visited files, but somehow we have an index that matches this path? Internal bug, pls report. Path: {path}");
         }
-        return self.files.get(path).unwrap().clone();
     }
 
     /// Can it access the file? Does not need to be previously opened.
     pub fn hasFileAccess(&mut self, path: &str) -> bool {
         let absolutePath = self.getPath(path);
-        return absolutePath.is_ok() && self.hasFileAccessImpl(&absolutePath.unwrap()).is_ok();
+        return absolutePath.is_ok();
     }
 
-    /// Impl for `hasFileAccess`. Path is resolved here.
-    fn hasFileAccessImpl(&mut self, absolutePath: &str) -> Result<(), String> {
-        if self.files.contains_key(absolutePath) || self.openedButNotRead.contains_key(absolutePath)
-        {
+    fn hasFileAccessImpl(&mut self, absolutePath: &str) -> Result<u64, String> {
+        if let Some(pos) = self.resolvedPaths.get(absolutePath) {
+            return Ok(*pos);
         } else {
             let filename = std::path::Path::new(absolutePath);
             if !filename.extension().map_or(false, |ext| {
@@ -89,74 +116,71 @@ impl<'a> FileMap {
                     return Err(err.to_string());
                 }
             };
-            self.openedButNotRead.insert(absolutePath.to_string(), file);
+            let pos = self.files.len() as u64;
+            self.files.push(Either::NotReadFile(Some(file)));
+            return Ok(pos);
         }
-        return Ok(());
     }
 
     /// Get paths of current files opened.
-    pub fn getCurrPaths(&self) -> Vec<String> {
+    pub fn getCurrPaths(&self) -> Vec<u64> {
         let mut paths = Vec::new();
-        for path in self.files.keys() {
-            paths.push(path.clone());
+        for path in 0..self.files.len() {
+            paths.push(path as u64);
         }
         return paths;
     }
 
     /// Add a fake test file. Intened for testing.
     pub fn addTestFile(&mut self, path: String, content: String) {
-        self.resolvedPaths.insert(path.clone(), path.clone());
+        self.resolvedPaths
+            .insert(path.clone(), self.files.len() as u64);
         self.files
-            .insert(path.clone(), Arc::new(CompileFile::new(path, content)));
+            .push(Either::CompileFile(Arc::new(CompileFile::new(
+                path, content,
+            ))));
+    }
+
+    fn findBestPath(params: &Arc<Parameters>, pathStr: &str) -> Result<String, String> {
+        let res: Result<PathBuf, String> = (|| {
+            let path = Path::new(&pathStr).to_path_buf();
+            if path.is_absolute() && path.exists() {
+                return Ok(path);
+            }
+            for dir in &params.includeDirs {
+                let resultingPath = Path::new(dir).join(&path);
+                if resultingPath.exists() {
+                    return Ok(resultingPath);
+                }
+            }
+            for dir in &params.includeSystemDirs {
+                let resultingPath = Path::new(dir).join(&path);
+                if resultingPath.exists() {
+                    return Ok(resultingPath);
+                }
+            }
+            return Err(format!("Could not find file: {pathStr}"));
+        })();
+        res.map(|path| path.canonicalize().unwrap().to_str().unwrap().to_string())
     }
 
     /// Resolve a path. On error, return error.
-    fn getPath(&mut self, pathStr: &str) -> Result<String, String> {
-        match self.resolvedPaths.entry(pathStr.to_string()) {
-            std::collections::hash_map::Entry::Occupied(e) => {
-                return Ok(e.get().clone());
-            }
-            std::collections::hash_map::Entry::Vacant(v) => {
-                let path = Path::new(&pathStr);
-                if path.is_absolute() && path.exists() {
-                    return Ok(v.insert(pathStr.to_string()).clone());
+    fn getPath(&mut self, pathStr: &str) -> Result<u64, String> {
+        if let Some(v) = self.resolvedPaths.get(pathStr) {
+            return Ok(*v);
+        } else {
+            let canonical = Self::findBestPath(&self.params, pathStr)?;
+            if let Some(v) = self.resolvedPaths.get(&canonical) {
+                let v = *v;
+                self.resolvedPaths.insert(pathStr.to_string(), v);
+                return Ok(v);
+            } else {
+                let pos = self.hasFileAccessImpl(&canonical)?;
+                if canonical != pathStr {
+                    self.resolvedPaths.insert(canonical, pos);
                 }
-                for dir in &self.params.includeDirs {
-                    let resultingPath = Path::new(dir).join(path);
-                    if resultingPath.exists() {
-                        return Ok(v
-                            .insert(
-                                resultingPath
-                                    .canonicalize()
-                                    .unwrap()
-                                    .to_str()
-                                    .unwrap()
-                                    .to_string(),
-                            )
-                            .clone());
-                    }
-                }
-                for dir in &self.params.includeSystemDirs {
-                    let resultingPath = Path::new(dir).join(path);
-                    if resultingPath.exists() {
-                        return Ok(v
-                            .insert(
-                                resultingPath
-                                    .canonicalize()
-                                    .unwrap()
-                                    .to_str()
-                                    .unwrap()
-                                    .to_string(),
-                            )
-                            .clone());
-                    }
-                }
-                if !path.is_absolute() && path.exists() {
-                    return Ok(v
-                        .insert(path.canonicalize().unwrap().to_str().unwrap().to_string())
-                        .clone());
-                }
-                return Err(format!("Could not find file {pathStr}"));
+                self.resolvedPaths.insert(pathStr.to_string(), pos);
+                return Ok(pos);
             }
         }
     }

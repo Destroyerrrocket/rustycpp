@@ -12,7 +12,7 @@ use crate::utils::structs::CompileMsg;
 
 use test_log::test;
 
-fn generateFileMap(files: &[(&'static str, String)]) -> (CompilerState, &'static str) {
+fn generateFileMap(files: &[(&'static str, String)]) -> (CompilerState, u64) {
     let mut params = Parameters::new();
     params.includeDirs.push(
         Path::new(file!())
@@ -29,16 +29,15 @@ fn generateFileMap(files: &[(&'static str, String)]) -> (CompilerState, &'static
     }
 
     let parameters = Arc::new(params);
-    let testFile = files.first().unwrap().0;
     let fileMap = Arc::new(Mutex::new(FileMap::new(parameters.clone())));
     let compileUnits = Arc::new(Mutex::new(HashMap::new()));
-    for (filePath, fileContents) in files {
+    for (i, (filePath, fileContents)) in files.into_iter().enumerate() {
         fileMap
             .lock()
             .unwrap()
             .addTestFile((*filePath).to_string(), (*fileContents).clone());
         compileUnits.lock().unwrap().insert(
-            (*filePath).to_string(),
+            i as u64 + 1,
             StateCompileUnit {
                 macroDefintionsAtTheEndOfTheFile: HashMap::new(),
             },
@@ -51,7 +50,7 @@ fn generateFileMap(files: &[(&'static str, String)]) -> (CompilerState, &'static
             compileFiles: fileMap,
             compileUnits,
         },
-        testFile,
+        1,
     );
 }
 

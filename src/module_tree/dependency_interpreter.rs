@@ -34,10 +34,7 @@ fn parseGlobalPartOfModuleFile(
                     if !fileMap.hasFileAccess(&path[1..path.len() - 1]) {
                         return Err(format!("Error resolving path to import header {path}"));
                     }
-                    let path = fileMap
-                        .getAddFile(&path[1..path.len() - 1])
-                        .path()
-                        .to_string();
+                    let path = fileMap.getAddFile(&path[1..path.len() - 1]);
                     imports.push(ModuleDeclaration::ModuleHeaderUnit(path));
                 }
 
@@ -82,10 +79,7 @@ where
                     if !fileMap.hasFileAccess(&path[1..path.len() - 1]) {
                         return Err(format!("Error resolving path to import header {path}"));
                     }
-                    let path = fileMap
-                        .getAddFile(&path[1..path.len() - 1])
-                        .path()
-                        .to_string();
+                    let path = fileMap.getAddFile(&path[1..path.len() - 1]);
                     imports.push(ModuleDeclaration::ModuleHeaderUnit(path));
                 }
 
@@ -113,12 +107,8 @@ pub fn generateNode(
     let mut explicitGlobalModuleFound = false;
 
     let mut iter = ops.iter();
-    let mut res = parseGlobalPartOfModuleFile(&mut iter, fileMap).map_err(|err| {
-        vec![CompileError::on_file(
-            err,
-            fileMap.lock().unwrap().getFile(&tu),
-        )]
-    })?;
+    let mut res = parseGlobalPartOfModuleFile(&mut iter, fileMap)
+        .map_err(|err| vec![CompileError::on_file(err, tu)])?;
     while res.0.is_some() {
         moduleImports.extend(res.1.clone());
         match res.0.as_ref().unwrap() {
@@ -128,7 +118,7 @@ pub fn generateNode(
                 if name.is_empty() {
                     err.push(CompileError::on_file(
                         "global part can't be exported".to_string(),
-                        fileMap.lock().unwrap().getFile(&tu),
+                        tu,
                     ));
                     return Err(err);
                 }
@@ -139,7 +129,7 @@ pub fn generateNode(
                             ":private part can't be exported on module {}",
                             moduleName.unwrap()
                         ),
-                        fileMap.lock().unwrap().getFile(&tu),
+                        tu,
                     ));
                     return Err(err);
                 }
@@ -147,50 +137,37 @@ pub fn generateNode(
                 if moduleName.is_some() {
                     err.push(CompileError::on_file(
                         format!("Module name already defined as {}", moduleName.unwrap()),
-                        fileMap.lock().unwrap().getFile(&tu),
+                        tu,
                     ));
                     return Err(err);
                 }
                 moduleName = Some(name.to_string());
-                res = parseModulePartOfModuleFile(&mut iter, name.to_string(), fileMap).map_err(
-                    |err| {
-                        vec![CompileError::on_file(
-                            err,
-                            fileMap.lock().unwrap().getFile(&tu),
-                        )]
-                    },
-                )?;
+                res = parseModulePartOfModuleFile(&mut iter, name.to_string(), fileMap)
+                    .map_err(|err| vec![CompileError::on_file(err, tu)])?;
             }
             ModuleOperator::Module(name) => {
                 if name.is_empty() {
                     if explicitGlobalModuleFound {
-                        err.push(CompileError::on_file(
-                            "global part already defined",
-                            fileMap.lock().unwrap().getFile(&tu),
-                        ));
+                        err.push(CompileError::on_file("global part already defined", tu));
                         return Err(err);
                     }
                     explicitGlobalModuleFound = true;
-                    res = parseGlobalPartOfModuleFile(&mut iter, fileMap).map_err(|err| {
-                        vec![CompileError::on_file(
-                            err,
-                            fileMap.lock().unwrap().getFile(&tu),
-                        )]
-                    })?;
+                    res = parseGlobalPartOfModuleFile(&mut iter, fileMap)
+                        .map_err(|err| vec![CompileError::on_file(err, tu)])?;
                     continue;
                 }
 
                 if name != ":private" && moduleName.is_some() {
                     err.push(CompileError::on_file(
                         format!("Module name already defined as {}", moduleName.unwrap()),
-                        fileMap.lock().unwrap().getFile(&tu),
+                        tu,
                     ));
                     return Err(err);
                 } else if name == ":private" {
                     if moduleName.is_none() {
                         err.push(CompileError::on_file(
                             "Private part of a module must be in a named module. Currently on global",
-                            fileMap.lock().unwrap().getFile(&tu),
+                            tu,
                         ));
                         return Err(err);
                     } else {
@@ -200,7 +177,7 @@ pub fn generateNode(
                                     "Private part of a module already defined in module {}",
                                     moduleName.unwrap()
                                 ),
-                                fileMap.lock().unwrap().getFile(&tu),
+                                tu,
                             ));
                             return Err(err);
                         }
@@ -210,24 +187,13 @@ pub fn generateNode(
                             moduleName.as_ref().unwrap().to_string(),
                             fileMap,
                         )
-                        .map_err(|err| {
-                            vec![CompileError::on_file(
-                                err,
-                                fileMap.lock().unwrap().getFile(&tu),
-                            )]
-                        })?;
+                        .map_err(|err| vec![CompileError::on_file(err, tu)])?;
                         continue;
                     }
                 }
                 moduleName = Some(name.to_string());
-                res = parseModulePartOfModuleFile(&mut iter, name.to_string(), fileMap).map_err(
-                    |err| {
-                        vec![CompileError::on_file(
-                            err,
-                            fileMap.lock().unwrap().getFile(&tu),
-                        )]
-                    },
-                )?;
+                res = parseModulePartOfModuleFile(&mut iter, name.to_string(), fileMap)
+                    .map_err(|err| vec![CompileError::on_file(err, tu)])?;
             }
             _ => unreachable!(),
         }
@@ -289,7 +255,7 @@ pub fn generateNode(
                     "Module {} already defined. Confilcting files: {} and {}",
                     moduleDecl, error.value.1, tu
                 ),
-                fileMap.lock().unwrap().getFile(&tu),
+                tu,
             ));
             return Err(err);
         }
@@ -350,10 +316,7 @@ pub fn generateNodes(
 
             err.push(CompileError::on_file(
                 format!("Missing modules: {missing:?}"),
-                fileMap
-                    .lock()
-                    .unwrap()
-                    .getFile(&generatedEmptyNodes.get(&module).unwrap().0.module.1),
+                generatedEmptyNodes.get(&module).unwrap().0.module.1,
             ));
             continue;
         }

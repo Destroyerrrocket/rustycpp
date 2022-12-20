@@ -51,6 +51,7 @@ mod test;
 
 use clap::Parser;
 use compiler::Compiler;
+use utils::compilerstate::CompilerState;
 use utils::parameters::Parameters;
 use utils::structs::CompileMsg;
 
@@ -76,7 +77,10 @@ struct Args {
 }
 
 /// Wrapper for main, to allow for the use of `?` in main
-fn execCompiler(parameters: Parameters, args: Args) -> Result<(), Vec<CompileMsg>> {
+fn execCompiler(
+    parameters: Parameters,
+    args: Args,
+) -> Result<(), (CompilerState, Vec<CompileMsg>)> {
     let mut compiler = Compiler::new(parameters);
     if args.printDependencyTree {
         compiler.print_dependency_tree()
@@ -98,9 +102,9 @@ fn main() {
     }
 
     let parameters = Parameters::new_file(&args.files).unwrap();
-    if let Err(errors) = execCompiler(parameters, args) {
+    if let Err((compilerState, errors)) = execCompiler(parameters, args) {
         for err in errors {
-            err.print();
+            err.print(&compilerState.compileFiles);
         }
     }
 }

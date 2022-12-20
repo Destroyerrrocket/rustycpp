@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use multiset::HashMultiSet;
 
 use crate::grammars::defineast::{DefineAst, PreTokenDefine};
+use crate::utils::compilerstate::CompilerState;
 use crate::utils::structs::FileTokPos;
 
 use super::multilexer::MultiLexer;
@@ -30,6 +31,9 @@ pub struct ExpandData<'a> {
     pub replacement: &'a Vec<PreTokenDefine>,
     /// The new token that generated this instantiation
     pub newToken: &'a FileTokPos<PreToken>,
+
+    pub compilerState: &'a CompilerState,
+
     /// Should the macro expand its arguments? Can be used for operator #, so it
     /// can disable expansion of arguments. That way, when this is encountered:
     /// #define A a

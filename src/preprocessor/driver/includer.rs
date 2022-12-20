@@ -8,6 +8,7 @@ use crate::fileTokPosMatches;
 use crate::grammars::defineast::DefineAst;
 use crate::preprocessor::prelexer::PreLexer;
 use crate::preprocessor::pretoken::PreToken;
+use crate::utils::compilerstate::CompilerState;
 use crate::utils::structs::TokPos;
 use crate::utils::structs::{CompileError, CompileMsg, FileTokPos};
 
@@ -44,6 +45,7 @@ impl Preprocessor {
             .take_while(|x| !fileTokPosMatches!(x, PreToken::Newline))
             .collect::<VecDeque<_>>();
         Self::tokensToValidIncludeablePath(
+            &self.compilerState,
             &self.multilexer,
             &self.definitions,
             &self.disabledMacros,
@@ -54,6 +56,7 @@ impl Preprocessor {
 
     /// Expands the tokens if necessary, and returns the path found, if any
     pub fn tokensToValidIncludeablePath(
+        compilerState: &CompilerState,
         lexer: &MultiLexer,
         definitions: &HashMap<String, DefineAst>,
         disabledMacros: &HashMultiSet<String>,
@@ -75,7 +78,8 @@ impl Preprocessor {
 
         let mut paramLexer = MultiLexer::new_def(lexer.fileMapping());
         paramLexer.pushTokensDec(tokensInclude);
-        let toks = Self::expandASequenceOfTokens(paramLexer, definitions, disabledMacros)?;
+        let toks =
+            Self::expandASequenceOfTokens(compilerState, paramLexer, definitions, disabledMacros)?;
 
         if let Some(newPath) = Self::checkForInclude(toks.clone()) {
             path = newPath;

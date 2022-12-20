@@ -1,10 +1,9 @@
 //! Transforms `PreToken`s into `Token`s.
 use std::collections::VecDeque;
-use std::sync::Arc;
 
 use crate::fileTokPosMatches;
 use crate::preprocessor::Preprocessor;
-use crate::utils::structs::{CompileError, CompileFile, CompileMsg, FileTokPos, TokPos};
+use crate::utils::structs::{CompileError, CompileMsg, FileTokPos, TokPos};
 
 use super::token::{EncodingPrefix, Token};
 
@@ -35,7 +34,7 @@ impl Lexer {
     fn calcPrefix(
         e1: EncodingPrefix,
         e2: EncodingPrefix,
-        file: Arc<CompileFile>,
+        file: u64,
         at: usize,
         atEnd: usize,
     ) -> Result<EncodingPrefix, CompileMsg> {
