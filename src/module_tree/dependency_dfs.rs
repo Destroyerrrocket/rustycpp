@@ -1,17 +1,14 @@
 //! Create the dependency tree from the translation units
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use std::sync::Mutex;
 use std::vec;
 
-use crate::utils::filemap::FileMap;
 use crate::utils::structs::{CompileError, CompileMsg};
 
 use super::structs::{ModuleDeclaration, ModuleTree, Node};
 
 /// Check for loops in the dependency graph.
-fn dfsLoops(tree: &mut ModuleTree, files: &mut FileMap) -> Result<(), Vec<CompileMsg>> {
+fn dfsLoops(tree: &mut ModuleTree) -> Result<(), Vec<CompileMsg>> {
     if tree.roots.is_empty() && !tree.childModules.is_empty() {
         let mut showALoopTree = tree.clone();
         let candidate = showALoopTree.childModules.keys().next().unwrap().clone();
@@ -22,7 +19,7 @@ fn dfsLoops(tree: &mut ModuleTree, files: &mut FileMap) -> Result<(), Vec<Compil
         showALoopTree
             .roots
             .insert(candidate.0.clone(), candidate.1.clone());
-        dfsLoops(&mut showALoopTree, files)?;
+        dfsLoops(&mut showALoopTree)?;
         unreachable!();
     }
 
@@ -96,7 +93,6 @@ fn dfsLoops(tree: &mut ModuleTree, files: &mut FileMap) -> Result<(), Vec<Compil
 /// Generates the module tree of the modules, and checks for loops.
 pub fn generateModuleTree(
     nodes: HashMap<ModuleDeclaration, Node>,
-    fileMap: &mut Arc<Mutex<FileMap>>,
 ) -> Result<ModuleTree, Vec<CompileMsg>> {
     let mut tree = ModuleTree {
         roots: HashMap::new(),
@@ -111,6 +107,6 @@ pub fn generateModuleTree(
         }
     }
 
-    dfsLoops(&mut tree, &mut fileMap.lock().unwrap())?;
+    dfsLoops(&mut tree)?;
     Ok(tree)
 }

@@ -71,7 +71,7 @@ fn parseModuleOp(
     {
         return Err(CompileError::from_at(
             format!("The module name \"{name}\" is invalid!"),
-            translationUnit.clone(),
+            translationUnit,
             at,
             Some(atEnd),
         ));
@@ -137,7 +137,7 @@ fn parseImportOp(
     ) {
         return Err(CompileError::from_at(
             format!("The import name \"{name}\" is invalid!"),
-            translationUnit.clone(),
+            translationUnit,
             at,
             Some(atEnd),
         ));
@@ -255,14 +255,14 @@ fn parseModuleMacroOp(
 
 /// Extract the module, export, import operations only rellevant for dependency scanning
 pub fn parseModuleMacroOps(
-    translationUnits: &Vec<TranslationUnit>,
+    translationUnits: &[TranslationUnit],
     fileMap: &mut Arc<Mutex<FileMap>>,
 ) -> Result<Vec<(TranslationUnit, Vec<ModuleOperator>)>, Vec<CompileMsg>> {
     let mut err = vec![];
     let mut res = vec![];
-    for translationUnit in translationUnits.iter().cloned() {
+    for translationUnit in translationUnits.iter().copied() {
         match parseModuleMacroOp(translationUnit, fileMap) {
-            Ok(node) => res.push((translationUnit.clone(), node)),
+            Ok(node) => res.push((translationUnit, node)),
             Err(mut err2) => err.append(&mut err2),
         }
     }

@@ -384,7 +384,7 @@ impl Preprocessor {
             namedArgs: expandData.namedArgs,
             variadic: expandData.variadic,
             astId: expandData.astId,
-            replacement: &vec![PreTokenDefine::VariadicArg(pos.clone())],
+            replacement: &vec![PreTokenDefine::VariadicArg(*pos)],
             compilerState: expandData.compilerState,
             expandArg: true,
             newToken: expandData.newToken,

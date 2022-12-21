@@ -75,12 +75,12 @@ impl Lexer {
         let (tok1, tok2) = (tok1.tokPos.tok, tok2.tokPos.tok);
         match (tok1, tok2) {
             (Token::StringLiteral(enc1, text1), Token::StringLiteral(enc2, text2)) => {
-                let prefix = Self::calcPrefix(enc1, enc2, file.clone(), start, end)?;
+                let prefix = Self::calcPrefix(enc1, enc2, file, start, end)?;
                 return Ok(FileTokPos::new(
                     file,
                     TokPos {
                         start,
-                        tok: Token::StringLiteral(prefix, text1 + &text2),
+                        tok: Token::StringLiteral(prefix, text1 + text2),
                         end,
                     },
                 ));
@@ -89,13 +89,13 @@ impl Lexer {
                 Token::UdStringLiteral(enc1, text1, ud1),
                 Token::UdStringLiteral(enc2, text2, ud2),
             ) => {
-                let prefix = Self::calcPrefix(enc1, enc2, file.clone(), start, end)?;
+                let prefix = Self::calcPrefix(enc1, enc2, file, start, end)?;
                 return if ud1 == ud2 {
                     Ok(FileTokPos::new(
                         file,
                         TokPos {
                             start,
-                            tok: Token::UdStringLiteral(prefix, text1 + &text2, ud1),
+                            tok: Token::UdStringLiteral(prefix, text1 + text2, ud1),
                             end,
                         },
                     ))
@@ -112,12 +112,12 @@ impl Lexer {
             }
             (Token::StringLiteral(enc1, text1), Token::UdStringLiteral(enc2, text2, ud))
             | (Token::UdStringLiteral(enc1, text1, ud), Token::StringLiteral(enc2, text2)) => {
-                let prefix = Self::calcPrefix(enc1, enc2, file.clone(), start, end)?;
+                let prefix = Self::calcPrefix(enc1, enc2, file, start, end)?;
                 return Ok(FileTokPos::new(
                     file,
                     TokPos {
                         start,
-                        tok: Token::UdStringLiteral(prefix, text1 + &text2, ud),
+                        tok: Token::UdStringLiteral(prefix, text1 + text2, ud),
                         end,
                     },
                 ));
@@ -140,8 +140,8 @@ impl Lexer {
         {
             let tok1 = self.lastTokens.pop_front().unwrap();
             let tok2 = self.lastTokens.pop_front().unwrap();
-            if let Err(err) = Self::doMergeStringLiterals(tok1, tok2.clone())
-                .map(|x| self.lastTokens.push_front(x))
+            if let Err(err) =
+                Self::doMergeStringLiterals(tok1, tok2).map(|x| self.lastTokens.push_front(x))
             {
                 self.errors.push(err);
                 self.lastTokens.push_front(tok2);

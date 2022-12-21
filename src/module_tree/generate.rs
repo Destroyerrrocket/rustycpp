@@ -12,10 +12,10 @@ use super::structs::ModuleTree;
 
 /// Wrapper over all the functionality of the module tree generation.
 pub fn generateDependencyTree(
-    mainTranslationUnits: &Vec<TranslationUnit>,
+    mainTranslationUnits: &[TranslationUnit],
     compileFiles: &mut Arc<Mutex<FileMap>>,
 ) -> Result<ModuleTree, Vec<CompileMsg>> {
     parseModuleMacroOps(mainTranslationUnits, compileFiles)
         .and_then(|x| generateNodes(x, compileFiles))
-        .and_then(|x| generateModuleTree(x, compileFiles))
+        .and_then(generateModuleTree)
 }
