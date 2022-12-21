@@ -4,8 +4,6 @@ use std::fmt::Debug;
 #[derive(Debug, Clone)]
 #[doc(hidden)]
 pub enum PreTokenIf {
-    EOF,
-    Invalid,
     Num(i128),
     LParen,
     RParen,
@@ -51,8 +49,6 @@ pub enum PreTokenIf {
 impl std::fmt::Display for PreTokenIf {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::EOF => write!(f, "EOF"),
-            Self::Invalid => write!(f, "Invalid"),
             Self::Num(n) => write!(f, "{n}"),
             Self::LParen => write!(f, "("),
             Self::RParen => write!(f, ")"),

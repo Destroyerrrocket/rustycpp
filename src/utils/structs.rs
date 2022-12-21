@@ -173,7 +173,7 @@ impl CompileError {
     ) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
-            file: preToken.file.clone(),
+            file: preToken.file,
             at: Some(preToken.tokPos.start),
             atEnd: Some(preToken.tokPos.end),
             kind: CompileMsgKind::Error,
@@ -221,7 +221,7 @@ impl CompileWarning {
     ) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
-            file: preToken.file.clone(),
+            file: preToken.file,
             at: Some(preToken.tokPos.start),
             atEnd: Some(preToken.tokPos.end),
             kind: CompileMsgKind::Warning,
@@ -256,6 +256,8 @@ impl<T: Clone + Debug> TokPos<T> {
     }
 }
 
+impl<T: Copy + Debug> Copy for TokPos<T> {}
+
 #[derive(Debug, Clone)]
 /// A token position and its file
 pub struct FileTokPos<T: Clone + Debug> {
@@ -264,6 +266,8 @@ pub struct FileTokPos<T: Clone + Debug> {
     /// token + position
     pub tokPos: TokPos<T>,
 }
+
+impl<T: Copy + Debug> Copy for FileTokPos<T> {}
 
 impl<T: Clone + Debug> FileTokPos<T> {
     /// New token
@@ -287,7 +291,7 @@ impl<T: Clone + Debug> FileTokPos<T> {
     /// not located anywhere. Allows for better diagnostics
     pub fn new_meta_c<U: Clone + Debug>(tok: T, other: &FileTokPos<U>) -> Self {
         Self {
-            file: other.file.clone(),
+            file: other.file,
             tokPos: TokPos {
                 start: other.tokPos.start,
                 end: other.tokPos.end,

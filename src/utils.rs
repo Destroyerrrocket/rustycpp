@@ -8,3 +8,4 @@ pub mod filemap;
 pub mod nomlike;
 pub mod parameters;
 pub mod statecompileunit;
+pub mod stringref;

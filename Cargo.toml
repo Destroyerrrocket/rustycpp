@@ -25,6 +25,7 @@ json = "0.12.4"
 f128 = "0.2.9"
 priority-queue = "1.2.3"
 threadpool = "1.8.1"
+bumpalo = { version="3.11.1", features = ["collections", "allocator_api"] }
 
 [profile.release]
 lto = true

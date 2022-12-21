@@ -1,8 +1,5 @@
 # C++20 preprocessor of C++ written in Rust
 
-### Please use `git clone --recurse-submodules https://github.com/Destroyerrrocket/rustycpp.git` to clone the necessary submodules
-Unfortunately a custom build of lalrpop is needed.
-
 ### Description
 Module dependency tree generation is done!
 

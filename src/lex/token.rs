@@ -8,6 +8,7 @@
 use std::collections::VecDeque;
 
 use crate::preprocessor::pretoken::PreToken;
+use crate::utils::stringref::{StringRef, ToStringRef};
 use crate::utils::structs::{CompileError, CompileMsg, FileTokPos, TokPos};
 use lazy_regex::regex_captures;
 use logos::Logos;
@@ -34,11 +35,19 @@ impl std::fmt::Display for EncodingPrefix {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IntegerSuffix {
-    Unsigned,
+pub enum IntegerSuffixLength {
     Long,
     LongLong,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IntegerSuffixSignedness {
+    Signed,
+    Unsigned,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct IntegerSuffix(pub Option<IntegerSuffixLength>, pub IntegerSuffixSignedness);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FloatSuffix {
@@ -48,11 +57,11 @@ pub enum FloatSuffix {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(isize)]
 pub enum Token {
     // Identifiers
-    Identifier(String) = 1,
+    Identifier(StringRef) = 1,
 
     // Keywords
     Alignas,
@@ -190,19 +199,19 @@ pub enum Token {
     StrippedGreaterEqual,
     // Module conditional token
     Import,
-    ImportableHeaderName(String),
+    ImportableHeaderName(StringRef),
     Module,
     // Literals
-    IntegerLiteral(i128, Vec<IntegerSuffix>),
+    IntegerLiteral(i128, IntegerSuffix),
     FloatingPointLiteral(f128::f128, FloatSuffix),
     CharacterLiteral(EncodingPrefix, char),
-    StringLiteral(EncodingPrefix, String),
+    StringLiteral(EncodingPrefix, StringRef),
     BoolLiteral(bool),
     PointerLiteral,
-    UdIntegerLiteral(i128, Vec<IntegerSuffix>, String),
-    UdFloatingPointLiteral(f128::f128, FloatSuffix, String),
-    UdCharacterLiteral(EncodingPrefix, char, String),
-    UdStringLiteral(EncodingPrefix, String, String) = 142,
+    UdIntegerLiteral(i128, IntegerSuffix, StringRef),
+    UdFloatingPointLiteral(f128::f128, FloatSuffix, StringRef),
+    UdCharacterLiteral(EncodingPrefix, char, StringRef),
+    UdStringLiteral(EncodingPrefix, StringRef, StringRef) = 142,
 }
 
 impl std::fmt::Display for Token {
@@ -372,7 +381,7 @@ impl Token {
                 &preTok,
             ))),
             PreToken::Ident(text) => Ok({ let mut vec = VecDeque::new(); vec.push_back(FileTokPos::new(preTok.file, TokPos {
-                tok: Self::Identifier(text),
+                tok: Self::Identifier(text.to_StringRef()),
                 start: preTok.tokPos.start,
                 end: preTok.tokPos.end,
             })); vec}),
@@ -392,7 +401,7 @@ impl Token {
             PreToken::Module => Ok({let mut vec = VecDeque::new(); vec.push_back(FileTokPos::new_meta_c(Self::Module, &preTok)); vec}),
             PreToken::Import => Ok({let mut vec = VecDeque::new(); vec.push_back(FileTokPos::new_meta_c(Self::Import, &preTok)); vec}),
             PreToken::ImportableHeaderName(text) => Ok({let mut vec = VecDeque::new(); vec.push_back(FileTokPos::new(preTok.file, TokPos {
-                tok: Self::ImportableHeaderName(text),
+                tok: Self::ImportableHeaderName(text.to_StringRef()),
                 start: preTok.tokPos.start,
                 end: preTok.tokPos.end,
             })); vec}),
@@ -738,7 +747,7 @@ impl Token {
         })?;
 
         Ok(FileTokPos::new_meta_c(
-            Self::StringLiteral(encoding, msg),
+            Self::StringLiteral(encoding, msg.to_StringRef()),
             tok,
         ))
         .map(|x| {
@@ -763,9 +772,13 @@ impl Token {
         let string = &string[1..string.len() - 1];
         return Ok(FileTokPos::new_meta_c(
             if ud.is_empty() {
-                Self::StringLiteral(prefix, string.to_owned())
+                Self::StringLiteral(prefix, string.to_owned().to_StringRef())
             } else {
-                Self::UdStringLiteral(prefix, string.to_owned(), ud.to_owned())
+                Self::UdStringLiteral(
+                    prefix,
+                    string.to_owned().to_StringRef(),
+                    ud.to_owned().to_StringRef(),
+                )
             },
             tok,
         ))
@@ -790,7 +803,7 @@ impl Token {
         }
     }
 
-    fn parseIntSuffix(mut string: &str, radix: u32) -> (&str, Vec<IntegerSuffix>, Option<&str>) {
+    fn parseIntSuffix(mut string: &str, radix: u32) -> (&str, IntegerSuffix, Option<&str>) {
         let mut ud = None;
         if let Some(idx) = string.find(|c: char| {
             let machesChars = match radix {
@@ -804,12 +817,12 @@ impl Token {
             string = &string[..idx];
         }
 
-        let mut res = vec![];
+        let mut res = IntegerSuffix(None, IntegerSuffixSignedness::Signed);
         loop {
             if string.len() >= 2 {
                 let (prefix, suffix) = string.split_at(string.len() - 2);
                 if suffix.eq_ignore_ascii_case("ll") {
-                    res.push(IntegerSuffix::LongLong);
+                    res.0 = Some(IntegerSuffixLength::LongLong);
                     string = prefix;
                     continue;
                 }
@@ -817,11 +830,11 @@ impl Token {
             if !string.is_empty() {
                 let (prefix, suffix) = string.split_at(string.len() - 1);
                 if suffix.eq_ignore_ascii_case("l") {
-                    res.push(IntegerSuffix::Long);
+                    res.0 = Some(IntegerSuffixLength::Long);
                     string = prefix;
                     continue;
                 } else if suffix.eq_ignore_ascii_case("u") {
-                    res.push(IntegerSuffix::Unsigned);
+                    res.1 = IntegerSuffixSignedness::Unsigned;
                     string = prefix;
                     continue;
                 }
@@ -856,11 +869,9 @@ impl Token {
         let (prefix, suffix, ud) = Self::parseIntSuffix(&string, 16);
         Self::parseBaseInt(tok, prefix, 16).map(|num| {
             FileTokPos::new_meta_c(
-                if let Some(ud) = ud {
-                    Self::UdIntegerLiteral(num, suffix, ud.to_owned())
-                } else {
-                    Self::IntegerLiteral(num, suffix)
-                },
+                ud.map_or(Self::IntegerLiteral(num, suffix), |ud| {
+                    Self::UdIntegerLiteral(num, suffix, ud.to_owned().to_StringRef())
+                }),
                 tok,
             )
         })
@@ -874,11 +885,9 @@ impl Token {
         let (prefix, suffix, ud) = Self::parseIntSuffix(&string, 2);
         Self::parseBaseInt(tok, prefix, 2).map(|num| {
             FileTokPos::new_meta_c(
-                if let Some(ud) = ud {
-                    Self::UdIntegerLiteral(num, suffix, ud.to_owned())
-                } else {
-                    Self::IntegerLiteral(num, suffix)
-                },
+                ud.map_or(Self::IntegerLiteral(num, suffix), |ud| {
+                    Self::UdIntegerLiteral(num, suffix, ud.to_owned().to_StringRef())
+                }),
                 tok,
             )
         })
@@ -892,11 +901,9 @@ impl Token {
         let (prefix, suffix, ud) = Self::parseIntSuffix(&string, 8);
         Self::parseBaseInt(tok, prefix, 8).map(|num| {
             FileTokPos::new_meta_c(
-                if let Some(ud) = ud {
-                    Self::UdIntegerLiteral(num, suffix, ud.to_owned())
-                } else {
-                    Self::IntegerLiteral(num, suffix)
-                },
+                ud.map_or(Self::IntegerLiteral(num, suffix), |ud| {
+                    Self::UdIntegerLiteral(num, suffix, ud.to_owned().to_StringRef())
+                }),
                 tok,
             )
         })
@@ -910,11 +917,9 @@ impl Token {
         let (prefix, suffix, ud) = Self::parseIntSuffix(&string, 10);
         Self::parseBaseInt(tok, prefix, 10).map(|num| {
             FileTokPos::new_meta_c(
-                if let Some(ud) = ud {
-                    Self::UdIntegerLiteral(num, suffix, ud.to_owned())
-                } else {
-                    Self::IntegerLiteral(num, suffix)
-                },
+                ud.map_or(Self::IntegerLiteral(num, suffix), |ud| {
+                    Self::UdIntegerLiteral(num, suffix, ud.to_owned().to_StringRef())
+                }),
                 tok,
             )
         })
@@ -951,7 +956,7 @@ impl Token {
                     if ub.is_empty() {
                         Self::FloatingPointLiteral(num, suffix)
                     } else {
-                        Self::UdFloatingPointLiteral(num, suffix, ub.to_owned())
+                        Self::UdFloatingPointLiteral(num, suffix, ub.to_owned().to_StringRef())
                     },
                     tok,
                 )
@@ -985,7 +990,7 @@ impl Token {
             .map(|num| {
                 FileTokPos::new_meta_c(
                     ub.map_or(Self::FloatingPointLiteral(num, suffix), |ub| {
-                        Self::UdFloatingPointLiteral(num, suffix, ub.to_owned())
+                        Self::UdFloatingPointLiteral(num, suffix, ub.to_owned().to_StringRef())
                     }),
                     tok,
                 )
@@ -1038,7 +1043,7 @@ impl Token {
         Self::parseCharLiteral(tok, operator).map(|x| {
             if let Self::CharacterLiteral(enc, str) = x.front().unwrap().tokPos.tok {
                 let tok = FileTokPos::new_meta_c(
-                    Self::UdCharacterLiteral(enc, str, ud),
+                    Self::UdCharacterLiteral(enc, str, ud.to_StringRef()),
                     x.front().unwrap(),
                 );
                 let mut vec = VecDeque::new();
@@ -1067,7 +1072,7 @@ impl Token {
         Self::parseStringLiteral(tok, operator).map(|x| {
             if let Self::StringLiteral(enc, str) = &x.front().unwrap().tokPos.tok {
                 let tok = FileTokPos::new_meta_c(
-                    Self::UdStringLiteral(*enc, str.clone(), ud),
+                    Self::UdStringLiteral(*enc, *str, ud.to_StringRef()),
                     x.front().unwrap(),
                 );
                 let mut vec = VecDeque::new();

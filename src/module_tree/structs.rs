@@ -26,6 +26,7 @@ pub enum ModuleDeclaration {
 
 impl Display for ModuleDeclaration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        #[allow(clippy::match_same_arms)]
         match self {
             Self::ExportPrimary(module) => format!("export module {module}").fmt(f),
             Self::Primary(module) => format!("module {module}").fmt(f),

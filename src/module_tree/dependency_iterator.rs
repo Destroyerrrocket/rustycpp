@@ -73,10 +73,10 @@ impl DependencyIterator {
     }
 
     /// Mark a sent TU as done, allowing its childs to be used. Updates the stage completed.
-    pub fn markDone(&self, translationUnit: &TranslationUnit, newCompletionState: usize) {
+    pub fn markDone(&self, translationUnit: TranslationUnit, newCompletionState: usize) {
         {
             let mut d = self.d.lock().unwrap();
-            if let Some(root) = d.rootsSentButNotDone.remove(translationUnit) {
+            if let Some(root) = d.rootsSentButNotDone.remove(&translationUnit) {
                 root.stepsCompleted
                     .fetch_max(newCompletionState, Ordering::Relaxed);
                 for child in root.dependedBy {
@@ -142,7 +142,7 @@ impl DependencyIterator {
 
         let toSend = d.rootsReady.pop().unwrap().0;
         d.rootsSentButNotDone
-            .insert(toSend.module.1.clone(), toSend.clone());
-        Some(toSend.module.1.clone())
+            .insert(toSend.module.1, toSend.clone());
+        Some(toSend.module.1)
     }
 }

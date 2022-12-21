@@ -39,6 +39,7 @@
 // These ones should be re-enabled, and possibly selectively disabled
 #![allow(clippy::too_many_lines)]
 
+mod ast;
 mod compiler;
 mod grammars;
 mod lex;

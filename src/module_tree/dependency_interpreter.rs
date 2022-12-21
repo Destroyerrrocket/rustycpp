@@ -202,9 +202,7 @@ pub fn generateNode(
 
     for op in &moduleImports {
         if let ModuleDeclaration::ModuleHeaderUnit(path) = op {
-            if let Ok(res) =
-                genNewArcTable.try_insert(op.clone(), Arc::new((op.clone(), path.clone())))
-            {
+            if let Ok(res) = genNewArcTable.try_insert(op.clone(), Arc::new((op.clone(), *path))) {
                 nodes.push(Node {
                     module: res.clone(),
                     dependedBy: vec![],
@@ -217,7 +215,7 @@ pub fn generateNode(
     }
 
     let moduleDecl = moduleName.map_or_else(
-        || ModuleDeclaration::Global(tu.clone()),
+        || ModuleDeclaration::Global(tu),
         |moduleName| {
             if moduleIsExport {
                 if moduleName.contains(':') {
@@ -236,10 +234,7 @@ pub fn generateNode(
         },
     );
 
-    match genNewArcTable.try_insert(
-        moduleDecl.clone(),
-        Arc::new((moduleDecl.clone(), tu.clone())),
-    ) {
+    match genNewArcTable.try_insert(moduleDecl.clone(), Arc::new((moduleDecl.clone(), tu))) {
         Ok(res) => {
             nodes.push(Node {
                 module: res.clone(),

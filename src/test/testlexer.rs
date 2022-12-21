@@ -3,13 +3,16 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::vec;
 
-use crate::lex::token::{EncodingPrefix, FloatSuffix, IntegerSuffix, Token};
+use crate::lex::token::{
+    EncodingPrefix, FloatSuffix, IntegerSuffix, IntegerSuffixLength, IntegerSuffixSignedness, Token,
+};
 use crate::preprocessor::pretoken::PreToken;
 use crate::preprocessor::Preprocessor;
 use crate::utils::compilerstate::CompilerState;
 use crate::utils::filemap::FileMap;
 use crate::utils::parameters::Parameters;
 use crate::utils::statecompileunit::StateCompileUnit;
+use crate::utils::stringref::ToStringRef;
 use crate::utils::structs::{CompileMsg, FileTokPos};
 
 use ::f128::{f128, f128_inner};
@@ -81,7 +84,6 @@ fn getErrsPreprocessed(files: &[(&'static str, &'static str)]) -> Vec<CompileMsg
 
 fn getToksPreprocessedNoWs(files: &[(&'static str, &'static str)]) -> Vec<PreToken> {
     let mut res = getToksPreprocessed(files);
-    println!("Toks: {:?}", res);
     res.retain(|x| {
         !matches!(
             x,
@@ -163,7 +165,7 @@ fn stringLiteral() {
     assert_eq!(
         vec![Token::StringLiteral(
             EncodingPrefix::u,
-            "Hello world!".to_string()
+            "Hello world!".to_StringRef()
         )],
         toTok(r#"u"Hello world!""#)
     );
@@ -174,8 +176,8 @@ fn udStringLiteral() {
     assert_eq!(
         vec![Token::UdStringLiteral(
             EncodingPrefix::u,
-            "Hello world!".to_string(),
-            "_Formatter".to_string()
+            "Hello world!".to_StringRef(),
+            "_Formatter".to_StringRef()
         )],
         toTok(r#"u"Hello world!"_Formatter"#)
     );
@@ -187,7 +189,7 @@ fn udCharLiteral() {
         vec![Token::UdCharacterLiteral(
             EncodingPrefix::u,
             'H',
-            "_Formatter".to_string()
+            "_Formatter".to_StringRef()
         )],
         toTok(r#"u'H'_Formatter"#)
     );
@@ -196,7 +198,10 @@ fn udCharLiteral() {
 #[test]
 fn stringLiteralQuestionScape() {
     assert_eq!(
-        vec![Token::StringLiteral(EncodingPrefix::None, "?".to_string(),)],
+        vec![Token::StringLiteral(
+            EncodingPrefix::None,
+            "?".to_StringRef(),
+        )],
         toTok(r#""\?""#)
     );
 }
@@ -206,8 +211,8 @@ fn udStringLiteralAllEasyScapes() {
     assert_eq!(
         vec![Token::UdStringLiteral(
             EncodingPrefix::u,
-            "escape:\n\t\x0B\x08\r\x0C\x07\\?'\"".to_string(),
-            "_Formatter".to_string()
+            "escape:\n\t\x0B\x08\r\x0C\x07\\?'\"".to_StringRef(),
+            "_Formatter".to_StringRef()
         )],
         toTok(r#"u"escape:\n\t\v\b\r\f\a\\\?\'\""_Formatter"#)
     );
@@ -218,8 +223,8 @@ fn udStringLiteralOctalScape1() {
     assert_eq!(
         vec![Token::UdStringLiteral(
             EncodingPrefix::u,
-            "escape:\x08".to_string(),
-            "_Formatter".to_string()
+            "escape:\x08".to_StringRef(),
+            "_Formatter".to_StringRef()
         )],
         toTok(r#"u"escape:\10"_Formatter"#)
     );
@@ -230,8 +235,8 @@ fn udStringLiteralOctalScape2() {
     assert_eq!(
         vec![Token::UdStringLiteral(
             EncodingPrefix::u,
-            "escape:\x00".to_string(),
-            "_Formatter".to_string()
+            "escape:\x00".to_StringRef(),
+            "_Formatter".to_StringRef()
         )],
         toTok(r#"u"escape:\0"_Formatter"#)
     );
@@ -242,8 +247,8 @@ fn udStringLiteralHexScape1() {
     assert_eq!(
         vec![Token::UdStringLiteral(
             EncodingPrefix::u,
-            "escape:\x08".to_string(),
-            "_Formatter".to_string()
+            "escape:\x08".to_StringRef(),
+            "_Formatter".to_StringRef()
         )],
         toTok(r#"u"escape:\x08"_Formatter"#)
     );
@@ -254,8 +259,8 @@ fn udStringLiteralHexScape2() {
     assert_eq!(
         vec![Token::UdStringLiteral(
             EncodingPrefix::u,
-            "escape:①".to_string(),
-            "_Formatter".to_string()
+            "escape:①".to_StringRef(),
+            "_Formatter".to_StringRef()
         )],
         toTok(r#"u"escape:\x2460"_Formatter"#)
     );
@@ -263,7 +268,13 @@ fn udStringLiteralHexScape2() {
 
 #[test]
 fn integerLiteral() {
-    assert_eq!(vec![Token::IntegerLiteral(123, vec![],)], toTok(r#"123"#));
+    assert_eq!(
+        vec![Token::IntegerLiteral(
+            123,
+            IntegerSuffix(None, IntegerSuffixSignedness::Signed),
+        )],
+        toTok(r#"123"#)
+    );
 }
 
 #[test]
@@ -271,7 +282,10 @@ fn integerLiteralSuffix() {
     assert_eq!(
         vec![Token::IntegerLiteral(
             123,
-            vec![IntegerSuffix::LongLong, IntegerSuffix::Unsigned],
+            IntegerSuffix(
+                Some(IntegerSuffixLength::LongLong),
+                IntegerSuffixSignedness::Unsigned
+            ),
         )],
         toTok(r#"123ull"#)
     );
@@ -282,7 +296,10 @@ fn integerLiteralHex() {
     assert_eq!(
         vec![Token::IntegerLiteral(
             0x1A23,
-            vec![IntegerSuffix::Long, IntegerSuffix::Unsigned],
+            IntegerSuffix(
+                Some(IntegerSuffixLength::Long),
+                IntegerSuffixSignedness::Unsigned
+            )
         )],
         toTok(r#"0x0'1A'23ul"#)
     );
@@ -294,7 +311,10 @@ fn integerLiteralOct1() {
     assert_eq!(
         vec![Token::IntegerLiteral(
             0b111_111,
-            vec![IntegerSuffix::Long, IntegerSuffix::Unsigned],
+            IntegerSuffix(
+                Some(IntegerSuffixLength::Long),
+                IntegerSuffixSignedness::Unsigned
+            )
         )],
         toTok(r#"077ul"#)
     );
@@ -306,7 +326,10 @@ fn integerLiteralOct2() {
     assert_eq!(
         vec![Token::IntegerLiteral(
             0,
-            vec![IntegerSuffix::Long, IntegerSuffix::Unsigned],
+            IntegerSuffix(
+                Some(IntegerSuffixLength::Long),
+                IntegerSuffixSignedness::Unsigned
+            )
         )],
         toTok(r#"0ul"#)
     );
@@ -318,7 +341,10 @@ fn integerLiteralBinary() {
     assert_eq!(
         vec![Token::IntegerLiteral(
             0b1010_1010,
-            vec![IntegerSuffix::Long, IntegerSuffix::Unsigned],
+            IntegerSuffix(
+                Some(IntegerSuffixLength::Long),
+                IntegerSuffixSignedness::Unsigned
+            )
         )],
         toTok(r#"0b1010'1010ul"#)
     );
@@ -330,8 +356,11 @@ fn udIntegerLiteral() {
     assert_eq!(
         vec![Token::UdIntegerLiteral(
             0b1010_1010,
-            vec![IntegerSuffix::Long, IntegerSuffix::Unsigned],
-            "Hours".to_string()
+            IntegerSuffix(
+                Some(IntegerSuffixLength::Long),
+                IntegerSuffixSignedness::Unsigned
+            ),
+            "Hours".to_StringRef()
         )],
         toTok(r#"0b1010'1010ulHours"#)
     );
@@ -359,7 +388,7 @@ fn floatLiteral3() {
         vec![Token::UdFloatingPointLiteral(
             f128!(0.0),
             FloatSuffix::L,
-            "Hours".to_string()
+            "Hours".to_StringRef()
         )],
         toTok(r#".0e-13LHours"#)
     );
@@ -371,7 +400,7 @@ fn floatLiteral4() {
         vec![Token::UdFloatingPointLiteral(
             f128!(0.0),
             FloatSuffix::F,
-            "Hours".to_string()
+            "Hours".to_StringRef()
         )],
         toTok(r#"0x0.000P-1FHours"#)
     );

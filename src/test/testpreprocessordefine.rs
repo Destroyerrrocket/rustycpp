@@ -30,7 +30,7 @@ fn generateFileMap(files: &[(&'static str, &'static str)]) -> (CompilerState, u6
     let parameters = Arc::new(params);
     let fileMap = Arc::new(Mutex::new(FileMap::new(parameters.clone())));
     let compileUnits = Arc::new(Mutex::new(HashMap::new()));
-    for (i, (filePath, fileContents)) in files.into_iter().enumerate() {
+    for (i, (filePath, fileContents)) in files.iter().enumerate() {
         fileMap
             .lock()
             .unwrap()

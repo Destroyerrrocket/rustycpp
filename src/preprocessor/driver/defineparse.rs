@@ -30,6 +30,7 @@ impl Preprocessor {
             ""
         };
         let mut vaOptExpectParen: Vec<i32> = vec![];
+        #[allow(clippy::needless_collect)]
         let toksPre: Vec<FileTokPos<PreTokenDefinePreParse>> = tokens
             .into_iter()
             .map(|tok| FileTokPos {
@@ -87,7 +88,7 @@ impl Preprocessor {
                     end: tok.tokPos.end,
                 },
             })
-            .collect();
+            .collect() /* DO NOT REMOVE. NEEDED FOR CORRECT REVERSE */;
 
         let mut inHashHash = false;
 

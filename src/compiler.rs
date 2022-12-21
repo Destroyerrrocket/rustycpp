@@ -68,10 +68,10 @@ impl Compiler {
         let tree = generateDependencyTree(&mainCompileFiles, &mut self.compilerState.compileFiles)?;
         let mut compileUnits = self.compilerState.compileUnits.lock().unwrap();
         for tu in &tree.roots {
-            compileUnits.insert(tu.1.module.1.clone(), StateCompileUnit::new());
+            compileUnits.insert(tu.1.module.1, StateCompileUnit::new());
         }
         for tu in &tree.childModules {
-            compileUnits.insert(tu.1.module.1.clone(), StateCompileUnit::new());
+            compileUnits.insert(tu.1.module.1, StateCompileUnit::new());
         }
         return Ok(tree);
     }
@@ -90,7 +90,7 @@ impl Compiler {
                     panic!("Internal error: Somehow we don't have any TU that are done left, but the dependency iterator is still locked!");
                 }
                 let tu = tuDone.pop_front().unwrap();
-                dependencyIterator.markDone(&tu, 0);
+                dependencyIterator.markDone(tu, 0);
                 println!("=== Once {tu} completes ===");
             }
             let next = dependencyIterator.next();
@@ -106,7 +106,7 @@ impl Compiler {
     }
 
     /// Executes the preprocessing stage
-    pub fn print_preprocessor<'me>(&'me mut self) -> Result<(), (CompilerState, Vec<CompileMsg>)> {
+    pub fn print_preprocessor(&mut self) -> Result<(), (CompilerState, Vec<CompileMsg>)> {
         let tree = self
             .prepareDependencyTreeAndSetupInitialState()
             .map_err(|err| (self.compilerState.clone(), err))?;
@@ -134,7 +134,7 @@ impl Compiler {
                         }
                     }
                     print!("{output}");
-                    dependencyIterator.markDone(&tu, 1);
+                    dependencyIterator.markDone(tu, 1);
                 }),
                 None => break,
             }
@@ -172,7 +172,7 @@ impl Compiler {
                         }
                     }
                     print!("{output}");
-                    dependencyIterator.markDone(&tu, 1);
+                    dependencyIterator.markDone(tu, 1);
                 }),
                 None => break,
             }
@@ -198,22 +198,19 @@ impl Compiler {
                     let mut output = format!("// file: {}\n", &tu);
                     let preprocessor = Preprocessor::new((compilerState.clone(), tu));
                     let lexer = Lexer::new(preprocessor);
-                    let mut parser = Parser::new(lexer, tu.clone(), compilerState.clone());
-                    match parser.parseStringTree() {
-                        Ok(ast) => {
-                            output.push_str(&ast);
-                            output.push('\n');
-                        }
-                        Err(errors) => {
-                            output.push('\n');
-                            for err in errors {
-                                output.push_str(&err.to_string(&compilerState.compileFiles));
-                                output.push('\n');
-                            }
-                        }
+                    let mut parser = Parser::new(lexer, tu, compilerState.clone());
+                    let (ast, errors) = parser.parse();
+
+                    output.push('\n');
+                    for err in errors {
+                        output.push_str(&err.to_string(&compilerState.compileFiles));
+                        output.push('\n');
                     }
+                    output.push_str(&parser.printStringTree(&ast));
+                    output.push('\n');
+
                     print!("{output}");
-                    dependencyIterator.markDone(&tu, 1);
+                    dependencyIterator.markDone(tu, 1);
                 }),
                 None => break,
             }
