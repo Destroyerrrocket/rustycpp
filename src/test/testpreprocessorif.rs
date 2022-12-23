@@ -36,12 +36,10 @@ fn generateFileMap(files: &[(&'static str, String)]) -> (CompilerState, u64) {
             .lock()
             .unwrap()
             .addTestFile((*filePath).to_string(), (*fileContents).clone());
-        compileUnits.lock().unwrap().insert(
-            i as u64 + 1,
-            StateCompileUnit {
-                macroDefintionsAtTheEndOfTheFile: HashMap::new(),
-            },
-        );
+        compileUnits
+            .lock()
+            .unwrap()
+            .insert(i as u64 + 1, StateCompileUnit::new());
     }
 
     return (

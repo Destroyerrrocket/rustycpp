@@ -65,7 +65,11 @@ impl Compiler {
             .lock()
             .unwrap()
             .getCurrPaths();
-        let tree = generateDependencyTree(&mainCompileFiles, &mut self.compilerState.compileFiles)?;
+        let tree = generateDependencyTree(
+            &mainCompileFiles,
+            &mut self.compilerState.compileFiles,
+            &mut self.compilerState.compileUnits,
+        )?;
         let mut compileUnits = self.compilerState.compileUnits.lock().unwrap();
         for tu in &tree.roots {
             compileUnits.insert(tu.1.module.1, StateCompileUnit::new());
@@ -206,7 +210,7 @@ impl Compiler {
                         output.push_str(&err.to_string(&compilerState.compileFiles));
                         output.push('\n');
                     }
-                    output.push_str(&parser.printStringTree(&ast));
+                    output.push_str(&Parser::printStringTree(&ast));
                     output.push('\n');
 
                     print!("{output}");

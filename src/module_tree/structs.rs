@@ -5,19 +5,20 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 
 use crate::compiler::TranslationUnit;
+use crate::utils::stringref::StringRef;
 
 /// Kind of module the TU is of. This also includes ones where the TU does not
 /// use modules, like a generated one (import <header>) or a classical .cpp file
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum ModuleDeclaration {
     /// Holds module name
-    ExportPrimary(String),
+    ExportPrimary(StringRef),
     /// Holds module name
-    Primary(String),
+    Primary(StringRef),
     /// Holds module name + partition
-    ExportPartition(String, String),
+    ExportPartition(StringRef, StringRef),
     /// Holds module name + partition
-    Partition(String, String),
+    Partition(StringRef, StringRef),
     /// Holds resolved path
     ModuleHeaderUnit(u64),
     /// Holds resolved path
@@ -76,6 +77,18 @@ pub struct Node {
     /// How many steps of the compilation have been completed? Can be used to
     /// start multiple stages of the compilation at the same time
     pub stepsCompleted: Arc<AtomicUsize>,
+}
+
+impl Node {
+    pub fn new_fake() -> Self {
+        Self {
+            module: Arc::new((ModuleDeclaration::Global(0), 0)),
+            dependedBy: vec![],
+            dependsOn: HashSet::new(),
+            depth: 0,
+            stepsCompleted: Arc::default(),
+        }
+    }
 }
 
 impl Eq for Node {}

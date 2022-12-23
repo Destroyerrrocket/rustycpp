@@ -1,4 +1,4 @@
-use crate::ast::Tu::AstTu;
+use crate::ast::{common::CommonAst, Tu::AstTu};
 use crate::compiler::TranslationUnit;
 use crate::lex::lexer::Lexer;
 use crate::utils::compilerstate::CompilerState;
@@ -8,13 +8,35 @@ use super::bufferedLexer::{BufferedLexer, StateBufferedLexer};
 
 struct Scope;
 
+mod parseTu;
+
+pub enum ModuleImportState {
+    /// Parsing the first decl in a TU.
+    StartFile,
+    /// after 'module;' but before 'module X;'
+    GlobalSection,
+    /// after 'module X;' but before any non-import decl.
+    ImportSection,
+    /// after any non-import decl.
+    CodeSection,
+    /// after 'module :private;'.
+    PrivateSection,
+    /// Not a C++20 TU, or an invalid state was found.
+    GlobalFile,
+}
+
 pub struct Parser {
     lexer: BufferedLexer,
     lexerStart: StateBufferedLexer,
     filePath: TranslationUnit,
     compilerState: CompilerState,
-    errors: Vec<CompileMsg>,
+
+    moduleImportState: ModuleImportState,
     scope: Scope,
+
+    errors: Vec<CompileMsg>,
+
+    alloc: bumpalo::Bump,
 }
 
 impl Parser {
@@ -25,16 +47,21 @@ impl Parser {
             lexerStart,
             filePath,
             compilerState,
-            errors: vec![],
+            moduleImportState: ModuleImportState::StartFile,
             scope: Scope {},
+
+            errors: vec![],
+
+            alloc: bumpalo::Bump::new(),
         }
     }
 
     pub fn parse(&mut self) -> (AstTu, Vec<CompileMsg>) {
-        (AstTu::new_dont_use(), vec![])
+        let tu = self.parseTu();
+        return (tu, self.errors.clone());
     }
 
-    pub fn printStringTree(&self, _: &AstTu) -> String {
-        String::new()
+    pub fn printStringTree(ast: &AstTu) -> String {
+        ast.getDebugNode().to_string()
     }
 }

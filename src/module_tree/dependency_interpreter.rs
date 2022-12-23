@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::compiler::TranslationUnit;
 use crate::utils::filemap::FileMap;
+use crate::utils::stringref::ToStringRef;
 use crate::utils::structs::{CompileError, CompileMsg};
 
 use super::structs::{ModuleDeclaration, ModuleOperator, Node};
@@ -27,7 +28,7 @@ fn parseGlobalPartOfModuleFile(
                             "Can't import partitions in global module. Tried to import: {module}"
                         ));
                     }
-                    imports.push(ModuleDeclaration::ExportPrimary(module.clone()));
+                    imports.push(ModuleDeclaration::ExportPrimary(module.to_StringRef()));
                 }
                 ModuleOperator::ImportHeader(path) => {
                     let mut fileMap = fileMap.lock().unwrap();
@@ -67,11 +68,11 @@ where
                 ModuleOperator::Import(module) => {
                     if let Some(module) = module.strip_prefix(':') {
                         imports.push(ModuleDeclaration::ExportPartition(
-                            name.clone(),
-                            module.to_string(),
+                            name.to_StringRef(),
+                            module.to_StringRef(),
                         ));
                     } else {
-                        imports.push(ModuleDeclaration::ExportPrimary(module.clone()));
+                        imports.push(ModuleDeclaration::ExportPrimary(module.to_StringRef()));
                     }
                 }
                 ModuleOperator::ImportHeader(path) => {
@@ -202,7 +203,7 @@ pub fn generateNode(
 
     for op in &moduleImports {
         if let ModuleDeclaration::ModuleHeaderUnit(path) = op {
-            if let Ok(res) = genNewArcTable.try_insert(op.clone(), Arc::new((op.clone(), *path))) {
+            if let Ok(res) = genNewArcTable.try_insert(*op, Arc::new((*op, *path))) {
                 nodes.push(Node {
                     module: res.clone(),
                     dependedBy: vec![],
@@ -220,21 +221,24 @@ pub fn generateNode(
             if moduleIsExport {
                 if moduleName.contains(':') {
                     let (module, partition) = moduleName.split_once(':').unwrap();
-                    ModuleDeclaration::ExportPartition(module.to_string(), partition.to_string())
+                    ModuleDeclaration::ExportPartition(
+                        module.to_StringRef(),
+                        partition.to_StringRef(),
+                    )
                 } else {
-                    ModuleDeclaration::ExportPrimary(moduleName)
+                    ModuleDeclaration::ExportPrimary(moduleName.to_StringRef())
                 }
             } else if moduleName.contains(':') {
                 let (module, partition) = moduleName.split_once(':').unwrap();
-                ModuleDeclaration::Partition(module.to_string(), partition.to_string())
+                ModuleDeclaration::Partition(module.to_StringRef(), partition.to_StringRef())
             } else {
-                moduleImports.push(ModuleDeclaration::ExportPrimary(moduleName.clone()));
-                ModuleDeclaration::Primary(moduleName)
+                moduleImports.push(ModuleDeclaration::ExportPrimary(moduleName.to_StringRef()));
+                ModuleDeclaration::Primary(moduleName.to_StringRef())
             }
         },
     );
 
-    match genNewArcTable.try_insert(moduleDecl.clone(), Arc::new((moduleDecl.clone(), tu))) {
+    match genNewArcTable.try_insert(moduleDecl, Arc::new((moduleDecl, tu))) {
         Ok(res) => {
             nodes.push(Node {
                 module: res.clone(),
@@ -277,9 +281,9 @@ pub fn generateNodes(
         match generateNode(op, &mut genNewArcTable, fileMap) {
             Ok((mut nodes, depends)) => {
                 let node = nodes.pop().unwrap();
-                generatedEmptyNodes.insert(node.module.0.clone(), (node, depends));
+                generatedEmptyNodes.insert(node.module.0, (node, depends));
                 for node in nodes {
-                    generatedEmptyNodes.insert(node.module.0.clone(), (node, vec![]));
+                    generatedEmptyNodes.insert(node.module.0, (node, vec![]));
                 }
             }
             Err(mut err2) => err.append(&mut err2),
@@ -291,12 +295,12 @@ pub fn generateNodes(
 
     for module in generatedEmptyNodes
         .keys()
-        .cloned()
+        .copied()
         .into_iter()
         .collect::<Vec<_>>()
     {
         let mut depenedsPlusModule = generatedEmptyNodes.get(&module).unwrap().1.clone();
-        depenedsPlusModule.push(module.clone());
+        depenedsPlusModule.push(module);
 
         let mut depends = generatedEmptyNodes
             .iter_mut()

@@ -97,7 +97,6 @@ impl BufferedLexer {
     }
 
     pub fn makeProtectedRange(
-        &mut self,
         start: &mut StateBufferedLexer,
         end: &mut StateBufferedLexer,
     ) -> StateBufferedLexer {
@@ -167,11 +166,7 @@ impl BufferedLexer {
     ) -> FileTokPos<Token> {
         match state.currentToken.checked_add_signed(offset) {
             Some(mut pos) => {
-                if pos > state.maximumToken {
-                    pos = state.maximumToken;
-                } else if pos < state.minimumToken {
-                    pos = state.minimumToken;
-                }
+                pos = pos.clamp(state.minimumToken, state.maximumToken);
 
                 while pos > self.lastTokIndex() && self.tryGetNextToken() {}
                 if pos > self.lastTokIndex() {

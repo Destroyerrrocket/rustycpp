@@ -11,14 +11,14 @@ use super::structs::{ModuleDeclaration, ModuleTree, Node};
 fn dfsLoops(tree: &mut ModuleTree) -> Result<(), Vec<CompileMsg>> {
     if tree.roots.is_empty() && !tree.childModules.is_empty() {
         let mut showALoopTree = tree.clone();
-        let candidate = showALoopTree.childModules.keys().next().unwrap().clone();
+        let candidate = *showALoopTree.childModules.keys().next().unwrap();
         let candidate = showALoopTree
             .childModules
             .get_key_value(&candidate)
             .unwrap();
         showALoopTree
             .roots
-            .insert(candidate.0.clone(), candidate.1.clone());
+            .insert(*candidate.0, candidate.1.clone());
         dfsLoops(&mut showALoopTree)?;
         unreachable!();
     }
@@ -34,9 +34,9 @@ fn dfsLoops(tree: &mut ModuleTree) -> Result<(), Vec<CompileMsg>> {
         .map(|x| (x.1.module.clone(), x.1.dependedBy.clone()))
         .collect::<Vec<_>>()
     {
-        stack.push(root.0 .0.clone());
+        stack.push(root.0 .0);
         leftToVisit.push(root.1.clone());
-        visited.insert(root.0 .0.clone());
+        visited.insert(root.0 .0);
 
         loop {
             if leftToVisit.is_empty() {
@@ -81,9 +81,9 @@ fn dfsLoops(tree: &mut ModuleTree) -> Result<(), Vec<CompileMsg>> {
                 continue;
             }
 
-            stack.push(next.module.0.clone());
+            stack.push(next.module.0);
             leftToVisit.push(next.dependedBy.clone());
-            visited.insert(next.module.0.clone());
+            visited.insert(next.module.0);
         }
     }
 
@@ -103,7 +103,7 @@ pub fn generateModuleTree(
         if node.1.dependsOn.is_empty() {
             tree.roots.insert(node.0, node.1);
         } else {
-            tree.childModules.insert(node.0.clone(), node.1);
+            tree.childModules.insert(node.0, node.1);
         }
     }
 
