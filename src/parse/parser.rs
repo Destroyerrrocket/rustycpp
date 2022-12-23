@@ -4,12 +4,13 @@ use crate::lex::lexer::Lexer;
 use crate::utils::compilerstate::CompilerState;
 use crate::utils::structs::CompileMsg;
 
-use super::bufferedLexer::BufferedLexer;
+use super::bufferedLexer::{BufferedLexer, StateBufferedLexer};
 
 struct Scope;
 
 pub struct Parser {
     lexer: BufferedLexer,
+    lexerStart: StateBufferedLexer,
     filePath: TranslationUnit,
     compilerState: CompilerState,
     errors: Vec<CompileMsg>,
@@ -18,8 +19,10 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(lexer: Lexer, filePath: TranslationUnit, compilerState: CompilerState) -> Self {
+        let (lexer, lexerStart) = BufferedLexer::new(lexer);
         Self {
-            lexer: BufferedLexer::new(lexer),
+            lexer,
+            lexerStart,
             filePath,
             compilerState,
             errors: vec![],
@@ -28,7 +31,7 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> (AstTu, Vec<CompileMsg>) {
-        (AstTu, vec![])
+        (AstTu::new_dont_use(), vec![])
     }
 
     pub fn printStringTree(&self, _: &AstTu) -> String {

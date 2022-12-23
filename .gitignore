@@ -1,4 +1,5 @@
 /target
+deriveMacros/target
 *.pdf
 Cargo.lock
 .vscode/*

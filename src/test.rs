@@ -3,8 +3,10 @@
 #[cfg(test)]
 pub mod testincluder;
 #[cfg(test)]
+pub mod testlexer;
+#[cfg(test)]
 pub mod testpreprocessordefine;
 #[cfg(test)]
 pub mod testpreprocessorif;
 #[cfg(test)]
-pub mod testlexer;
+pub mod testprocmacro;

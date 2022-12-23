@@ -1,16 +1,18 @@
 use crate::{
     lex::{lexer::Lexer, token::Token},
-    utils::structs::{CompileError, CompileMsg, FileTokPos},
+    utils::structs::FileTokPos,
 };
 
+#[derive(Clone, Copy)]
 pub struct StateBufferedLexer {
+    minimumToken: usize,
     currentToken: usize,
+    maximumToken: usize,
 }
 
 pub struct BufferedLexer {
     lexer: Lexer,
     tokens: Vec<FileTokPos<Token>>,
-    currentToken: usize,
 }
 
 impl BufferedLexer {
@@ -28,124 +30,126 @@ impl BufferedLexer {
 }
 
 impl BufferedLexer {
-    pub fn new(lexer: Lexer) -> Self {
+    pub fn new(lexer: Lexer) -> (Self, StateBufferedLexer) {
         let mut s = Self {
             lexer,
             tokens: vec![],
-            currentToken: 0,
         };
         s.tryGetNextToken();
-        s
+        (
+            s,
+            StateBufferedLexer {
+                minimumToken: 0,
+                currentToken: 0,
+                maximumToken: usize::MAX,
+            },
+        )
     }
 
-    pub fn reachedEnd(&self) -> bool {
-        self.currentToken > self.lastTokIndex()
-    }
-
-    pub fn consumeToken(&mut self) -> bool {
-        if !self.reachedEnd() {
-            self.currentToken += 1;
-            if self.reachedEnd() {
-                self.tryGetNextToken();
+    pub fn reachedEnd(&mut self, state: &mut StateBufferedLexer) -> bool {
+        if state.currentToken > state.maximumToken {
+            return true;
+        }
+        if state.currentToken > self.lastTokIndex() {
+            if self.tryGetNextToken() {
+                return false;
+            } else {
+                state.maximumToken = state.currentToken;
+                return true;
             }
+        }
+        return false;
+    }
+
+    pub fn consumeToken(&mut self, state: &mut StateBufferedLexer) -> bool {
+        if !self.reachedEnd(state) {
+            state.currentToken += 1;
             return true;
         }
         false
     }
 
-    pub fn consumeTokenIfEq(&mut self, tok: Token) -> bool {
-        if !self.reachedEnd() && self.tokens[self.currentToken].tokPos.tok == tok {
-            self.currentToken += 1;
-            if self.reachedEnd() {
-                self.tryGetNextToken();
-            }
+    pub fn consumeTokenIfEq(&mut self, state: &mut StateBufferedLexer, tok: Token) -> bool {
+        if !self.reachedEnd(state) && self.tokens[state.currentToken].tokPos.tok == tok {
+            state.currentToken += 1;
             return true;
         }
         false
     }
 
-    pub fn consumeTokenIf(&mut self, cond: fn(Token) -> bool) -> bool {
-        if !self.reachedEnd() && cond(self.tokens[self.currentToken].tokPos.tok) {
-            self.currentToken += 1;
-            if self.reachedEnd() {
-                self.tryGetNextToken();
-            }
+    pub fn consumeTokenIf(
+        &mut self,
+        state: &mut StateBufferedLexer,
+        cond: fn(Token) -> bool,
+    ) -> bool {
+        if !self.reachedEnd(state) && cond(self.tokens[state.currentToken].tokPos.tok) {
+            state.currentToken += 1;
             return true;
         }
         false
     }
 
-    pub fn saveState(&self) -> StateBufferedLexer {
-        StateBufferedLexer {
-            currentToken: self.currentToken,
-        }
-    }
-
-    pub fn loadState(&mut self, state: StateBufferedLexer) {
-        self.currentToken = state.currentToken;
-    }
-
-    pub fn movePos(&mut self, offset: isize) -> Result<(), CompileMsg> {
-        if let Some(pos) = self.currentToken.checked_add_signed(offset) {
-            while pos > self.lastTokIndex() && self.tryGetNextToken() {}
-            if pos > self.lastTokIndex() {
-                return Err(CompileError::from_preTo(
-                "Internal lexer error. We tried to perform a move lexing point operation that goes beyond the EOF.",
-                &self.tokens[self.currentToken],
-            ));
-            }
-        } else {
-            return Err(CompileError::from_preTo(
-                "Internal lexer error. We tried to perform a move lexing point operation that goes before the start of the file.",
-                &self.tokens[self.currentToken],
-            ));
-        }
-        return Ok(());
-    }
-
-    pub fn get(&mut self) -> Option<FileTokPos<Token>> {
-        if self.reachedEnd() {
+    pub fn get(&mut self, state: &mut StateBufferedLexer) -> Option<FileTokPos<Token>> {
+        if self.reachedEnd(state) {
             return None;
         }
-        Some(self.tokens[self.currentToken])
+        Some(self.tokens[state.currentToken])
     }
 
-    pub fn getConsumeToken(&mut self) -> Option<FileTokPos<Token>> {
-        if self.reachedEnd() {
+    pub fn makeProtectedRange(
+        &mut self,
+        start: &mut StateBufferedLexer,
+        end: &mut StateBufferedLexer,
+    ) -> StateBufferedLexer {
+        let mut newState = *start;
+        newState.minimumToken = start.currentToken;
+        newState.maximumToken = end.currentToken;
+        debug_assert!(newState.minimumToken <= newState.maximumToken);
+        newState
+    }
+
+    pub fn getConsumeToken(&mut self, state: &mut StateBufferedLexer) -> Option<FileTokPos<Token>> {
+        if self.reachedEnd(state) {
             return None;
         }
-        self.currentToken += 1;
-        if self.reachedEnd() {
-            self.tryGetNextToken();
-        }
-        return Some(self.tokens[self.currentToken - 1]);
+        state.currentToken += 1;
+        return Some(self.tokens[state.currentToken - 1]);
     }
 
-    pub fn getConsumeTokenIfEq(&mut self, tok: Token) -> Option<FileTokPos<Token>> {
-        if !self.reachedEnd() && self.tokens[self.currentToken].tokPos.tok == tok {
-            self.currentToken += 1;
-            if self.reachedEnd() {
-                self.tryGetNextToken();
-            }
-            return Some(self.tokens[self.currentToken - 1]);
+    pub fn getConsumeTokenIfEq(
+        &mut self,
+        state: &mut StateBufferedLexer,
+        tok: Token,
+    ) -> Option<FileTokPos<Token>> {
+        if !self.reachedEnd(state) && self.tokens[state.currentToken].tokPos.tok == tok {
+            state.currentToken += 1;
+            return Some(self.tokens[state.currentToken - 1]);
         }
         None
     }
 
-    pub fn getConsumeTokenIf(&mut self, cond: fn(Token) -> bool) -> Option<FileTokPos<Token>> {
-        if !self.reachedEnd() && cond(self.tokens[self.currentToken].tokPos.tok) {
-            self.currentToken += 1;
-            if self.reachedEnd() {
-                self.tryGetNextToken();
-            }
-            return Some(self.tokens[self.currentToken - 1]);
+    pub fn getConsumeTokenIf(
+        &mut self,
+        state: &mut StateBufferedLexer,
+        cond: fn(Token) -> bool,
+    ) -> Option<FileTokPos<Token>> {
+        if !self.reachedEnd(state) && cond(self.tokens[state.currentToken].tokPos.tok) {
+            state.currentToken += 1;
+            return Some(self.tokens[state.currentToken - 1]);
         }
         None
     }
 
-    pub fn getWithOffset(&mut self, offset: isize) -> Option<FileTokPos<Token>> {
-        match self.currentToken.checked_add_signed(offset) {
+    pub fn getWithOffset(
+        &mut self,
+        state: &mut StateBufferedLexer,
+        offset: isize,
+    ) -> Option<FileTokPos<Token>> {
+        match state.currentToken.checked_add_signed(offset) {
             Some(pos) => {
+                if pos > state.maximumToken || pos < state.minimumToken {
+                    return None;
+                }
                 while pos > self.lastTokIndex() && self.tryGetNextToken() {}
                 if pos > self.lastTokIndex() {
                     return None;
@@ -156,16 +160,26 @@ impl BufferedLexer {
         }
     }
 
-    pub fn getWithOffsetSaturating(&mut self, offset: isize) -> FileTokPos<Token> {
-        match self.currentToken.checked_add_signed(offset) {
-            Some(pos) => {
+    pub fn getWithOffsetSaturating(
+        &mut self,
+        state: &mut StateBufferedLexer,
+        offset: isize,
+    ) -> FileTokPos<Token> {
+        match state.currentToken.checked_add_signed(offset) {
+            Some(mut pos) => {
+                if pos > state.maximumToken {
+                    pos = state.maximumToken;
+                } else if pos < state.minimumToken {
+                    pos = state.minimumToken;
+                }
+
                 while pos > self.lastTokIndex() && self.tryGetNextToken() {}
                 if pos > self.lastTokIndex() {
                     return *self.tokens.last().unwrap();
                 }
                 self.tokens[pos]
             }
-            None => *self.tokens.first().unwrap(),
+            None => self.tokens[state.minimumToken],
         }
     }
 }

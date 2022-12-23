@@ -26,7 +26,12 @@ f128 = "0.2.9"
 priority-queue = "1.2.3"
 threadpool = "1.8.1"
 bumpalo = { version="3.11.1", features = ["collections", "allocator_api"] }
+deriveMacros = { path = "./deriveMacros" }
 
 [profile.release]
 lto = true
 codegen-units = 1
+
+[profile.codecoverage]
+inherits = "test"
+incremental = false
