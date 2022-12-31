@@ -14,7 +14,7 @@ mod sema;
 pub enum ModuleImportState {
     /// Parsing the first decl in a TU.
     StartFile,
-    /// after 'module;' but before 'module X;'
+    /// after 'module;' but before 'module X;'.
     GlobalSection,
     /// after 'module X;' but before any non-import decl.
     ImportSection,

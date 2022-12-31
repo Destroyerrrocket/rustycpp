@@ -1,4 +1,5 @@
 use crate::utils::structs::FileTokPos;
+use crate::utils::structs::SourceRange;
 use crate::utils::structs::TokPos;
 use crate::{
     ast::Tu::AstTu,
@@ -24,7 +25,7 @@ impl Parser {
             let declarations = self.parseTopLevelDecl(&mut lexpos);
             totalDeclarations.extend(declarations);
         }
-        return AstTu;
+        return AstTu::new_dont_use();
     }
 
     /**
@@ -68,15 +69,13 @@ impl Parser {
                     _ => {}
                 }
             }
-            _ => {
-                self.errors.push(CompileError::fromPreTo(
-                    "No way to parse this start of the top level declaration",
-                    &tok1,
-                ));
-                self.lexer.moveForward(lexpos, 1); // Skip malformed line. Puts us at the end of file.
-            }
+            _ => {}
         }
-        return Vec::new();
+        // TODO: Move to
+        let attrs = self.parseAttributes(lexpos);
+        let res = self.parseDeclaration(lexpos, attrs);
+        self.actOnTopLevelDecl(&res);
+        return res;
     }
 
     /**
@@ -135,7 +134,7 @@ impl Parser {
             ));
             return;
         }
-        self.optIgnoreAttributes(lexpos);
+        self.ignoreAttributes(lexpos);
 
         // Everything parsed, now we need to check for the semicolon.
         if let Some(fileTokPosMatchArm!(Token::Semicolon)) = self.lexer.get(lexpos) {
@@ -152,9 +151,12 @@ impl Parser {
                     .getOpenedFile(st.file);
                 file.getRowColumn(st.tokPos.start).0 != file.getRowColumn(et.tokPos.start).0
             } {
-                self.errors.push(CompileError::fromPreTo(
+                self.errors.push(CompileError::fromSourceRange(
                     "Module declaration must be on a single line.",
-                    &self.lexer.getWithOffsetSaturating(lexpos, 0),
+                    &SourceRange::newDoubleTok(
+                        &self.lexer.getWithOffsetSaturating(&startlexpos, 0),
+                        &self.lexer.getWithOffsetSaturating(lexpos, 0),
+                    ),
                 ));
             }
             self.lexer.consumeToken(lexpos);

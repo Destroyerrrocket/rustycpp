@@ -144,6 +144,7 @@ impl Compiler {
             }
         }
         self.pool.join();
+        assert!(self.pool.panic_count() == 0);
         Ok(())
     }
 
@@ -182,6 +183,7 @@ impl Compiler {
             }
         }
         self.pool.join();
+        assert!(self.pool.panic_count() == 0);
         Ok(())
     }
 
@@ -220,6 +222,7 @@ impl Compiler {
             }
         }
         self.pool.join();
+        assert!(self.pool.panic_count() == 0);
         Ok(())
     }
 
@@ -265,6 +268,7 @@ impl Compiler {
             }
         }
         self.pool.join();
+        assert!(self.pool.panic_count() == 0);
         let res = resultLoc.lock().unwrap().clone();
         result.0 = res.0;
         result.1 = res.1;

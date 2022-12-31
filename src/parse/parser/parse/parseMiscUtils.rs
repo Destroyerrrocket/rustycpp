@@ -1,7 +1,4 @@
-use crate::utils::structs::FileTokPos;
-use crate::utils::structs::TokPos;
 use crate::{
-    fileTokPosMatches,
     lex::token::Token,
     parse::bufferedLexer::{BufferedLexer, StateBufferedLexer},
 };

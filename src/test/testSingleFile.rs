@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Index};
+use std::collections::HashMap;
 
 use ::function_name::named;
 use test_log::test;
@@ -132,6 +132,34 @@ fn parsesModuleError2() {
 #[test]
 #[named]
 fn parsesModuleError3() {
+    let (_, e, s) = testUnsuccessfulFile!();
+    checkErrors(e, s, &[e!(1)]);
+}
+
+#[test]
+#[named]
+fn parsesModuleError4() {
+    let (_, e, s) = testUnsuccessfulFile!();
+    checkErrors(e, s, &[e!(1)]);
+}
+
+#[test]
+#[named]
+fn parsesModuleError5() {
+    let (_, e, s) = testUnsuccessfulFile!();
+    checkErrors(e, s, &[e!(1)]);
+}
+
+#[test]
+#[named]
+fn parsesAttrError1() {
+    let (_, e, s) = testUnsuccessfulFile!();
+    checkErrors(e, s, &[e!(1)]);
+}
+
+#[test]
+#[named]
+fn parsesAttrError2() {
     let (_, e, s) = testUnsuccessfulFile!();
     checkErrors(e, s, &[e!(1)]);
 }

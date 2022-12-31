@@ -105,6 +105,28 @@ impl BufferedLexer {
         Some(self.tokens[lexpos.currentToken])
     }
 
+    pub fn getIfEq(
+        &mut self,
+        lexpos: &mut StateBufferedLexer,
+        tok: Token,
+    ) -> Option<FileTokPos<Token>> {
+        if !self.reachedEnd(lexpos) && self.tokens[lexpos.currentToken].tokPos.tok == tok {
+            return Some(self.tokens[lexpos.currentToken]);
+        }
+        None
+    }
+
+    pub fn getIf(
+        &mut self,
+        lexpos: &mut StateBufferedLexer,
+        cond: fn(Token) -> bool,
+    ) -> Option<FileTokPos<Token>> {
+        if !self.reachedEnd(lexpos) && cond(self.tokens[lexpos.currentToken].tokPos.tok) {
+            return Some(self.tokens[lexpos.currentToken]);
+        }
+        None
+    }
+
     pub fn makeProtectedRange(
         start: &StateBufferedLexer,
         end: &StateBufferedLexer,
@@ -112,7 +134,6 @@ impl BufferedLexer {
         let mut newState = *start;
         newState.minimumToken = start.currentToken;
         newState.maximumToken = end.currentToken;
-        debug_assert!(newState.minimumToken <= newState.maximumToken);
         newState
     }
 
@@ -153,7 +174,7 @@ impl BufferedLexer {
 
     pub fn getWithOffset(
         &mut self,
-        lexpos: &mut StateBufferedLexer,
+        lexpos: &StateBufferedLexer,
         offset: isize,
     ) -> Option<FileTokPos<Token>> {
         if lexpos.maximumToken < lexpos.minimumToken {
@@ -177,7 +198,7 @@ impl BufferedLexer {
 
     pub fn getWithOffsetSaturating(
         &mut self,
-        lexpos: &mut StateBufferedLexer,
+        lexpos: &StateBufferedLexer,
         offset: isize,
     ) -> FileTokPos<Token> {
         if lexpos.maximumToken < lexpos.minimumToken {
@@ -220,10 +241,11 @@ impl BufferedLexer {
             .currentToken
             .saturating_add(n)
             .clamp(lexpos.minimumToken, lexpos.maximumToken);
-        while lexpos.currentToken > self.lastTokIndex() && self.tryGetNextToken() {}
-        return lexpos.currentToken <= self.lastTokIndex();
+        while lexpos.currentToken > self.tokens.len() && self.tryGetNextToken() {}
+        return lexpos.currentToken <= self.tokens.len(); // Beware to not consume the token of the destination; This way we can alter the lexer correctly if necessary.
     }
 
+    #[allow(clippy::unused_self)]
     pub fn moveStateToOtherState(
         &self,
         lexpos: &mut StateBufferedLexer,

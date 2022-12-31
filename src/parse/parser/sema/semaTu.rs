@@ -21,4 +21,9 @@ impl Parser {
     ) {
         // TODO
     }
+
+    #[allow(clippy::unused_self)] // TODO: REMOVE
+    pub fn actOnTopLevelDecl(&mut self, _decl: &Vec<()>) {
+        // TODO
+    }
 }

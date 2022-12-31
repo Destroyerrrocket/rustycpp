@@ -4,6 +4,8 @@ macro_rules! m {
         pub use $id::*;
     };
 }
+
 m! {parseAttribute}
 m! {parseMiscUtils}
 m! {parseTu}
+m! {parseDeclaration}
