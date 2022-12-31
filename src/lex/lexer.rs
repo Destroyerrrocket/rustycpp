@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 
 use crate::fileTokPosMatches;
 use crate::preprocessor::Preprocessor;
-use crate::utils::structs::{CompileError, CompileMsg, FileTokPos, TokPos};
+use crate::utils::structs::{CompileError, CompileMsg, CompileMsgImpl, FileTokPos, TokPos};
 
 use super::token::{EncodingPrefix, Token};
 
@@ -52,7 +52,7 @@ impl Lexer {
 
             (EncodingPrefix::None | EncodingPrefix::L, EncodingPrefix::L)
             | (EncodingPrefix::L, EncodingPrefix::None) => Ok(EncodingPrefix::L),
-            (e1, e2) => Err(CompileError::from_at(
+            (e1, e2) => Err(CompileError::fromAt(
                 format!("Incompatible encoding prefixes between '{e1}' and '{e2}'"),
                 file,
                 at,
@@ -100,7 +100,7 @@ impl Lexer {
                         },
                     ))
                 } else {
-                    Err(CompileError::from_at(
+                    Err(CompileError::fromAt(
                         format!(
                             "Incompatible user defined string literals between '{ud1}' and '{ud2}'"
                         ),

@@ -8,6 +8,7 @@ use std::thread;
 
 use threadpool::ThreadPool;
 
+use crate::ast::Tu::AstTu;
 use crate::lex::lexer::Lexer;
 use crate::module_tree::dependency_iterator::DependencyIterator;
 use crate::module_tree::generate::generateDependencyTree;
@@ -49,7 +50,7 @@ impl Compiler {
             },
             pool: ThreadPool::new(
                 thread::available_parallelism()
-                    .unwrap_or(unsafe { NonZeroUsize::new_unchecked(1) })
+                    .unwrap_or(NonZeroUsize::new(1).unwrap())
                     .get(),
             ),
         }
@@ -65,18 +66,17 @@ impl Compiler {
             .lock()
             .unwrap()
             .getCurrPaths();
+        {
+            let mut compileUnits = self.compilerState.compileUnits.lock().unwrap();
+            for tu in &mainCompileFiles {
+                compileUnits.insert(*tu, StateCompileUnit::new());
+            }
+        }
         let tree = generateDependencyTree(
             &mainCompileFiles,
             &mut self.compilerState.compileFiles,
             &mut self.compilerState.compileUnits,
         )?;
-        let mut compileUnits = self.compilerState.compileUnits.lock().unwrap();
-        for tu in &tree.roots {
-            compileUnits.insert(tu.1.module.1, StateCompileUnit::new());
-        }
-        for tu in &tree.childModules {
-            compileUnits.insert(tu.1.module.1, StateCompileUnit::new());
-        }
         return Ok(tree);
     }
 
@@ -210,7 +210,7 @@ impl Compiler {
                         output.push_str(&err.to_string(&compilerState.compileFiles));
                         output.push('\n');
                     }
-                    output.push_str(&Parser::printStringTree(&ast));
+                    output.push_str(&Parser::printStringTree(ast));
                     output.push('\n');
 
                     print!("{output}");
@@ -221,6 +221,54 @@ impl Compiler {
         }
         self.pool.join();
         Ok(())
+    }
+
+    /// Parses the resulting tokens to an AST and returns it
+    pub fn parsed_tree_test(
+        &mut self,
+        result: &mut (HashMap<String, AstTu>, Vec<CompileMsg>),
+    ) -> Result<CompilerState, (CompilerState, Vec<CompileMsg>)> {
+        let tree = self
+            .prepareDependencyTreeAndSetupInitialState()
+            .map_err(|err| (self.compilerState.clone(), err))?;
+
+        let dependencyIterator = Arc::new(DependencyIterator::new(&tree, 0));
+        let resultLoc = Arc::new(Mutex::new((HashMap::new(), vec![])));
+
+        loop {
+            let next = dependencyIterator.next();
+            let dependencyIterator = dependencyIterator.clone();
+            let compilerState = self.compilerState.clone();
+            let result = resultLoc.clone();
+            match next {
+                Some(tu) => self.pool.execute(move || {
+                    let preprocessor = Preprocessor::new((compilerState.clone(), tu));
+                    let lexer = Lexer::new(preprocessor);
+                    let mut parser = Parser::new(lexer, tu, compilerState.clone());
+                    let (ast, errors) = parser.parse();
+                    let mut res = result.lock().unwrap();
+                    res.0.insert(
+                        compilerState
+                            .compileFiles
+                            .lock()
+                            .unwrap()
+                            .getOpenedFile(tu)
+                            .path()
+                            .clone(),
+                        ast,
+                    );
+                    res.1.extend(errors);
+
+                    dependencyIterator.markDone(tu, 1);
+                }),
+                None => break,
+            }
+        }
+        self.pool.join();
+        let res = resultLoc.lock().unwrap().clone();
+        result.0 = res.0;
+        result.1 = res.1;
+        Ok(self.compilerState.clone())
     }
 
     /// Attempts to compile everything, until the last thing implemented.

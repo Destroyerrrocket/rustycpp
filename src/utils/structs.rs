@@ -74,7 +74,7 @@ impl CompileFile {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 /// Kind of compile message
 #[doc(hidden)]
 pub enum CompileMsgKind {
@@ -118,6 +118,11 @@ impl CompileMsg {
         self.kind
     }
 
+    /// Get the location of the message
+    pub const fn loc(&self) -> (u64, Option<usize>, Option<usize>) {
+        (self.file, self.at, self.atEnd)
+    }
+
     /// Print the message
     pub fn print(&self, fileMap: &Arc<Mutex<FileMap>>) {
         match self.kind {
@@ -142,32 +147,28 @@ impl CompileMsg {
     }
 }
 
-#[doc(hidden)]
-pub struct CompileError;
-
-#[doc(hidden)]
-impl CompileError {
-    pub fn unlocated<T: ToString>(msg: T) -> CompileMsg {
+pub trait CompileMsgImpl {
+    fn unlocated<T: ToString>(msg: T) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
             file: 0,
             at: None,
             atEnd: None,
-            kind: CompileMsgKind::Error,
+            kind: Self::getKind(),
         }
     }
 
-    pub fn on_file<T: ToString>(msg: T, file: u64) -> CompileMsg {
+    fn onFile<T: ToString>(msg: T, file: u64) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
             file,
             at: None,
             atEnd: None,
-            kind: CompileMsgKind::Error,
+            kind: Self::getKind(),
         }
     }
 
-    pub fn from_preTo<T: ToString, Tok: Clone + Debug>(
+    fn fromPreTo<T: ToString, Tok: Clone + Debug>(
         msg: T,
         preToken: &FileTokPos<Tok>,
     ) -> CompileMsg {
@@ -176,66 +177,59 @@ impl CompileError {
             file: preToken.file,
             at: Some(preToken.tokPos.start),
             atEnd: Some(preToken.tokPos.end),
-            kind: CompileMsgKind::Error,
+            kind: Self::getKind(),
         }
     }
 
-    pub fn from_at<T: ToString>(msg: T, file: u64, at: usize, atEnd: Option<usize>) -> CompileMsg {
+    fn fromAt<T: ToString>(msg: T, file: u64, at: usize, atEnd: Option<usize>) -> CompileMsg {
         CompileMsg {
             msg: msg.to_string(),
             file,
             at: Some(at),
             atEnd,
-            kind: CompileMsgKind::Error,
+            kind: Self::getKind(),
         }
+    }
+
+    fn fromSourceRange<T: ToString>(msg: T, range: &SourceRange) -> CompileMsg {
+        if range.endfile == range.startfile {
+            CompileMsg {
+                msg: msg.to_string(),
+                file: range.startfile,
+                at: Some(range.start),
+                atEnd: Some(range.end),
+                kind: Self::getKind(),
+            }
+        } else {
+            CompileMsg {
+                msg: msg.to_string(),
+                file: range.startfile,
+                at: Some(range.start),
+                atEnd: None,
+                kind: Self::getKind(),
+            }
+        }
+    }
+
+    fn getKind() -> CompileMsgKind;
+}
+
+#[doc(hidden)]
+pub struct CompileError;
+
+#[doc(hidden)]
+impl CompileMsgImpl for CompileError {
+    fn getKind() -> CompileMsgKind {
+        CompileMsgKind::Error
     }
 }
 
 #[doc(hidden)]
 pub struct CompileWarning;
 #[doc(hidden)]
-impl CompileWarning {
-    pub fn unlocated<T: ToString>(msg: T) -> CompileMsg {
-        CompileMsg {
-            msg: msg.to_string(),
-            file: 0,
-            at: None,
-            atEnd: None,
-            kind: CompileMsgKind::Warning,
-        }
-    }
-
-    pub fn on_file<T: ToString>(msg: T, file: u64) -> CompileMsg {
-        CompileMsg {
-            msg: msg.to_string(),
-            file,
-            at: None,
-            atEnd: None,
-            kind: CompileMsgKind::Warning,
-        }
-    }
-
-    pub fn from_preTo<T: ToString, U: Clone + Debug>(
-        msg: T,
-        preToken: &FileTokPos<U>,
-    ) -> CompileMsg {
-        CompileMsg {
-            msg: msg.to_string(),
-            file: preToken.file,
-            at: Some(preToken.tokPos.start),
-            atEnd: Some(preToken.tokPos.end),
-            kind: CompileMsgKind::Warning,
-        }
-    }
-
-    pub fn from_at(msg: String, file: u64, at: usize, atEnd: usize) -> CompileMsg {
-        CompileMsg {
-            msg,
-            file,
-            at: Some(at),
-            atEnd: Some(atEnd),
-            kind: CompileMsgKind::Warning,
-        }
+impl CompileMsgImpl for CompileWarning {
+    fn getKind() -> CompileMsgKind {
+        CompileMsgKind::Warning
     }
 }
 
@@ -303,6 +297,52 @@ impl<T: Clone + Debug> FileTokPos<T> {
     /// Token to string. Use the debug impl
     pub fn tokStringDebug(&self) -> String {
         self.tokPos.tokStringDebug()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SourceRange {
+    pub startfile: u64,
+    pub endfile: u64,
+    pub start: usize,
+    pub end: usize,
+}
+
+impl SourceRange {
+    pub fn new(startfile: u64, endfile: u64, start: usize, end: usize) -> Self {
+        Self {
+            startfile,
+            endfile,
+            start,
+            end,
+        }
+    }
+
+    pub fn newSingle(file: u64, start: usize, end: usize) -> Self {
+        Self {
+            startfile: file,
+            endfile: file,
+            start,
+            end,
+        }
+    }
+
+    pub fn newSingleTok<T: Clone + Debug>(tok: &FileTokPos<T>) -> Self {
+        Self {
+            startfile: tok.file,
+            endfile: tok.file,
+            start: tok.tokPos.start,
+            end: tok.tokPos.end,
+        }
+    }
+
+    pub fn newDoubleTok<T: Clone + Debug>(t1: &FileTokPos<T>, t2: &FileTokPos<T>) -> Self {
+        Self {
+            startfile: t1.file,
+            endfile: t2.file,
+            start: t1.tokPos.start,
+            end: t2.tokPos.end,
+        }
     }
 }
 

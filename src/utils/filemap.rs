@@ -23,6 +23,8 @@ pub struct FileMap {
     files: Vec<Either>,
     /// Resolved paths
     resolvedPaths: HashMap<String, u64>,
+    /// Reverse-resolved paths
+    reverseResolved: HashMap<u64, String>,
 }
 
 impl<'a> FileMap {
@@ -32,6 +34,7 @@ impl<'a> FileMap {
             params,
             files: vec![],
             resolvedPaths: HashMap::new(),
+            reverseResolved: HashMap::new(),
         };
         me.files.push(Either::CompileFile(Arc::new(CompileFile::new(
             "<unknown>".to_string(),
@@ -43,15 +46,12 @@ impl<'a> FileMap {
 
     fn internalReadFile(&mut self, path: u64, mut file: &File) -> Arc<CompileFile> {
         let mut filecontents: String = String::new();
+        let pathStr = self.reverseResolved.get(&path).unwrap();
         if let Err(err) = file.read_to_string(&mut filecontents) {
-            for (pathStr, index) in &self.resolvedPaths {
-                if path == *index {
-                    panic!("Error reading {pathStr}. Error: {err}");
-                }
-            }
-            panic!("Error reading file with idx {path} (this is a bug, you should not be able to read this. Report this please). Error: {err}");
+            panic!("Error reading {pathStr}. Error: {err}");
         }
-        let res = Arc::new(CompileFile::new(path.to_string(), filecontents));
+
+        let res = Arc::new(CompileFile::new(pathStr.clone(), filecontents));
         self.files
             .insert(path as usize, Either::CompileFile(res.clone()));
         return res;
@@ -125,7 +125,7 @@ impl<'a> FileMap {
     /// Get paths of current files opened.
     pub fn getCurrPaths(&self) -> Vec<u64> {
         let mut paths = Vec::new();
-        for path in 0..self.files.len() {
+        for path in 1..self.files.len() {
             paths.push(path as u64);
         }
         return paths;
@@ -135,6 +135,8 @@ impl<'a> FileMap {
     pub fn addTestFile(&mut self, path: String, content: String) {
         self.resolvedPaths
             .insert(path.clone(), self.files.len() as u64);
+        self.reverseResolved
+            .insert(self.files.len() as u64, path.clone());
         self.files
             .push(Either::CompileFile(Arc::new(CompileFile::new(
                 path, content,
@@ -176,6 +178,7 @@ impl<'a> FileMap {
                 return Ok(v);
             } else {
                 let pos = self.hasFileAccessImpl(&canonical)?;
+                self.reverseResolved.insert(pos, canonical.clone());
                 if canonical != pathStr {
                     self.resolvedPaths.insert(canonical, pos);
                 }

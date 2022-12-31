@@ -8,7 +8,8 @@ use super::bufferedLexer::{BufferedLexer, StateBufferedLexer};
 
 struct Scope;
 
-mod parseTu;
+mod parse;
+mod sema;
 
 pub enum ModuleImportState {
     /// Parsing the first decl in a TU.
@@ -58,10 +59,12 @@ impl Parser {
 
     pub fn parse(&mut self) -> (AstTu, Vec<CompileMsg>) {
         let tu = self.parseTu();
-        return (tu, self.errors.clone());
+        let mut lexErr = self.lexer.errors();
+        lexErr.extend(self.errors.clone());
+        return (tu, lexErr);
     }
 
-    pub fn printStringTree(ast: &AstTu) -> String {
+    pub fn printStringTree(ast: AstTu) -> String {
         ast.getDebugNode().to_string()
     }
 }

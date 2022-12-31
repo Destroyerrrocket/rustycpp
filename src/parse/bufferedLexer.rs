@@ -1,6 +1,6 @@
 use crate::{
     lex::{lexer::Lexer, token::Token},
-    utils::structs::FileTokPos,
+    utils::structs::{CompileMsg, FileTokPos},
 };
 
 #[derive(Clone, Copy)]
@@ -46,32 +46,41 @@ impl BufferedLexer {
         )
     }
 
-    pub fn reachedEnd(&mut self, state: &mut StateBufferedLexer) -> bool {
-        if state.currentToken > state.maximumToken {
+    pub fn errors(&mut self) -> Vec<CompileMsg> {
+        self.lexer.errors()
+    }
+
+    pub fn reachedEnd(&mut self, lexpos: &mut StateBufferedLexer) -> bool {
+        if lexpos.maximumToken < lexpos.minimumToken {
+            return false;
+        }
+
+        if lexpos.currentToken > lexpos.maximumToken {
             return true;
         }
-        if state.currentToken > self.lastTokIndex() {
+
+        if lexpos.currentToken + 1 > self.tokens.len() {
             if self.tryGetNextToken() {
                 return false;
             } else {
-                state.maximumToken = state.currentToken;
+                lexpos.maximumToken = lexpos.currentToken;
                 return true;
             }
         }
         return false;
     }
 
-    pub fn consumeToken(&mut self, state: &mut StateBufferedLexer) -> bool {
-        if !self.reachedEnd(state) {
-            state.currentToken += 1;
+    pub fn consumeToken(&mut self, lexpos: &mut StateBufferedLexer) -> bool {
+        if !self.reachedEnd(lexpos) {
+            lexpos.currentToken += 1;
             return true;
         }
         false
     }
 
-    pub fn consumeTokenIfEq(&mut self, state: &mut StateBufferedLexer, tok: Token) -> bool {
-        if !self.reachedEnd(state) && self.tokens[state.currentToken].tokPos.tok == tok {
-            state.currentToken += 1;
+    pub fn consumeTokenIfEq(&mut self, lexpos: &mut StateBufferedLexer, tok: Token) -> bool {
+        if !self.reachedEnd(lexpos) && self.tokens[lexpos.currentToken].tokPos.tok == tok {
+            lexpos.currentToken += 1;
             return true;
         }
         false
@@ -79,26 +88,26 @@ impl BufferedLexer {
 
     pub fn consumeTokenIf(
         &mut self,
-        state: &mut StateBufferedLexer,
+        lexpos: &mut StateBufferedLexer,
         cond: fn(Token) -> bool,
     ) -> bool {
-        if !self.reachedEnd(state) && cond(self.tokens[state.currentToken].tokPos.tok) {
-            state.currentToken += 1;
+        if !self.reachedEnd(lexpos) && cond(self.tokens[lexpos.currentToken].tokPos.tok) {
+            lexpos.currentToken += 1;
             return true;
         }
         false
     }
 
-    pub fn get(&mut self, state: &mut StateBufferedLexer) -> Option<FileTokPos<Token>> {
-        if self.reachedEnd(state) {
+    pub fn get(&mut self, lexpos: &mut StateBufferedLexer) -> Option<FileTokPos<Token>> {
+        if self.reachedEnd(lexpos) {
             return None;
         }
-        Some(self.tokens[state.currentToken])
+        Some(self.tokens[lexpos.currentToken])
     }
 
     pub fn makeProtectedRange(
-        start: &mut StateBufferedLexer,
-        end: &mut StateBufferedLexer,
+        start: &StateBufferedLexer,
+        end: &StateBufferedLexer,
     ) -> StateBufferedLexer {
         let mut newState = *start;
         newState.minimumToken = start.currentToken;
@@ -107,46 +116,53 @@ impl BufferedLexer {
         newState
     }
 
-    pub fn getConsumeToken(&mut self, state: &mut StateBufferedLexer) -> Option<FileTokPos<Token>> {
-        if self.reachedEnd(state) {
+    pub fn getConsumeToken(
+        &mut self,
+        lexpos: &mut StateBufferedLexer,
+    ) -> Option<FileTokPos<Token>> {
+        if self.reachedEnd(lexpos) {
             return None;
         }
-        state.currentToken += 1;
-        return Some(self.tokens[state.currentToken - 1]);
+        lexpos.currentToken += 1;
+        return Some(self.tokens[lexpos.currentToken - 1]);
     }
 
     pub fn getConsumeTokenIfEq(
         &mut self,
-        state: &mut StateBufferedLexer,
+        lexpos: &mut StateBufferedLexer,
         tok: Token,
     ) -> Option<FileTokPos<Token>> {
-        if !self.reachedEnd(state) && self.tokens[state.currentToken].tokPos.tok == tok {
-            state.currentToken += 1;
-            return Some(self.tokens[state.currentToken - 1]);
+        if !self.reachedEnd(lexpos) && self.tokens[lexpos.currentToken].tokPos.tok == tok {
+            lexpos.currentToken += 1;
+            return Some(self.tokens[lexpos.currentToken - 1]);
         }
         None
     }
 
     pub fn getConsumeTokenIf(
         &mut self,
-        state: &mut StateBufferedLexer,
+        lexpos: &mut StateBufferedLexer,
         cond: fn(Token) -> bool,
     ) -> Option<FileTokPos<Token>> {
-        if !self.reachedEnd(state) && cond(self.tokens[state.currentToken].tokPos.tok) {
-            state.currentToken += 1;
-            return Some(self.tokens[state.currentToken - 1]);
+        if !self.reachedEnd(lexpos) && cond(self.tokens[lexpos.currentToken].tokPos.tok) {
+            lexpos.currentToken += 1;
+            return Some(self.tokens[lexpos.currentToken - 1]);
         }
         None
     }
 
     pub fn getWithOffset(
         &mut self,
-        state: &mut StateBufferedLexer,
+        lexpos: &mut StateBufferedLexer,
         offset: isize,
     ) -> Option<FileTokPos<Token>> {
-        match state.currentToken.checked_add_signed(offset) {
+        if lexpos.maximumToken < lexpos.minimumToken {
+            return None;
+        }
+
+        match lexpos.currentToken.checked_add_signed(offset) {
             Some(pos) => {
-                if pos > state.maximumToken || pos < state.minimumToken {
+                if pos > lexpos.maximumToken || pos < lexpos.minimumToken {
                     return None;
                 }
                 while pos > self.lastTokIndex() && self.tryGetNextToken() {}
@@ -161,12 +177,16 @@ impl BufferedLexer {
 
     pub fn getWithOffsetSaturating(
         &mut self,
-        state: &mut StateBufferedLexer,
+        lexpos: &mut StateBufferedLexer,
         offset: isize,
     ) -> FileTokPos<Token> {
-        match state.currentToken.checked_add_signed(offset) {
+        if lexpos.maximumToken < lexpos.minimumToken {
+            return self.tokens[lexpos.minimumToken];
+        }
+
+        match lexpos.currentToken.checked_add_signed(offset) {
             Some(mut pos) => {
-                pos = pos.clamp(state.minimumToken, state.maximumToken);
+                pos = pos.clamp(lexpos.minimumToken, lexpos.maximumToken);
 
                 while pos > self.lastTokIndex() && self.tryGetNextToken() {}
                 if pos > self.lastTokIndex() {
@@ -174,7 +194,48 @@ impl BufferedLexer {
                 }
                 self.tokens[pos]
             }
-            None => self.tokens[state.minimumToken],
+            None => self.tokens[lexpos.minimumToken],
         }
+    }
+
+    // move back lexpos nth positions
+    #[allow(clippy::unused_self)]
+    pub fn moveBack(&self, lexpos: &mut StateBufferedLexer, n: usize) {
+        if lexpos.maximumToken < lexpos.minimumToken {
+            return;
+        }
+
+        lexpos.currentToken = lexpos
+            .currentToken
+            .saturating_sub(n)
+            .clamp(lexpos.minimumToken, lexpos.maximumToken);
+    }
+
+    pub fn moveForward(&mut self, lexpos: &mut StateBufferedLexer, n: usize) -> bool {
+        if lexpos.maximumToken < lexpos.minimumToken {
+            return false;
+        }
+
+        lexpos.currentToken = lexpos
+            .currentToken
+            .saturating_add(n)
+            .clamp(lexpos.minimumToken, lexpos.maximumToken);
+        while lexpos.currentToken > self.lastTokIndex() && self.tryGetNextToken() {}
+        return lexpos.currentToken <= self.lastTokIndex();
+    }
+
+    pub fn moveStateToOtherState(
+        &self,
+        lexpos: &mut StateBufferedLexer,
+        otherpos: &mut StateBufferedLexer,
+    ) -> bool {
+        // We know that the states are valid, so we just check for ranges
+        if otherpos.currentToken > lexpos.maximumToken
+            || otherpos.currentToken < lexpos.minimumToken
+        {
+            return false;
+        }
+        lexpos.currentToken = otherpos.currentToken;
+        true
     }
 }

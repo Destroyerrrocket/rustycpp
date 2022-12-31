@@ -15,7 +15,7 @@ use super::pretoken::PreToken;
 #[derive(Debug)]
 #[doc(hidden)]
 struct FileLexer {
-    pub compFile: String,
+    pub compFile: u64,
     pub lexer: PreLexer,
 }
 
@@ -49,7 +49,7 @@ impl MultiLexer {
         Self {
             fileMapping: files,
             files: vec![FileLexer {
-                compFile: currFile.path().clone(),
+                compFile: file,
                 lexer,
             }],
             pushedTokens: VecDeque::new(),
@@ -78,17 +78,10 @@ impl MultiLexer {
     /// Push a new file. Please be careful when you're doing this, as the pushed
     /// tokens will still be returned first!
     pub fn pushFile(&mut self, path: String) {
-        self.files.push(FileLexer {
-            compFile: path.clone(),
-            lexer: PreLexer::new(
-                self.fileMapping
-                    .lock()
-                    .unwrap()
-                    .getAddFileRef(path.as_str())
-                    .content()
-                    .to_string(),
-            ),
-        });
+        let mut fileMapping = self.fileMapping.lock().unwrap();
+        let compFile = fileMapping.getAddFile(path.as_str());
+        let lexer = PreLexer::new(fileMapping.getOpenedFile(compFile).content().to_string());
+        self.files.push(FileLexer { compFile, lexer });
     }
 
     /// Push a new file. Please be careful when you're doing this, as the pushed
@@ -123,13 +116,7 @@ impl Iterator for MultiLexer {
                 match lexer.lexer.next() {
                     None => {}
                     Some(tok) => {
-                        return Some(FileTokPos::new(
-                            self.fileMapping
-                                .lock()
-                                .expect("Thread panic")
-                                .getAddFile(&lexer.compFile),
-                            tok,
-                        ));
+                        return Some(FileTokPos::new(lexer.compFile, tok));
                     }
                 }
             } else {

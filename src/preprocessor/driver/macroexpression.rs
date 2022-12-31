@@ -5,7 +5,7 @@ use crate::grammars::macrointconstantexpressionast::PreTokenIf;
 use crate::grammars::macrointconstantexpressionparser;
 use crate::preprocessor::multilexer::MultiLexer;
 use crate::preprocessor::pretoken::PreToken;
-use crate::utils::structs::{CompileError, CompileMsg, FileTokPos, TokPos};
+use crate::utils::structs::{CompileError, CompileMsg, CompileMsgImpl, FileTokPos, TokPos};
 use crate::{fileTokPosMatchArm, fileTokPosMatches};
 
 use super::Preprocessor;
@@ -39,7 +39,7 @@ impl Preprocessor {
                     }
                     PreToken::Newline => {
                         lexer.pushToken(tok.clone());
-                        return Err(CompileError::from_preTo(
+                        return Err(CompileError::fromPreTo(
                             "Expected identifier after the defined. Instead, found a newline"
                                 .to_string(),
                             definedToken,
@@ -49,7 +49,7 @@ impl Preprocessor {
                         break tok;
                     }
                     _ => {
-                        return Err(CompileError::from_preTo(
+                        return Err(CompileError::fromPreTo(
                             format!(
                                 "Expected identifier after the defined. Instead, found: {}",
                                 tok.tokPos.tok.to_str()
@@ -59,7 +59,7 @@ impl Preprocessor {
                     }
                 }
             } else {
-                return Err(CompileError::from_preTo(
+                return Err(CompileError::fromPreTo(
                     "Expected identifier after the defined. Instead, found EOF",
                     definedToken,
                 ));
@@ -77,7 +77,7 @@ impl Preprocessor {
                     if let Some(tok) = tok {
                         lexer.pushToken(tok);
                     }
-                    return Err(CompileError::from_preTo(
+                    return Err(CompileError::fromPreTo(
                         "Expected matching closing paren for this opening paren",
                         &openParenTok,
                     ));
@@ -114,14 +114,13 @@ impl Preprocessor {
             .take(1)
             .filter(|x| fileTokPosMatches!(x, PreToken::Ident(_)))
             .map(|x| x.tokPos.tok.to_str())
-            .into_iter()
             .next()
         {
             name = tok.to_string();
         }
 
         if name.is_empty() {
-            Err(CompileError::from_preTo(
+            Err(CompileError::fromPreTo(
                 "Expected identifier after defined",
                 definedToken,
             ))
@@ -283,7 +282,7 @@ impl Preprocessor {
                     )
                 )
         }) {
-            errors.push(CompileError::from_preTo(
+            errors.push(CompileError::fromPreTo(
                 format!(
                     "Invalid token in if eval scope: {}",
                     invalid.tokPos.tok.to_str()
@@ -304,7 +303,7 @@ impl Preprocessor {
                             intconstantValues
                                 .push_back(FileTokPos::new_meta_c(PreTokenIf::Num(num), token));
                         }
-                        Err(err) => errors.push(CompileError::from_preTo(
+                        Err(err) => errors.push(CompileError::fromPreTo(
                             format!("Invalid number in if eval scope: {err}"),
                             token,
                         )),
@@ -325,7 +324,7 @@ impl Preprocessor {
         }
 
         if intconstantValues.front().is_none() {
-            return Err(vec![CompileError::from_preTo(
+            return Err(vec![CompileError::fromPreTo(
                 "Missing data for integer constant evaluation",
                 token,
             )]);

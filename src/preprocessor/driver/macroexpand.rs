@@ -11,7 +11,7 @@ use crate::{
     },
     utils::{
         compilerstate::CompilerState,
-        structs::{CompileError, CompileMsg, FileTokPos, TokPos},
+        structs::{CompileError, CompileMsg, CompileMsgImpl, FileTokPos, TokPos},
     },
 };
 
@@ -536,7 +536,7 @@ impl Preprocessor {
             let tok = lexer.next();
             match (openParens, &tok) {
                 (_, None) => {
-                    return Err(CompileError::from_preTo(
+                    return Err(CompileError::fromPreTo(
                         "Expected matching closing parentheses for this '('",
                         &openParen,
                     ));
@@ -584,18 +584,18 @@ impl Preprocessor {
         }
 
         if min == max {
-            return Err(CompileError::from_preTo(
+            return Err(CompileError::fromPreTo(
                 format!("Expected {min} parameters. found {len}"),
                 &closeParen,
             ));
         }
         if len < min {
-            return Err(CompileError::from_preTo(
+            return Err(CompileError::fromPreTo(
                 format!("Expected at least {min} parameters. found {len}"),
                 &closeParen,
             ));
         } else {
-            return Err(CompileError::from_preTo(
+            return Err(CompileError::fromPreTo(
                 format!("Expected at most {max} parameters. found {len}"),
                 &closeParen,
             ));

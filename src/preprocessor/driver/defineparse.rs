@@ -11,7 +11,7 @@ use crate::{
     preprocessor::pretoken::{PreToken, PreprocessingOperator},
     utils::{
         funcs::all_unique_elements,
-        structs::{CompileError, CompileMsg, CompileWarning, FileTokPos, TokPos},
+        structs::{CompileError, CompileMsg, CompileMsgImpl, CompileWarning, FileTokPos, TokPos},
     },
 };
 
@@ -135,13 +135,13 @@ impl Preprocessor {
             if let PreToken::Ident(idStr) = &tokId.tokPos.tok {
                 idStr.to_string()
             } else {
-                return Err(CompileError::from_preTo(
+                return Err(CompileError::fromPreTo(
                     "Expected identifier, instead found: ".to_string() + tokId.tokPos.tok.to_str(),
                     &tokId,
                 ));
             }
         } else {
-            return Err(CompileError::from_preTo(
+            return Err(CompileError::fromPreTo(
                 "Expected identifier in macro definition",
                 initialToken,
             ));
@@ -193,7 +193,7 @@ impl Preprocessor {
                                 param.push(id.to_string());
                             }
                             _ => {
-                                return Err(CompileError::from_preTo(
+                                return Err(CompileError::fromPreTo(
                                     format!(
                                         "Non-valid parameter to function-like macro: {identParamTokens:?}"
                                     ),
@@ -204,13 +204,13 @@ impl Preprocessor {
                     }
 
                     if let Some(prepro) = paren.next() {
-                        return Err(CompileError::from_preTo(
+                        return Err(CompileError::fromPreTo(
                             "Unparsable extra token in macro parameter",
                             &prepro,
                         ));
                     }
                     if !all_unique_elements(&param) {
-                        return Err(CompileError::from_preTo(
+                        return Err(CompileError::fromPreTo(
                             "Repeated identifiers in parameters",
                             &tokLParen,
                         ));
@@ -243,7 +243,7 @@ impl Preprocessor {
                     .iter()
                     .any(|x| matches!(x, PreTokenDefine::VariadicArg(_)))
                 {
-                    return Err(CompileError::from_preTo(
+                    return Err(CompileError::fromPreTo(
                         "Non-variadic macro can't use __VA_ARGS__",
                         initialToken,
                     ));
@@ -252,7 +252,7 @@ impl Preprocessor {
                     .iter()
                     .any(|x| matches!(x, PreTokenDefine::VariadicOpt(_, _)))
                 {
-                    return Err(CompileError::from_preTo(
+                    return Err(CompileError::fromPreTo(
                         "Non-variadic macro can't use __VA_OPT__",
                         initialToken,
                     ));
@@ -282,7 +282,7 @@ impl Preprocessor {
         match self.definitions.get_mut(&def.id) {
             Some(other) => {
                 *other = def;
-                return Err(CompileWarning::from_preTo("Redefining macro", preToken));
+                return Err(CompileWarning::fromPreTo("Redefining macro", preToken));
             }
             None => {
                 self.definitions.insert(def.id.clone(), def);

@@ -3,7 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::vec;
 
-use crate::utils::structs::{CompileError, CompileMsg};
+use crate::utils::structs::{CompileError, CompileMsg, CompileMsgImpl};
 
 use super::structs::{ModuleDeclaration, ModuleTree, Node};
 
@@ -70,7 +70,7 @@ fn dfsLoops(tree: &mut ModuleTree) -> Result<(), Vec<CompileMsg>> {
                 .unwrap();
 
             if visited.contains(&next.module.0) {
-                err.push(CompileError::on_file(
+                err.push(CompileError::onFile(
                     format!(
                         "Loop detected: stack reached: {:?}, which also depends on {}",
                         &stack.iter(),

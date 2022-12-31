@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::preprocessor::pretoken::PreprocessingOperator;
-use crate::utils::structs::{CompileError, TokPos};
+use crate::utils::structs::{CompileError, CompileMsgImpl, TokPos};
 use crate::{p_alt, p_guard_condition_select, pvec_accumulate_while, pvoid_drop_until_fail, wrap};
 
 use crate::{
@@ -62,7 +62,7 @@ fn ReTokWhiteSp(input: In) -> ParseRes {
         let norm = normal(input.pop_front().unwrap());
         Ok(norm)
     } else {
-        Err(CompileError::from_preTo(
+        Err(CompileError::fromPreTo(
             "Expected a whitespace".to_string(),
             &input[0],
         ))
@@ -74,7 +74,7 @@ fn ReTokNoWhiteSp(input: In) -> ParseRes {
         input,
         PreTokenDefinePreParse::Normal(PreToken::Whitespace(_))
     ) {
-        Err(CompileError::from_preTo(
+        Err(CompileError::fromPreTo(
             "Expected a normal token, found a whitespace".to_string(),
             &input[0],
         ))
@@ -82,7 +82,7 @@ fn ReTokNoWhiteSp(input: In) -> ParseRes {
         let norm = normal(input.pop_front().unwrap());
         Ok(norm)
     } else {
-        Err(CompileError::from_preTo(
+        Err(CompileError::fromPreTo(
             "Expected a normal token".to_string(),
             &input[0],
         ))
@@ -110,13 +110,13 @@ fn ArgMVar(input: In) -> ParseRes {
                             d.into_iter().collect::<Vec<PreTokenDefine>>(),
                         ));
                     } else {
-                        return Err(CompileError::from_preTo(
+                        return Err(CompileError::fromPreTo(
                             "Expected a ) at the end of the variadic optional".to_string(),
                             &e,
                         ));
                     }
                 } else {
-                    return Err(CompileError::from_preTo(
+                    return Err(CompileError::fromPreTo(
                         "Expected a ( at the start of the variadic optional".to_string(),
                         &e,
                     ));
@@ -124,14 +124,14 @@ fn ArgMVar(input: In) -> ParseRes {
             }
             _ => {
                 input.push_front(e);
-                Err(CompileError::from_preTo(
+                Err(CompileError::fromPreTo(
                     "Expected a parameter at:".to_string(),
                     &input[0],
                 ))
             }
         }
     } else {
-        Err(CompileError::from_preTo(
+        Err(CompileError::fromPreTo(
             "Expected a parameter at the end of the macro definition".to_string(),
             &input[0],
         ))
@@ -159,14 +159,14 @@ fn MaybeHashHash(input: In) -> ParseRes {
                 ))],
             ));
         }
-        return Err(CompileError::from_preTo(
+        return Err(CompileError::fromPreTo(
             "Expected a # at the end of this ##".to_string(),
             &hashHash,
         ));
     }
     if matchesPP!(input, PreTokenDefinePreParse::HashHash) {
         let unexpectedHashHash = input.pop_front().unwrap();
-        return Err(CompileError::from_preTo(
+        return Err(CompileError::fromPreTo(
             "Expected an argument or token previous to this ##".to_string(),
             &unexpectedHashHash,
         ));
@@ -174,7 +174,7 @@ fn MaybeHashHash(input: In) -> ParseRes {
     let argOrTok = p_guard_condition_select!(
         In,
         |input: In| {
-            Err(CompileError::from_preTo(
+            Err(CompileError::fromPreTo(
                 "Expected a parameter or token".to_string(),
                 &input[0],
             ))
@@ -242,7 +242,7 @@ fn NoWhiteSp(input: In) -> ParseRes {
 
 fn parseElem(input: In) -> ParseRes {
     if input.is_empty() {
-        return Err(CompileError::from_preTo(
+        return Err(CompileError::fromPreTo(
             "Expected a token".to_string(),
             &input[0],
         ));

@@ -27,6 +27,7 @@ priority-queue = "1.2.3"
 threadpool = "1.8.1"
 bumpalo = { version="3.11.1", features = ["collections", "allocator_api"] }
 deriveMacros = { path = "./deriveMacros" }
+function_name = "0.3.0"
 
 [profile.release]
 lto = true

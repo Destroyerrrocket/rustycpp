@@ -2,7 +2,9 @@ use std::cmp::Ordering;
 use std::collections::VecDeque;
 
 use super::macrointconstantexpressionast::PreTokenIf;
-use crate::utils::structs::{CompileError, CompileMsg, CompileWarning, FileTokPos, TokPos};
+use crate::utils::structs::{
+    CompileError, CompileMsg, CompileMsgImpl, CompileWarning, FileTokPos, TokPos,
+};
 
 /// Evaluator of a macro constant expression. The standard defines a pretty low
 /// lower limit in integer representation, so we use i128, which is way bigger.
@@ -38,7 +40,7 @@ pub fn exprRes(i: In) -> Out {
     let (i, s) = i;
     let (n, mut err) = expression((i, s))?;
     if !i.is_empty() {
-        err.push(CompileWarning::from_preTo(
+        err.push(CompileWarning::fromPreTo(
             "the rest of the expression is not evaluated.",
             &i[0],
         ));
@@ -54,12 +56,12 @@ fn literal(i: In) -> Out {
         }
     }
     if i.is_empty() {
-        Err(vec![CompileError::from_preTo(
+        Err(vec![CompileError::fromPreTo(
             "expected a number at the end of this expression:",
             s,
         )])
     } else {
-        Err(vec![CompileError::from_preTo(
+        Err(vec![CompileError::fromPreTo(
             "expected a number, instead found",
             &i[0],
         )])
@@ -76,7 +78,7 @@ fn primary_expression(i: In) -> Out {
     if matchesP!(i, PreTokenIf::RParen) {
         i.pop_front();
     } else {
-        err.push(CompileError::from_preTo(
+        err.push(CompileError::fromPreTo(
             "expected a ')' for this '('",
             &lparen,
         ));
@@ -114,10 +116,10 @@ fn conditional_expression(i: In) -> Out {
             err.extend(err3);
             Ok((if n == 0 { n3 } else { n2 }, err))
         } else if !i.is_empty() {
-            err.push(CompileError::from_preTo("expected a ':'", &i[0]));
+            err.push(CompileError::fromPreTo("expected a ':'", &i[0]));
             Err(err)
         } else {
-            err.push(CompileError::from_preTo("expected a ':'", s));
+            err.push(CompileError::fromPreTo("expected a ':'", s));
             Err(err)
         }
     } else {
@@ -383,13 +385,13 @@ fn postfix_expression(i: In) -> Out {
     loop {
         if matchesP!(i, PreTokenIf::DoublePlus) {
             let t = i.pop_front().unwrap();
-            err.push(CompileWarning::from_preTo(
+            err.push(CompileWarning::fromPreTo(
                 "Postincrement in macro expression does nothing",
                 &t,
             ));
         } else if matchesP!(i, PreTokenIf::DoubleMinus) {
             let t = i.pop_front().unwrap();
-            err.push(CompileWarning::from_preTo(
+            err.push(CompileWarning::fromPreTo(
                 "Postdecrement in macro expression does nothing",
                 &t,
             ));

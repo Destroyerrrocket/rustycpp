@@ -8,7 +8,7 @@ use crate::compiler::TranslationUnit;
 use crate::preprocessor::prelexer::PreLexer;
 use crate::preprocessor::pretoken::PreToken;
 use crate::utils::filemap::FileMap;
-use crate::utils::structs::{CompileError, CompileMsg, TokPos};
+use crate::utils::structs::{CompileError, CompileMsg, CompileMsgImpl, TokPos};
 
 use super::structs::ModuleOperator;
 
@@ -69,7 +69,7 @@ fn parseModuleOp(
     ) && !name.is_empty()
         && name != ":private"
     {
-        return Err(CompileError::from_at(
+        return Err(CompileError::fromAt(
             format!("The module name \"{name}\" is invalid!"),
             translationUnit,
             at,
@@ -135,7 +135,7 @@ fn parseImportOp(
         r"(:?(:?[\w\d_]+\.)*[\w\d_]+|:(:?[\w\d_]+\.)*[\w\d_]+)",
         &name
     ) {
-        return Err(CompileError::from_at(
+        return Err(CompileError::fromAt(
             format!("The import name \"{name}\" is invalid!"),
             translationUnit,
             at,

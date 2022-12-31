@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use crate::compiler::TranslationUnit;
 use crate::utils::filemap::FileMap;
 use crate::utils::stringref::ToStringRef;
-use crate::utils::structs::{CompileError, CompileMsg};
+use crate::utils::structs::{CompileError, CompileMsg, CompileMsgImpl};
 
 use super::structs::{ModuleDeclaration, ModuleOperator, Node};
 
@@ -109,7 +109,7 @@ pub fn generateNode(
 
     let mut iter = ops.iter();
     let mut res = parseGlobalPartOfModuleFile(&mut iter, fileMap)
-        .map_err(|err| vec![CompileError::on_file(err, tu)])?;
+        .map_err(|err| vec![CompileError::onFile(err, tu)])?;
     while res.0.is_some() {
         moduleImports.extend(res.1.clone());
         match res.0.as_ref().unwrap() {
@@ -117,7 +117,7 @@ pub fn generateNode(
                 moduleIsExport = true;
 
                 if name.is_empty() {
-                    err.push(CompileError::on_file(
+                    err.push(CompileError::onFile(
                         "global part can't be exported".to_string(),
                         tu,
                     ));
@@ -125,7 +125,7 @@ pub fn generateNode(
                 }
 
                 if name == ":private" {
-                    err.push(CompileError::on_file(
+                    err.push(CompileError::onFile(
                         format!(
                             ":private part can't be exported on module {}",
                             moduleName.unwrap()
@@ -136,7 +136,7 @@ pub fn generateNode(
                 }
 
                 if moduleName.is_some() {
-                    err.push(CompileError::on_file(
+                    err.push(CompileError::onFile(
                         format!("Module name already defined as {}", moduleName.unwrap()),
                         tu,
                     ));
@@ -144,36 +144,36 @@ pub fn generateNode(
                 }
                 moduleName = Some(name.to_string());
                 res = parseModulePartOfModuleFile(&mut iter, name.to_string(), fileMap)
-                    .map_err(|err| vec![CompileError::on_file(err, tu)])?;
+                    .map_err(|err| vec![CompileError::onFile(err, tu)])?;
             }
             ModuleOperator::Module(name) => {
                 if name.is_empty() {
                     if explicitGlobalModuleFound {
-                        err.push(CompileError::on_file("global part already defined", tu));
+                        err.push(CompileError::onFile("global part already defined", tu));
                         return Err(err);
                     }
                     explicitGlobalModuleFound = true;
                     res = parseGlobalPartOfModuleFile(&mut iter, fileMap)
-                        .map_err(|err| vec![CompileError::on_file(err, tu)])?;
+                        .map_err(|err| vec![CompileError::onFile(err, tu)])?;
                     continue;
                 }
 
                 if name != ":private" && moduleName.is_some() {
-                    err.push(CompileError::on_file(
+                    err.push(CompileError::onFile(
                         format!("Module name already defined as {}", moduleName.unwrap()),
                         tu,
                     ));
                     return Err(err);
                 } else if name == ":private" {
                     if moduleName.is_none() {
-                        err.push(CompileError::on_file(
+                        err.push(CompileError::onFile(
                             "Private part of a module must be in a named module. Currently on global",
                             tu,
                         ));
                         return Err(err);
                     } else {
                         if modulePrivateFound {
-                            err.push(CompileError::on_file(
+                            err.push(CompileError::onFile(
                                 format!(
                                     "Private part of a module already defined in module {}",
                                     moduleName.unwrap()
@@ -188,13 +188,13 @@ pub fn generateNode(
                             moduleName.as_ref().unwrap().to_string(),
                             fileMap,
                         )
-                        .map_err(|err| vec![CompileError::on_file(err, tu)])?;
+                        .map_err(|err| vec![CompileError::onFile(err, tu)])?;
                         continue;
                     }
                 }
                 moduleName = Some(name.to_string());
                 res = parseModulePartOfModuleFile(&mut iter, name.to_string(), fileMap)
-                    .map_err(|err| vec![CompileError::on_file(err, tu)])?;
+                    .map_err(|err| vec![CompileError::onFile(err, tu)])?;
             }
             _ => unreachable!(),
         }
@@ -249,7 +249,7 @@ pub fn generateNode(
             });
         }
         Err(error) => {
-            err.push(CompileError::on_file(
+            err.push(CompileError::onFile(
                 format!(
                     "Module {} already defined. Confilcting files: {} and {}",
                     moduleDecl, error.value.1, tu
@@ -293,12 +293,7 @@ pub fn generateNodes(
         return Err(err);
     }
 
-    for module in generatedEmptyNodes
-        .keys()
-        .copied()
-        .into_iter()
-        .collect::<Vec<_>>()
-    {
+    for module in generatedEmptyNodes.keys().copied().collect::<Vec<_>>() {
         let mut depenedsPlusModule = generatedEmptyNodes.get(&module).unwrap().1.clone();
         depenedsPlusModule.push(module);
 
@@ -313,7 +308,7 @@ pub fn generateNodes(
                 .filter(|key| !generatedEmptyNodes.contains_key(key))
                 .collect::<HashSet<_>>();
 
-            err.push(CompileError::on_file(
+            err.push(CompileError::onFile(
                 format!("Missing modules: {missing:?}"),
                 generatedEmptyNodes.get(&module).unwrap().0.module.1,
             ));

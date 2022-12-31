@@ -10,7 +10,7 @@ use crate::preprocessor::prelexer::PreLexer;
 use crate::preprocessor::pretoken::PreToken;
 use crate::utils::compilerstate::CompilerState;
 use crate::utils::structs::TokPos;
-use crate::utils::structs::{CompileError, CompileMsg, FileTokPos};
+use crate::utils::structs::{CompileError, CompileMsg, CompileMsgImpl, FileTokPos};
 
 use multiset::HashMultiSet;
 
@@ -27,7 +27,7 @@ impl Preprocessor {
         if self.multilexer.hasFileAccess(&file) {
             self.multilexer.pushFile(file);
         } else {
-            return Err(CompileError::from_preTo(
+            return Err(CompileError::fromPreTo(
                 format!("Can't include the file in path: {file}"),
                 preToken,
             ));
@@ -66,7 +66,7 @@ impl Preprocessor {
         let mut path = String::new();
 
         if tokensInclude.is_empty() {
-            return Err(CompileError::from_preTo(
+            return Err(CompileError::fromPreTo(
                 "The empty path can't be opened",
                 preToken,
             ));

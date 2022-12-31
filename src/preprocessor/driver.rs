@@ -11,7 +11,7 @@ use std::collections::{HashMap, VecDeque};
 use crate::{
     fileTokPosMatches,
     grammars::defineast::DefineAst,
-    utils::structs::{CompileError, CompileMsg, CompileWarning, FileTokPos},
+    utils::structs::{CompileError, CompileMsg, CompileMsgImpl, CompileWarning, FileTokPos},
 };
 
 use multiset::HashMultiSet;
@@ -100,7 +100,7 @@ impl Preprocessor {
 
         match vecPrepro.into_iter().find(|e| !e.tokPos.tok.isWhitespace()) {
             None => {
-                self.errors.push_back(CompileError::from_preTo(
+                self.errors.push_back(CompileError::fromPreTo(
                     "Expected an identifier to undefine",
                     &preToken,
                 ));
@@ -108,14 +108,14 @@ impl Preprocessor {
             Some(e) => match e.tokPos.tok {
                 PreToken::Ident(id) => {
                     if self.definitions.remove(&id).is_none() {
-                        self.errors.push_back(CompileError::from_preTo(
+                        self.errors.push_back(CompileError::fromPreTo(
                             format!("Macro {id} is not defined when reached"),
                             &preToken,
                         ));
                     }
                 }
                 _ => {
-                    self.errors.push_back(CompileError::from_preTo(
+                    self.errors.push_back(CompileError::fromPreTo(
                         format!("Expected an identifier, found: {}", e.tokPos.tok.to_str()),
                         &preToken,
                     ));
@@ -410,19 +410,19 @@ impl Preprocessor {
                         *scope = ScopeStatus::AlreadySucceeded;
                         self.reachNl(); // TODO: Check empty in else
                     } else {
-                        self.errors.push_back(CompileError::from_preTo(
+                        self.errors.push_back(CompileError::fromPreTo(
                             "Missmatched preprocessor conditional block",
                             &operation,
                         ));
                     }
                 }
                 "pragma" => {
-                    self.errors.push_back(CompileError::from_preTo("LMAO, you really expected me to implement this now XD. No worries, we'll get there :D", &operation));
+                    self.errors.push_back(CompileError::fromPreTo("LMAO, you really expected me to implement this now XD. No worries, we'll get there :D", &operation));
                     self.reachNl();
                 }
                 "endif" => {
                     if self.scope.is_empty() {
-                        self.errors.push_back(CompileError::from_preTo(
+                        self.errors.push_back(CompileError::fromPreTo(
                             "Missmatched preprocessor conditional block",
                             &operation,
                         ));
@@ -439,7 +439,7 @@ impl Preprocessor {
                         msg.push_str(t.tokPos.tok.to_str());
                     }
                     self.errors
-                        .push_back(CompileError::from_preTo(msg, &operation));
+                        .push_back(CompileError::fromPreTo(msg, &operation));
                 }
                 "warning" => {
                     let mut msg = String::new();
@@ -449,10 +449,10 @@ impl Preprocessor {
                         msg.push_str(t.tokPos.tok.to_str());
                     }
                     self.errors
-                        .push_back(CompileWarning::from_preTo(msg, &operation));
+                        .push_back(CompileWarning::fromPreTo(msg, &operation));
                 }
                 _ => {
-                    self.errors.push_back(CompileError::from_preTo(
+                    self.errors.push_back(CompileError::fromPreTo(
                         "I do not know this preprocessing expression yet! I'm learning though :)",
                         &operation,
                     ));

@@ -1,3 +1,4 @@
+#![feature(proc_macro_span)]
 #![allow(
     non_snake_case,
     dead_code,
@@ -40,7 +41,7 @@ fn impl_AstToString(_: &Field, fieldName: TokenStream) -> TokenStream {
 
 fn impl_CommonAst(ast: &DeriveInput) -> TokenStream {
     let name = &ast.ident;
-    let gen = match &ast.data {
+    match &ast.data {
         syn::Data::Struct(structData) => {
             let fields = &structData.fields;
             match fields {
@@ -75,8 +76,7 @@ fn impl_CommonAst(ast: &DeriveInput) -> TokenStream {
         }
         syn::Data::Enum(_) => quote!(compile_error!("Can't derive CommonAst for enum")),
         syn::Data::Union(_) => quote!(compile_error!("Can't derive CommonAst for union")),
-    };
-    gen.into()
+    }
 }
 
 #[proc_macro_derive(CommonAst, attributes(AstChild, AstToString))]

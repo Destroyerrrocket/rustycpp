@@ -9,7 +9,7 @@ use std::collections::VecDeque;
 
 use crate::preprocessor::pretoken::PreToken;
 use crate::utils::stringref::{StringRef, ToStringRef};
-use crate::utils::structs::{CompileError, CompileMsg, FileTokPos, TokPos};
+use crate::utils::structs::{CompileError, CompileMsg, CompileMsgImpl, FileTokPos, TokPos};
 use lazy_regex::regex_captures;
 use logos::Logos;
 
@@ -372,11 +372,11 @@ impl Token {
         preTok: FileTokPos<PreToken>,
     ) -> Result<VecDeque<FileTokPos<Self>>, Option<CompileMsg>> {
         match preTok.tokPos.tok {
-            PreToken::Unknown(ref text) => Err(Some(CompileError::from_preTo(
+            PreToken::Unknown(ref text) => Err(Some(CompileError::fromPreTo(
                 format!("Unknown token: {text}"),
                 &preTok,
             ))),
-            PreToken::HeaderName(ref text) => Err(Some(CompileError::from_preTo(
+            PreToken::HeaderName(ref text) => Err(Some(CompileError::fromPreTo(
                 format!("Header name token cannot be used at the next step of the compilation. It should be used inside a #include directive, or in a __has_include macro. Header name: {text}"),
                 &preTok,
             ))),
@@ -385,7 +385,7 @@ impl Token {
                 start: preTok.tokPos.start,
                 end: preTok.tokPos.end,
             })); vec}),
-            PreToken::PreprocessingOperator(_) => Err(Some(CompileError::from_preTo(
+            PreToken::PreprocessingOperator(_) => Err(Some(CompileError::fromPreTo(
                 "Preprocessing operators cannot be used at the next step of the compilation. Make sure that any stray # and ## are no longer present after preprocessing.",
                 &preTok,
             ))),
@@ -473,7 +473,7 @@ impl Token {
             r"++" => Ok(vec![FileTokPos::new_meta_c(Self::DoublePlus, tok)]),
             r"--" => Ok(vec![FileTokPos::new_meta_c(Self::DoubleMinus, tok)]),
             r"," => Ok(vec![FileTokPos::new_meta_c(Self::Comma, tok)]),
-            _ => Err(Some(CompileError::from_preTo(
+            _ => Err(Some(CompileError::fromPreTo(
                 format!("Unknown operator: {operator}"),
                 tok,
             ))),
@@ -567,7 +567,7 @@ impl Token {
             r"volatile" => Ok(FileTokPos::new_meta_c(Self::Volatile, tok)),
             r"wchar_t" => Ok(FileTokPos::new_meta_c(Self::Wchar_t, tok)),
             r"while" => Ok(FileTokPos::new_meta_c(Self::While, tok)),
-            _ => Err(Some(CompileError::from_preTo(
+            _ => Err(Some(CompileError::fromPreTo(
                 format!("Unknown token: {operator}"),
                 tok,
             ))),
@@ -703,21 +703,21 @@ impl Token {
     ) -> Result<VecDeque<FileTokPos<Self>>, Option<CompileMsg>> {
         let (encoding, message) = Self::getEncodingPrefix(operator);
         if message.len() < 3 {
-            return Err(Some(CompileError::from_preTo(
+            return Err(Some(CompileError::fromPreTo(
                 format!("Invalid char literal: {operator}"),
                 tok,
             )));
         }
         let msg = &message[1..message.len() - 1];
         let msg = Self::escapeString(msg).map_err(|err| {
-            Some(CompileError::from_preTo(
+            Some(CompileError::fromPreTo(
                 format!("Invalid char literal: {err}"),
                 tok,
             ))
         })?;
 
         if msg.len() != 1 {
-            return Err(Some(CompileError::from_preTo(
+            return Err(Some(CompileError::fromPreTo(
                 format!("Invalid char literal: {operator}"),
                 tok,
             )));
@@ -740,7 +740,7 @@ impl Token {
         let (encoding, message) = Self::getEncodingPrefix(operator);
         let msg = &message[1..message.len() - 1];
         let msg = Self::escapeString(msg).map_err(|err| {
-            Some(CompileError::from_preTo(
+            Some(CompileError::fromPreTo(
                 format!("Invalid string literal: {err}"),
                 tok,
             ))
@@ -854,7 +854,7 @@ impl Token {
             .map_err(|x| x.to_string())
             .and_then(|x| i128::try_from(x).map_err(|x| x.to_string()))
             .map_err(|err| {
-                Some(CompileError::from_preTo(
+                Some(CompileError::fromPreTo(
                     format!("Invalid number: {string}, error: {err}"),
                     tok,
                 ))
@@ -946,7 +946,7 @@ impl Token {
         f128::f128::parse("0x".to_owned() + prefix)
             .map_err(|x| x.to_string())
             .map_err(|err| {
-                Some(CompileError::from_preTo(
+                Some(CompileError::fromPreTo(
                     format!("Invalid number: {string}, error: {err}"),
                     tok,
                 ))
@@ -982,7 +982,7 @@ impl Token {
         f128::f128::parse(prefix)
             .map_err(|x| x.to_string())
             .map_err(|err| {
-                Some(CompileError::from_preTo(
+                Some(CompileError::fromPreTo(
                     format!("Invalid number: {string}, error: {err}"),
                     tok,
                 ))
