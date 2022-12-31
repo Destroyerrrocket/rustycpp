@@ -11,6 +11,7 @@ struct Scope;
 mod parse;
 mod sema;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ModuleImportState {
     /// Parsing the first decl in a TU.
     StartFile,

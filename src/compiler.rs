@@ -26,7 +26,6 @@ pub type TranslationUnit = u64;
 
 /// Main driver of the compilation. It coordinates to compilation of the various
 /// translation untis
-#[derive(Debug)]
 pub struct Compiler {
     /// State of the compiler
     compilerState: CompilerState,

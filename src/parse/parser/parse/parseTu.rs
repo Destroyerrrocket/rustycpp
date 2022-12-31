@@ -167,7 +167,14 @@ impl Parser {
             ));
         }
 
-        self.actOnModuleDecl(isExport, moduleName, modulePartition);
+        let ts = &self.lexer.getWithOffsetSaturating(&startlexpos, 0);
+        let te = &self.lexer.getWithOffsetSaturating(lexpos, -1);
+        self.actOnModuleDecl(
+            isExport,
+            moduleName,
+            modulePartition,
+            SourceRange::newDoubleTok(ts, te),
+        );
         return;
     }
 
