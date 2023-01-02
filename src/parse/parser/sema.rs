@@ -1,1 +1,2 @@
+mod semaDeclaration;
 mod semaTu;

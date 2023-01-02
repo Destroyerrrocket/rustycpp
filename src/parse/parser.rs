@@ -1,8 +1,12 @@
+use std::cell::UnsafeCell;
+use std::rc::Rc;
+
 use crate::ast::{common::CommonAst, Tu::AstTu};
 use crate::compiler::TranslationUnit;
 use crate::lex::lexer::Lexer;
 use crate::utils::compilerstate::CompilerState;
 use crate::utils::structs::CompileMsg;
+use crate::utils::unsafeallocator::UnsafeAllocator;
 
 use super::bufferedLexer::{BufferedLexer, StateBufferedLexer};
 
@@ -28,7 +32,7 @@ pub enum ModuleImportState {
 }
 
 pub struct Parser {
-    lexer: BufferedLexer,
+    lexer: UnsafeCell<BufferedLexer>,
     lexerStart: StateBufferedLexer,
     filePath: TranslationUnit,
     compilerState: CompilerState,
@@ -38,14 +42,14 @@ pub struct Parser {
 
     errors: Vec<CompileMsg>,
 
-    alloc: bumpalo::Bump,
+    alloc: Rc<UnsafeAllocator>,
 }
 
 impl Parser {
     pub fn new(lexer: Lexer, filePath: TranslationUnit, compilerState: CompilerState) -> Self {
         let (lexer, lexerStart) = BufferedLexer::new(lexer);
         Self {
-            lexer,
+            lexer: UnsafeCell::new(lexer),
             lexerStart,
             filePath,
             compilerState,
@@ -54,18 +58,27 @@ impl Parser {
 
             errors: vec![],
 
-            alloc: bumpalo::Bump::new(),
+            alloc: Rc::new(UnsafeAllocator::new()),
         }
     }
 
     pub fn parse(&mut self) -> (AstTu, Vec<CompileMsg>) {
         let tu = self.parseTu();
-        let mut lexErr = self.lexer.errors();
+        let mut lexErr = unsafe { &mut *self.lexer.get() }.errors();
         lexErr.extend(self.errors.clone());
         return (tu, lexErr);
     }
 
     pub fn printStringTree(ast: AstTu) -> String {
         ast.getDebugNode().to_string()
+    }
+
+    // Super unsafe, we could get invalid references if we ever destroy the parser. Tread carefully.
+    pub fn lexer(&self) -> &'static BufferedLexer {
+        unsafe { &*self.lexer.get() }
+    }
+
+    pub fn alloc(&self) -> &'static bumpalo::Bump {
+        self.alloc.alloc()
     }
 }

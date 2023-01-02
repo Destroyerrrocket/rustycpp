@@ -39,8 +39,15 @@ fn impl_AstToString(_: &Field, fieldName: TokenStream) -> TokenStream {
     }
 }
 
+fn impl_AstChild(_: &Field, fieldName: TokenStream) -> TokenStream {
+    quote! {
+        add_child(&self.#fieldName.debugNode())
+    }
+}
+
 fn impl_CommonAst(ast: &DeriveInput) -> TokenStream {
     let name = &ast.ident;
+    let generics = &ast.generics.to_token_stream();
     match &ast.data {
         syn::Data::Struct(structData) => {
             let fields = &structData.fields;
@@ -51,15 +58,61 @@ fn impl_CommonAst(ast: &DeriveInput) -> TokenStream {
                         let fieldName = field.ident.as_ref().unwrap().to_token_stream();
                         if hasAttribute!(field, AstToString) {
                             vecTypes.push(impl_AstToString(field, fieldName));
+                        } else if hasAttribute!(field, AstChild) {
+                            vecTypes.push(impl_AstChild(field, fieldName));
                         }
                     }
                     quote! {
-                        impl crate::ast::common::CommonAst for #name {
+                        impl #generics crate::ast::common::CommonAst for #name #generics {
                             fn getDebugNode(&self) -> crate::utils::debugnode::DebugNode {
                                 crate::utils::debugnode::DebugNode::new(stringify!(#name).to_string())
                                 #(. #vecTypes)*
                             }
                         }
+                    }
+                }
+                syn::Fields::Unnamed(_) => {
+                    quote!(compile_error!("Can't derive CommonAst for tuple struct"))
+                }
+                syn::Fields::Unit => quote! {
+                    impl crate::ast::common::CommonAst for #name #generics {
+                        fn getDebugNode(&self) -> crate::utils::debugnode::DebugNode {
+                            crate::utils::debugnode::DebugNode::new(stringify!(#name).to_string())
+                        }
+                    }
+                },
+            }
+        }
+        syn::Data::Enum(_) => quote!(compile_error!("Can't derive CommonAst for enum")),
+        syn::Data::Union(_) => quote!(compile_error!("Can't derive CommonAst for union")),
+    }
+}
+
+fn impl_DeclAst(ast: &DeriveInput) -> TokenStream {
+    let name = &ast.ident;
+    let generics = &ast.generics.to_token_stream();
+    match &ast.data {
+        syn::Data::Struct(structData) => {
+            let fields = &structData.fields;
+            match fields {
+                syn::Fields::Named(fields) => {
+                    let field = fields
+                        .named
+                        .iter()
+                        .find(|field| field.ty.to_token_stream().to_string() == "BaseDecl");
+                    if let Some(field) = field {
+                        let field = field.ident.to_token_stream();
+                        quote! {
+                            impl #generics crate::ast::common::DeclAst for #name {
+                                fn getBaseDecl(&self) -> &crate::ast::common::BaseDecl {
+                                    return &self.#field;
+                                }
+                            }
+                        }
+                    } else {
+                        quote!(compile_error!(
+                            "Can't implement DeclAst as there is no field with type BaseDecl"
+                        ))
                     }
                 }
                 syn::Fields::Unnamed(_) => {
@@ -79,11 +132,20 @@ fn impl_CommonAst(ast: &DeriveInput) -> TokenStream {
     }
 }
 
-#[proc_macro_derive(CommonAst, attributes(AstChild, AstToString))]
+#[proc_macro_derive(CommonAst, attributes(AstChild, AstChildSlice, AstToString))]
 pub fn CommonAst_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Construct a representation of Rust code as a syntax tree
     // that we can manipulate
     let ast = syn::parse(input).unwrap();
     // Build the trait implementation
     finalResult!(release impl_CommonAst(&ast))
+}
+
+#[proc_macro_derive(DeclAst, attributes())]
+pub fn DeclAst_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // Construct a representation of Rust code as a syntax tree
+    // that we can manipulate
+    let ast = syn::parse(input).unwrap();
+    // Build the trait implementation
+    finalResult!(release impl_DeclAst(&ast))
 }

@@ -22,7 +22,7 @@ impl Parser {
         &mut self,
         lexpos: &mut StateBufferedLexer,
     ) -> Option<StateBufferedLexer> {
-        let startTok = self.lexer.getConsumeToken(lexpos);
+        let startTok = self.lexer().getConsumeToken(lexpos);
         let startPos = *lexpos;
 
         if startTok.is_none() {
@@ -42,7 +42,7 @@ impl Parser {
 
         let mut openParenNum: u32 = 0;
         loop {
-            let candidate = self.lexer.getConsumeToken(lexpos)?;
+            let candidate = self.lexer().getConsumeToken(lexpos)?;
             let candidate = candidate.tokPos.tok;
             if candidate == endTokType {
                 if openParenNum > 0 {
@@ -57,7 +57,7 @@ impl Parser {
             }
         }
         let mut endPos = *lexpos;
-        self.lexer.moveBack(&mut endPos, 2);
+        self.lexer().moveBack(&mut endPos, 2);
 
         return Some(BufferedLexer::makeProtectedRange(&startPos, &endPos));
     }

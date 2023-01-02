@@ -6,6 +6,6 @@ macro_rules! m {
 }
 
 m! {parseAttribute}
+m! {parseDeclaration}
 m! {parseMiscUtils}
 m! {parseTu}
-m! {parseDeclaration}

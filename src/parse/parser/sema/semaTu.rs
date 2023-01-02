@@ -1,4 +1,5 @@
 use crate::{
+    ast::common::AstDecl,
     parse::parser::ModuleImportState,
     utils::structs::{CompileError, CompileMsgImpl, SourceRange},
 };
@@ -17,7 +18,6 @@ impl Parser {
      * module-declaration:
      *   export-keyword [opt] module-keyword module-name module-partition [opt] attribute-specifier-seq [opt];
      */
-    #[allow(clippy::unused_self)] // TODO: REMOVE
     pub fn actOnModuleDecl(
         &mut self,
         isExport: bool,
@@ -94,12 +94,21 @@ impl Parser {
                 }
             }
         } else {
+            self.errors.push(CompileError::fromSourceRange(
+                "Can't start a module section declared as: ".to_owned()
+                    + if isExport { "export" } else { "" }
+                    + " module "
+                    + &moduleName
+                    + " "
+                    + &modulePartition.map_or(String::new(), |s| ":".to_owned() + &s)
+                    + " ",
+                &location,
+            ));
+            return;
         }
-        // TODO
     }
 
-    #[allow(clippy::unused_self)] // TODO: REMOVE
-    pub fn actOnTopLevelDecl(&mut self, decl: &Vec<()>) {
+    pub fn actOnTopLevelDecl(&mut self, decl: &Vec<&'static AstDecl>) {
         if !decl.is_empty() {
             self.moduleImportState = match self.moduleImportState {
                 ModuleImportState::GlobalSection => ModuleImportState::GlobalSection,
