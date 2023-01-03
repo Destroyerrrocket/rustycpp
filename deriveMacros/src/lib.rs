@@ -41,7 +41,13 @@ fn impl_AstToString(_: &Field, fieldName: TokenStream) -> TokenStream {
 
 fn impl_AstChild(_: &Field, fieldName: TokenStream) -> TokenStream {
     quote! {
-        add_child(&self.#fieldName.debugNode())
+        add_child(&self.#fieldName.getDebugNode())
+    }
+}
+
+fn impl_AstChildSlice(_: &Field, fieldName: TokenStream) -> TokenStream {
+    quote! {
+        add_children(self.#fieldName.iter().map(|x| x.getDebugNode()).collect::<_>())
     }
 }
 
@@ -60,6 +66,8 @@ fn impl_CommonAst(ast: &DeriveInput) -> TokenStream {
                             vecTypes.push(impl_AstToString(field, fieldName));
                         } else if hasAttribute!(field, AstChild) {
                             vecTypes.push(impl_AstChild(field, fieldName));
+                        } else if hasAttribute!(field, AstChildSlice) {
+                            vecTypes.push(impl_AstChildSlice(field, fieldName));
                         }
                     }
                     quote! {
@@ -83,7 +91,21 @@ fn impl_CommonAst(ast: &DeriveInput) -> TokenStream {
                 },
             }
         }
-        syn::Data::Enum(_) => quote!(compile_error!("Can't derive CommonAst for enum")),
+        syn::Data::Enum(enumy) => {
+            let arms = enumy.variants.iter().map(|variant| {
+                let vident = &variant.ident;
+                quote!(#name::#vident(v) => v.getDebugNode())
+            });
+            quote!(
+                impl CommonAst for #name {
+                fn getDebugNode(&self) -> DebugNode {
+                    match self {
+                        #(#arms),*
+                    }
+                }
+                }
+            )
+        }
         syn::Data::Union(_) => quote!(compile_error!("Can't derive CommonAst for union")),
     }
 }

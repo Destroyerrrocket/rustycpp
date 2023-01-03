@@ -4,8 +4,9 @@ use ::function_name::named;
 use test_log::test;
 
 use crate::{
-    ast::Tu::AstTu,
+    ast::{common::CommonAst, Tu::AstTu},
     compiler::Compiler,
+    debugTree,
     utils::{
         compilerstate::CompilerState,
         parameters::Parameters,
@@ -23,7 +24,7 @@ macro_rules! testSuccessfulFile {
     () => {{
         let (ast, errors, compilerState) = testSingleFile!();
         assertErrors(errors, compilerState);
-        ast
+        ast.into_iter().next().unwrap().1
     }};
 }
 
@@ -91,7 +92,7 @@ fn checkErrors(
     assert!(
         errors
             .into_iter()
-            .filter(|e| e.severity() <= CompileMsgKind::Warning)
+            .filter(|e| e.severity() > CompileMsgKind::Warning)
             .count()
             == 0
     );
@@ -119,21 +120,21 @@ fn parsesModule() {
 #[named]
 fn parsesModuleError1() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1)]);
+    checkErrors(e, s, &[e!(1), e!(2)]);
 }
 
 #[test]
 #[named]
 fn parsesModuleError2() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1)]);
+    checkErrors(e, s, &[e!(1), e!(2)]);
 }
 
 #[test]
 #[named]
 fn parsesModuleError3() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1)]);
+    checkErrors(e, s, &[e!(1), e!(2)]);
 }
 
 #[test]
@@ -154,12 +155,36 @@ fn parsesModuleError5() {
 #[named]
 fn parsesAttrError1() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1)]);
+    checkErrors(e, s, &[e!(1), e!(1), e!(1), e!(1)]);
 }
 
 #[test]
 #[named]
 fn parsesAttrError2() {
+    let (_, e, s) = testUnsuccessfulFile!();
+    checkErrors(e, s, &[e!(1), e!(1)]);
+}
+
+#[test]
+#[named]
+fn parsesAttrDecl() {
+    let ast = testSuccessfulFile!();
+    assert_eq!(
+        ast.getDebugNode(),
+        debugTree!(
+            "AstTu",
+            (
+                "AstEmptyDecl",
+                ("AstAttribute", "kind: CXX11"),
+                ("AstAttribute", "kind: CXX11")
+            )
+        )
+    );
+}
+
+#[test]
+#[named]
+fn parsesAttrDeclError1() {
     let (_, e, s) = testUnsuccessfulFile!();
     checkErrors(e, s, &[e!(1)]);
 }

@@ -186,8 +186,8 @@ impl BufferedLexer {
                 if pos > lexpos.maximumToken || pos < lexpos.minimumToken {
                     return None;
                 }
-                while pos > self.lastTokIndex() && self.tryGetNextToken() {}
-                if pos > self.lastTokIndex() {
+                while pos + 1 > self.tokens().len() && self.tryGetNextToken() {}
+                if pos + 1 > self.tokens().len() {
                     return None;
                 }
                 return self.tokens().get(pos);
@@ -209,8 +209,8 @@ impl BufferedLexer {
             Some(mut pos) => {
                 pos = pos.clamp(lexpos.minimumToken, lexpos.maximumToken);
 
-                while pos > self.lastTokIndex() && self.tryGetNextToken() {}
-                if pos > self.lastTokIndex() {
+                while pos + 1 > self.tokens().len() && self.tryGetNextToken() {}
+                if pos + 1 > self.tokens().len() {
                     return self.tokens().last().unwrap();
                 }
                 self.tokens().get(pos).unwrap()
@@ -230,6 +230,20 @@ impl BufferedLexer {
             .currentToken
             .saturating_sub(n)
             .clamp(lexpos.minimumToken, lexpos.maximumToken);
+    }
+
+    pub fn next(&self, lexpos: &mut StateBufferedLexer) -> bool {
+        if lexpos.maximumToken < lexpos.minimumToken {
+            return false;
+        }
+
+        if self.reachedEnd(lexpos) {
+            return false;
+        }
+
+        lexpos.currentToken =
+            (lexpos.currentToken + 1).clamp(lexpos.minimumToken, lexpos.maximumToken);
+        return true;
     }
 
     pub fn moveForward(&self, lexpos: &mut StateBufferedLexer, n: usize) -> bool {

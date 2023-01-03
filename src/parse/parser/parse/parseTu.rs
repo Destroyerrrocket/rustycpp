@@ -64,7 +64,7 @@ impl Parser {
                             "Expected \"module\" or declaration after export keyword.",
                             tok1,
                         ));
-                        self.lexer().moveForward(lexpos, 1); // Skip malformed line. Puts us at the end of file.
+                        self.lexer().next(lexpos); // Skip malformed line. Puts us at the end of file.
                         return Vec::new();
                     }
                     _ => {}
@@ -97,7 +97,7 @@ impl Parser {
         // new token delimiter that does this properly.
         let mut isExport = false;
         if let fileTokPosMatchArm!(Token::Export) = self.lexer().get(lexpos).unwrap() {
-            self.lexer().consumeToken(lexpos);
+            self.lexer().next(lexpos);
             isExport = true;
         }
         let moduleKwd = self.lexer().getConsumeToken(lexpos);
@@ -109,6 +109,7 @@ impl Parser {
             ));
             return;
         }
+        let mut hasMajorError = false;
         // Parsed export [opt] module
         // Parsing module-name [opt]
         let moduleName = self.optParseModuleName(lexpos);
@@ -117,7 +118,7 @@ impl Parser {
                 "Module name cannot end with a dot.",
                 self.lexer().getWithOffsetSaturating(lexpos, -1),
             ));
-            return;
+            hasMajorError = true;
         }
         // Parsing module-partition [opt]
         let modulePartition = self.optParseModulePartition(lexpos);
@@ -126,14 +127,14 @@ impl Parser {
                 "Module partition cannot end with a dot.",
                 self.lexer().getWithOffsetSaturating(lexpos, -1),
             ));
-            return;
+            hasMajorError = true;
         }
         if modulePartition.as_ref().is_some_and(String::is_empty) {
             self.errors.push(CompileError::fromPreTo(
                 "Module partition cannot be just a colon.",
                 self.lexer().getWithOffsetSaturating(lexpos, -1),
             ));
-            return;
+            hasMajorError = true;
         }
         self.ignoreAttributes(lexpos);
 
@@ -159,6 +160,7 @@ impl Parser {
                         self.lexer().getWithOffsetSaturating(lexpos, 0),
                     ),
                 ));
+                hasMajorError = true;
             }
             self.lexer().consumeToken(lexpos);
         } else {
@@ -166,6 +168,10 @@ impl Parser {
                 "Expected ';' at the end of module declaration.",
                 self.lexer().getWithOffsetSaturating(lexpos, -1),
             ));
+        }
+
+        if hasMajorError {
+            return;
         }
 
         let ts = &self.lexer().getWithOffsetSaturating(&startlexpos, 0);

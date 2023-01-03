@@ -86,7 +86,7 @@ impl Parser {
                 if mismatch {
                     self.errors.push(CompileError::fromSourceRange(
                         format!(
-                            "Module declaration mismatch; First non-macro pass detected a {initialModuleDecl}, but we are now Finding something else! Are you using macros in this specific line? That's a no-no for now (There's a chicken-and-egg problem here, as macros can alter modules/imports, but imports can import macros. (It's complicated, so I've decided to not suport macros in module declarations while still allowing importing macros.)), sorry!"
+                            "Module declaration mismatch; First non-macro pass detected a {initialModuleDecl}, but we are now finding something else! Are you using macros in this specific line? That's a no-no for now (There's a chicken-and-egg problem here, as macros can alter modules/imports, but imports can import macros. (It's complicated, so I've decided to not suport macros in module declarations while still allowing importing macros.)), sorry!"
                         ),
                         &location,
                     ));

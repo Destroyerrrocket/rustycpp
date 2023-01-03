@@ -30,7 +30,6 @@ impl Parser {
         lexpos: &mut StateBufferedLexer,
         attr: Vec<&'static AstAttribute>,
     ) -> Vec<&'static AstDecl> {
-        self.lexer().consumeToken(lexpos);
         let tok = self.lexer().get(lexpos);
         if tok.is_none() {
             self.errors.push(CompileError::fromPreTo(
@@ -45,7 +44,10 @@ impl Parser {
             /**
              * empty-declaration | attribute-declaration
              */
-            Token::Semicolon => return self.actOnEmptyDecl(attr, SourceRange::newSingleTok(tok)),
+            Token::Semicolon => {
+                self.lexer().next(lexpos);
+                return self.actOnEmptyDecl(attr, SourceRange::newSingleTok(tok));
+            }
             Token::Identifier(_) => todo!(),
             Token::Alignas => todo!(),
             Token::Alignof => todo!(),

@@ -1,4 +1,5 @@
 use bitflags::bitflags;
+use deriveMacros::CommonAst;
 use enum_dispatch::enum_dispatch;
 
 use crate::utils::{debugnode::DebugNode, structs::SourceRange};
@@ -36,6 +37,7 @@ pub trait DeclAst<T: CommonAst = Self> {
     fn getBaseDecl(&self) -> &BaseDecl;
 }
 
+#[derive(CommonAst)]
 #[enum_dispatch(DeclAst)]
 pub enum AstDecl {
     AstEmptyDecl,

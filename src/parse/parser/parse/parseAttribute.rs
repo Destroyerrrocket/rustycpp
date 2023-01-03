@@ -69,7 +69,7 @@ impl Parser {
                 let startSecondBracket = self.lexer().getWithOffset(lexpos, 1);
                 if let Some(fileTokPosMatchArm!(Token::LBracket)) = startSecondBracket {
                     // We know that we have a CXX11 attribute
-                    self.lexer().moveForward(lexpos, 1);
+                    self.lexer().next(lexpos);
                     if let Some(contents) = self.parseBalancedPattern(lexpos) {
                         if let Some(endBracket) =
                             self.lexer().getConsumeTokenIfEq(lexpos, Token::RBracket)
@@ -102,7 +102,7 @@ impl Parser {
                 } // Ignore otherwise
             }
             Some(fileTokPosMatchArm!(Token::Alignas)) => {
-                self.lexer().moveForward(lexpos, 1);
+                self.lexer().next(lexpos);
                 if let Some(startSecondParen) = self.lexer().getIfEq(lexpos, Token::LParen) {
                     if let Some(contents) = self.parseBalancedPattern(lexpos) {
                         let endParen = self.lexer().getWithOffsetSaturating(lexpos, -1); // Saturating not needed in theory, but just in case
