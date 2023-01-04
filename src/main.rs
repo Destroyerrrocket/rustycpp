@@ -47,6 +47,7 @@ mod lex;
 mod module_tree;
 mod parse;
 mod preprocessor;
+mod sema;
 mod utils;
 
 mod test;

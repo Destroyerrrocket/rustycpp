@@ -2,7 +2,10 @@ use bitflags::bitflags;
 use deriveMacros::CommonAst;
 use enum_dispatch::enum_dispatch;
 
-use crate::utils::{debugnode::DebugNode, structs::SourceRange};
+use crate::{
+    ast::Decl::Asm::AstAsmDecl,
+    utils::{debugnode::DebugNode, structs::SourceRange},
+};
 
 use crate::ast::Decl::Empty::AstEmptyDecl;
 
@@ -41,4 +44,5 @@ pub trait DeclAst<T: CommonAst = Self> {
 #[enum_dispatch(DeclAst)]
 pub enum AstDecl {
     AstEmptyDecl,
+    AstAsmDecl,
 }

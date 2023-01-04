@@ -12,8 +12,8 @@ use super::bufferedLexer::{BufferedLexer, StateBufferedLexer};
 
 struct Scope;
 
-mod parse;
-mod sema;
+mod parserparse;
+mod parsersema;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ModuleImportState {
