@@ -29,6 +29,24 @@ impl Parser {
     }
 
     /**
+     * Error on wrong attribute location.
+     * attribute-specifier-seq:
+     *  attribute-specifier-seq [opt] attribute-specifier
+     * attribute-specifier:
+     *  [ [ ignore-balanced ] ]
+     *  alignment-specifier
+     * alignment-specifier:
+     *  alignas ( ignore-balanced )
+     */
+    pub fn errorAttributes(&mut self, lexpos: &mut StateBufferedLexer) {
+        while let (attr, ParseMacroMatched::Matched) = self.optParseAttributeSpecifier(lexpos) {
+            if let Some(attr) = attr {
+                self.actWrongAttributeLocation(&[&attr]);
+            }
+        }
+    }
+
+    /**
      * Return attributes.
      * attribute-specifier-seq:
      *  attribute-specifier-seq [opt] attribute-specifier

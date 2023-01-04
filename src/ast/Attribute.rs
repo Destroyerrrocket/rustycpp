@@ -24,7 +24,7 @@ pub struct AstAttribute {
     #[AstToString]
     kind: Kind,
     /// The range of the attribute in the source code. Includes the brackets/alignas/etc.
-    sourceRange: SourceRange,
+    pub sourceRange: SourceRange,
     /// The range of the tokens in the parser. Excludes the brackets/alignas/etc.
     parserRange: StateBufferedLexer,
 }

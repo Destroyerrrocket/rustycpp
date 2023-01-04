@@ -66,7 +66,7 @@ impl BufferedLexer {
             return true;
         }
 
-        if lexpos.currentToken + 1 > self.tokens().len() {
+        if lexpos.currentToken >= self.tokens().len() {
             if self.tryGetNextToken() {
                 return false;
             } else {
@@ -130,6 +130,26 @@ impl BufferedLexer {
         None
     }
 
+    pub fn ifEqOffset(&self, lexpos: &mut StateBufferedLexer, tok: Token, offset: isize) -> bool {
+        if lexpos.maximumToken < lexpos.minimumToken {
+            return false;
+        }
+
+        match lexpos.currentToken.checked_add_signed(offset) {
+            Some(pos) => {
+                if pos > lexpos.maximumToken || pos < lexpos.minimumToken {
+                    return false;
+                }
+                while pos >= self.tokens().len() && self.tryGetNextToken() {}
+                if pos >= self.tokens().len() {
+                    return false;
+                }
+                return self.tokens()[pos].tokPos.tok == tok;
+            }
+            None => false,
+        }
+    }
+
     pub const fn makeProtectedRange(
         start: &StateBufferedLexer,
         end: &StateBufferedLexer,
@@ -186,8 +206,8 @@ impl BufferedLexer {
                 if pos > lexpos.maximumToken || pos < lexpos.minimumToken {
                     return None;
                 }
-                while pos + 1 > self.tokens().len() && self.tryGetNextToken() {}
-                if pos + 1 > self.tokens().len() {
+                while pos >= self.tokens().len() && self.tryGetNextToken() {}
+                if pos >= self.tokens().len() {
                     return None;
                 }
                 return self.tokens().get(pos);
@@ -209,8 +229,8 @@ impl BufferedLexer {
             Some(mut pos) => {
                 pos = pos.clamp(lexpos.minimumToken, lexpos.maximumToken);
 
-                while pos + 1 > self.tokens().len() && self.tryGetNextToken() {}
-                if pos + 1 > self.tokens().len() {
+                while pos >= self.tokens().len() && self.tryGetNextToken() {}
+                if pos >= self.tokens().len() {
                     return self.tokens().last().unwrap();
                 }
                 self.tokens().get(pos).unwrap()

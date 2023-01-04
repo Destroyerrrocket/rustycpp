@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 /**
  * This is inspired by clang's [scope flags](https://github.com/llvm/llvm-project/blob/fec5ff2a3230ac9214891879e97b67dd6db833ed/clang/include/clang/Sema/Scope.h)
@@ -33,7 +33,7 @@ pub struct ScopeKind : u32 {
     /// This is a scope that corresponds to a block/closure object.
     /// Blocks serve as top-level scopes for some objects like labels, they
     /// also prevent things like break and continue.  BlockScopes always have
-    /// the FnScope and DeclScope flags set as well.
+    /// the FUNCTION and CAN_DECL flags set as well.
     const BLOCK = 0x40;
 
     /// This is a scope that corresponds to the
@@ -74,6 +74,9 @@ pub struct ScopeKind : u32 {
     /// We are between inheritance colon and the real class/struct definition
     /// scope.
     const CLASS_INHERITANCE_COLON = 0x10000;
+
+    /// This is a C++ namespace
+    const NAMESPACE = 0x20000;
 }
 }
 
@@ -85,7 +88,7 @@ pub enum Child {
     /**
      * This is a child that can have further children, like a function, class, or namespace.
      */
-    Scope(Rc<Scope>),
+    Scope(Rc<RefCell<Scope>>),
 }
 
 pub struct Scope {
@@ -97,7 +100,7 @@ pub struct Scope {
      * This is the parent of this scope.
      * Only the root scope has no parent.
      */
-    pub parent: Option<Rc<Scope>>,
+    pub parent: Option<Rc<RefCell<Scope>>>,
     /**
      * This is a map of all the children in this scope.
      * The key is the name of the child, and the value is a vector of all the children with that name.
@@ -120,29 +123,63 @@ pub struct Scope {
 }
 
 impl Scope {
-    fn new(
-        flags: ScopeKind,
-        parent: Option<Rc<Self>>,
-        causingDecl: Option<&'static AstDecl>,
-    ) -> Self {
-        return Self {
+    pub fn new(flags: ScopeKind, causingDecl: &'static AstDecl) -> Rc<RefCell<Self>> {
+        return Rc::new(RefCell::new(Self {
             flags,
-            parent,
+            parent: None,
             childs: HashMap::new(),
             namelessChilds: Vec::new(),
-            causingDecl,
-        };
+            causingDecl: Some(causingDecl),
+        }));
     }
 
-    fn addNamelessChild(&mut self, child: Child) {
-        self.namelessChilds.push(child);
+    pub fn new_unknown_cause(flags: ScopeKind) -> Rc<RefCell<Self>> {
+        return Rc::new(RefCell::new(Self {
+            flags,
+            parent: None,
+            childs: HashMap::new(),
+            namelessChilds: Vec::new(),
+            causingDecl: None,
+        }));
     }
 
-    fn addChild(&mut self, name: StringRef, child: Child) {
-        if let Some(children) = self.childs.get_mut(&name) {
+    pub fn new_root() -> Rc<RefCell<Self>> {
+        return Rc::new(RefCell::new(Self {
+            flags: ScopeKind::CAN_DECL,
+            parent: None,
+            childs: HashMap::new(),
+            namelessChilds: Vec::new(),
+            causingDecl: None,
+        }));
+    }
+}
+
+#[allow(clippy::module_name_repetitions)]
+pub trait RefCellScope {
+    fn addNamelessChild(&self, child: Child);
+    fn addChild(&self, name: StringRef, child: Child);
+}
+
+impl RefCellScope for Rc<RefCell<Scope>> {
+    fn addNamelessChild(&self, child: Child) {
+        if let Child::Scope(scope) = &child {
+            assert!(scope.borrow().parent.is_none());
+            scope.borrow_mut().parent = Some(self.clone());
+        }
+        self.borrow_mut().namelessChilds.push(child);
+    }
+
+    fn addChild(&self, name: StringRef, child: Child) {
+        if let Child::Scope(scope) = &child {
+            assert!(scope.borrow().parent.is_none());
+            scope.borrow_mut().parent = Some(self.clone());
+        }
+
+        let mut this = self.borrow_mut();
+        if let Some(children) = this.childs.get_mut(&name) {
             children.push(child);
         } else {
-            self.childs.insert(name, vec![child]);
+            this.childs.insert(name, vec![child]);
         }
     }
 }

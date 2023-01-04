@@ -1,8 +1,11 @@
 use crate::{
     ast::{common::AstDecl, Attribute::AstAttribute},
+    fileTokPosMatchArm,
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,
-    utils::structs::{CompileError, CompileMsgImpl, CompileWarning, SourceRange},
+    utils::structs::{
+        CompileError, CompileMsgImpl, CompileWarning, FileTokPos, SourceRange, TokPos,
+    },
 };
 
 use super::super::Parser;
@@ -218,11 +221,17 @@ impl Parser {
             Token::Extern => todo!(),
             Token::Float => todo!(),
             Token::Friend => todo!(),
-            Token::Inline => todo!(),
+            Token::Inline => {
+                if self.lexer().ifEqOffset(lexpos, Token::Namespace, 1) {
+                    self.parseNamespaceDeclaration(lexpos, attr)
+                } else {
+                    todo!()
+                }
+            }
             Token::Int => todo!(),
             Token::Long => todo!(),
             Token::Mutable => todo!(),
-            Token::Namespace => todo!(),
+            Token::Namespace => self.parseNamespaceDeclaration(lexpos, attr),
             Token::Register => todo!(),
             Token::Short => todo!(),
             Token::Signed => todo!(),
@@ -307,5 +316,110 @@ impl Parser {
             ));
             return vec![];
         }
+    }
+
+    /**
+     * Either a namespace-definition, or a namespace-alias-definition:
+     *
+     * namespace-definition:
+     *   named-namespace-definition
+     *   unnamed-namespace-definition
+     *   nested-namespace-definition
+     * named-namespace-definition:
+     *   inline [opt] namespace attribute-specifier-seq [opt] identifier { namespace-body }
+     * unnamed-namespace-definition:
+     *    inline [opt] namespace attribute-specifier-seq [opt] { namespace-body }
+     * nested-namespace-definition:
+     *    namespace enclosing-namespace-specifier :: inline [opt] identifier { namespace-body }
+     * enclosing-namespace-specifier:
+     *    identifier (:: inline [opt] identifier)*
+     *
+     * or a block scope:
+     * namespace-alias-definition:
+     *   namespace identifier = qualified-namespace-specifier ;
+     */
+    pub fn parseNamespaceDeclaration(
+        &mut self,
+        lexpos: &mut StateBufferedLexer,
+        attr: Vec<&'static AstAttribute>,
+    ) -> Vec<&'static AstDecl> {
+        self.actWrongAttributeLocation(&attr);
+
+        let isInline = self.lexer().consumeTokenIfEq(lexpos, Token::Inline);
+
+        if !self.lexer().consumeTokenIfEq(lexpos, Token::Namespace) {
+            // We already expected a namespace keyword. Reaching this is a bug.
+            self.errors.push(CompileError::fromPreTo(
+                "Expected 'namespace' keyword. This is a bug. Report is please.",
+                self.lexer().getWithOffsetSaturating(lexpos, -1),
+            ));
+        }
+
+        let attr = self.parseAttributes(lexpos);
+        let name = self.lexer().getConsumeToken(lexpos);
+        match name {
+            Some(fileTokPosMatchArm!(Token::Identifier(nameStr))) => {
+                self.errorAttributes(lexpos);
+                let Some(fileTokPosMatchArm!(tok)) = self.lexer().get(lexpos) else {
+                    self.errors.push(CompileError::fromPreTo(
+                        "Expected '{' (to introduce a namespace) or '=' (to make a namespace alias) after the namespace name.",
+                        self.lexer().getWithOffsetSaturating(lexpos, -1),
+                    ));
+                    return vec![];
+                };
+                match tok {
+                    Token::LBrace => {
+                        // named-namespace-definition
+                        let astNamespace = self.actOnStartNamedNamespaceDefinition(
+                            isInline,
+                            &attr,
+                            *nameStr,
+                            SourceRange::newSingleTok(name.unwrap()),
+                        );
+                        let contents = self.parseNamespaceBody(lexpos);
+                        self.actOnEndNamedNamespaceDefinition(contents);
+                        return astNamespace;
+                    }
+                    _ => todo!(),
+                }
+            }
+            _ => todo!(),
+        }
+    }
+
+    /**
+     * We have not parsed the '{' yet! (but we know it's comming)
+     * namespace-body:
+     *   declaration-seq [opt]
+     */
+    pub fn parseNamespaceBody(&mut self, lexpos: &mut StateBufferedLexer) -> Vec<&'static AstDecl> {
+        if !self.lexer().consumeTokenIfEq(lexpos, Token::LBrace) {
+            self.errors.push(CompileError::fromPreTo(
+                "Expected '{' to introduce a namespace body. This is a bug. Please report it.",
+                self.lexer().getWithOffsetSaturating(lexpos, -1),
+            ));
+            return vec![];
+        }
+
+        let mut decls = vec![];
+        loop {
+            if let Some(fileTokPosMatchArm!(tok)) = self.lexer().get(lexpos) {
+                if matches!(tok, Token::RBrace) {
+                    self.lexer().consumeToken(lexpos);
+                    break;
+                } else {
+                    let attrs = self.parseAttributes(lexpos);
+                    let newDecls = self.parseDeclaration(lexpos, attrs);
+                    decls.extend(newDecls);
+                }
+            } else {
+                self.errors.push(CompileError::fromPreTo(
+                    "Expected '}' to end the namespace body. Maybe insert one here?",
+                    self.lexer().getWithOffsetSaturating(lexpos, -1),
+                ));
+                break;
+            }
+        }
+        return decls;
     }
 }

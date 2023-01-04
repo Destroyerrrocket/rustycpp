@@ -51,6 +51,13 @@ fn impl_AstChildSlice(_: &Field, fieldName: TokenStream) -> TokenStream {
     }
 }
 
+fn impl_AstChildSliceCell(_: &Field, fieldName: TokenStream) -> TokenStream {
+    quote! {
+
+        add_children(unsafe {self.#fieldName.get().as_ref().unwrap()}.iter().map(|x| x.getDebugNode()).collect::<_>())
+    }
+}
+
 fn impl_CommonAst(ast: &DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let generics = &ast.generics.to_token_stream();
@@ -68,6 +75,8 @@ fn impl_CommonAst(ast: &DeriveInput) -> TokenStream {
                             vecTypes.push(impl_AstChild(field, fieldName));
                         } else if hasAttribute!(field, AstChildSlice) {
                             vecTypes.push(impl_AstChildSlice(field, fieldName));
+                        } else if hasAttribute!(field, AstChildSliceCell) {
+                            vecTypes.push(impl_AstChildSliceCell(field, fieldName));
                         }
                     }
                     quote! {
@@ -154,7 +163,10 @@ fn impl_DeclAst(ast: &DeriveInput) -> TokenStream {
     }
 }
 
-#[proc_macro_derive(CommonAst, attributes(AstChild, AstChildSlice, AstToString))]
+#[proc_macro_derive(
+    CommonAst,
+    attributes(AstChild, AstChildSlice, AstChildSliceCell, AstToString)
+)]
 pub fn CommonAst_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Construct a representation of Rust code as a syntax tree
     // that we can manipulate

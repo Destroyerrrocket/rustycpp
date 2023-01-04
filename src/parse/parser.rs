@@ -1,16 +1,17 @@
-use std::cell::UnsafeCell;
+use std::cell::{RefCell, UnsafeCell};
 use std::rc::Rc;
 
-use crate::ast::{common::CommonAst, Tu::AstTu};
 use crate::compiler::TranslationUnit;
 use crate::lex::lexer::Lexer;
 use crate::utils::compilerstate::CompilerState;
 use crate::utils::structs::CompileMsg;
 use crate::utils::unsafeallocator::UnsafeAllocator;
+use crate::{
+    ast::{common::CommonAst, Tu::AstTu},
+    sema::scope::Scope,
+};
 
 use super::bufferedLexer::{BufferedLexer, StateBufferedLexer};
-
-struct Scope;
 
 mod parserparse;
 mod parsersema;
@@ -38,7 +39,9 @@ pub struct Parser {
     compilerState: CompilerState,
 
     moduleImportState: ModuleImportState,
-    scope: Scope,
+
+    rootScope: Rc<RefCell<Scope>>,
+    currentScope: Rc<RefCell<Scope>>,
 
     errors: Vec<CompileMsg>,
 
@@ -48,14 +51,15 @@ pub struct Parser {
 impl Parser {
     pub fn new(lexer: Lexer, filePath: TranslationUnit, compilerState: CompilerState) -> Self {
         let (lexer, lexerStart) = BufferedLexer::new(lexer);
+        let rootScope = Scope::new_root();
         Self {
             lexer: UnsafeCell::new(lexer),
             lexerStart,
             filePath,
             compilerState,
             moduleImportState: ModuleImportState::StartFile,
-            scope: Scope {},
-
+            rootScope: rootScope.clone(),
+            currentScope: rootScope,
             errors: vec![],
 
             alloc: Rc::new(UnsafeAllocator::new()),
