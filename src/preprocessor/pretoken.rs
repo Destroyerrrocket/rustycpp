@@ -164,6 +164,7 @@ pub enum PreTokenLexer {
     #[token(r"volatile")]
     #[token(r"wchar_t")]
     #[token(r"while")]
+    #[token(r"__rustycpp__")]
     Keyword,
     #[token("\n")]
     Newline,
@@ -406,6 +407,7 @@ impl PreToken {
                 r"volatile" => r"volatile",
                 r"wchar_t" => r"wchar_t",
                 r"while" => r"while",
+                r"__rustycpp__" => r"__rustycpp__",
                 _ => {
                     panic!("How did you manage to get a keyword not in my list");
                 }

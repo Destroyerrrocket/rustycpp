@@ -1,9 +1,25 @@
 use colored::Colorize;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Eq)]
 pub struct DebugNode {
+    nameColorless: String,
     name: String,
     children: Vec<DebugNode>,
+}
+
+impl PartialEq for DebugNode {
+    fn eq(&self, other: &Self) -> bool {
+        self.nameColorless == other.nameColorless && self.children == other.children
+    }
+}
+
+impl std::fmt::Debug for DebugNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DebugNode")
+            .field("name", &self.nameColorless)
+            .field("children", &self.children)
+            .finish()
+    }
 }
 
 impl DebugNode {
@@ -11,6 +27,7 @@ impl DebugNode {
         let mut result = String::new();
         Self::colorizedTag(&mut result, &name);
         Self {
+            nameColorless: name,
             name: result,
             children: vec![],
         }

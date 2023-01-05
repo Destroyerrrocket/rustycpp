@@ -13,15 +13,15 @@ use crate::{
 #[derive(CommonAst, DeclAst)]
 pub struct AstNamespaceDecl {
     base: BaseDecl,
-    #[AstChildSlice]
-    attrs: &'static [&'static AstAttribute],
-    #[AstChildSliceCell]
-    contents: UnsafeCell<&'static [&'static AstDecl]>,
     #[AstToString]
     name: StringRef,
     #[AstToString]
     isInline: bool,
     nextExtension: UnsafeCell<Option<&'static AstNamespaceDecl>>,
+    #[AstChildSlice]
+    attrs: &'static [&'static AstAttribute],
+    #[AstChildSliceCell]
+    contents: UnsafeCell<&'static [&'static AstDecl]>,
 }
 
 impl AstNamespaceDecl {
@@ -33,10 +33,10 @@ impl AstNamespaceDecl {
     ) -> Self {
         Self {
             base: BaseDecl::new(sourceRange),
-            attrs,
             name,
-            nextExtension: UnsafeCell::new(None),
             isInline,
+            nextExtension: UnsafeCell::new(None),
+            attrs,
             contents: UnsafeCell::default(),
         }
     }

@@ -2,7 +2,10 @@ use crate::{
     ast::{
         common::AstDecl,
         Attribute::AstAttribute,
-        Decl::{Asm::AstAsmDecl, Empty::AstEmptyDecl, Namespace::AstNamespaceDecl},
+        Decl::{
+            Asm::AstAsmDecl, Empty::AstEmptyDecl, Enum::AstCustomRustyCppEnum,
+            Namespace::AstNamespaceDecl,
+        },
     },
     sema::scope::{Child, RefCellScope, Scope, ScopeKind},
     utils::{stringref::StringRef, structs::SourceRange},
@@ -79,5 +82,24 @@ impl Parser {
 
         let newCurrent = self.currentScope.borrow().parent.clone().unwrap();
         self.currentScope = newCurrent;
+    }
+
+    pub fn actOnRustyCppEnumDefinition(
+        &mut self,
+        name: StringRef,
+        location: SourceRange,
+    ) -> Vec<&'static AstDecl> {
+        let astEnum = AstCustomRustyCppEnum::new(location, name);
+        let astEnumDecl = self.alloc().alloc(AstDecl::AstCustomRustyCppEnum(astEnum));
+
+        let enumScope = Scope::new(ScopeKind::ENUM | ScopeKind::CAN_DECL, astEnumDecl);
+        self.currentScope
+            .addChild(name, Child::Scope(enumScope.clone()));
+        self.currentScope = enumScope;
+
+        // Imediately pop, for now.
+        let newCurrent = self.currentScope.borrow().parent.clone().unwrap();
+        self.currentScope = newCurrent;
+        return vec![astEnumDecl];
     }
 }

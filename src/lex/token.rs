@@ -58,10 +58,9 @@ pub enum FloatSuffix {
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Copy, Clone, PartialEq)]
-#[repr(isize)]
 pub enum Token {
     // Identifiers
-    Identifier(StringRef) = 1,
+    Identifier(StringRef),
 
     // Keywords
     Alignas,
@@ -145,6 +144,7 @@ pub enum Token {
     Volatile,
     Wchar_t,
     While,
+    __rustycpp__,
 
     // Operators / Punctuators
     LBrace,
@@ -211,7 +211,7 @@ pub enum Token {
     UdIntegerLiteral(i128, IntegerSuffix, StringRef),
     UdFloatingPointLiteral(f128::f128, FloatSuffix, StringRef),
     UdCharacterLiteral(EncodingPrefix, char, StringRef),
-    UdStringLiteral(EncodingPrefix, StringRef, StringRef) = 142,
+    UdStringLiteral(EncodingPrefix, StringRef, StringRef),
 }
 
 impl std::fmt::Display for Token {
@@ -296,6 +296,7 @@ impl std::fmt::Display for Token {
             Self::Volatile => write!(f, "volatile"),
             Self::Wchar_t => write!(f, "wchar_t"),
             Self::While => write!(f, "while"),
+            Self::__rustycpp__ => write!(f, "__rustycpp__"),
             Self::LBrace => write!(f, "{{"),
             Self::RBrace => write!(f, "}}"),
             Self::LBracket => write!(f, "["),
@@ -567,6 +568,7 @@ impl Token {
             r"volatile" => Ok(FileTokPos::new_meta_c(Self::Volatile, tok)),
             r"wchar_t" => Ok(FileTokPos::new_meta_c(Self::Wchar_t, tok)),
             r"while" => Ok(FileTokPos::new_meta_c(Self::While, tok)),
+            r"__rustycpp__" => Ok(FileTokPos::new_meta_c(Self::__rustycpp__, tok)),
             _ => Err(Some(CompileError::fromPreTo(
                 format!("Unknown token: {operator}"),
                 tok,

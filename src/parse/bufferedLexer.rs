@@ -59,7 +59,7 @@ impl BufferedLexer {
 
     pub fn reachedEnd(&self, lexpos: &mut StateBufferedLexer) -> bool {
         if lexpos.maximumToken < lexpos.minimumToken {
-            return false;
+            return true;
         }
 
         if lexpos.currentToken > lexpos.maximumToken {
@@ -70,7 +70,7 @@ impl BufferedLexer {
             if self.tryGetNextToken() {
                 return false;
             } else {
-                lexpos.maximumToken = lexpos.currentToken;
+                lexpos.maximumToken = lexpos.currentToken.saturating_sub(1);
                 return true;
             }
         }
@@ -93,8 +93,12 @@ impl BufferedLexer {
         false
     }
 
-    pub fn consumeTokenIf(&self, lexpos: &mut StateBufferedLexer, cond: fn(Token) -> bool) -> bool {
-        if !self.reachedEnd(lexpos) && cond(self.tokens()[lexpos.currentToken].tokPos.tok) {
+    pub fn consumeTokenIf(
+        &self,
+        lexpos: &mut StateBufferedLexer,
+        cond: fn(&Token) -> bool,
+    ) -> bool {
+        if !self.reachedEnd(lexpos) && cond(&self.tokens()[lexpos.currentToken].tokPos.tok) {
             lexpos.currentToken += 1;
             return true;
         }
@@ -122,9 +126,9 @@ impl BufferedLexer {
     pub fn getIf(
         &self,
         lexpos: &mut StateBufferedLexer,
-        cond: fn(Token) -> bool,
+        cond: fn(&Token) -> bool,
     ) -> Option<&FileTokPos<Token>> {
-        if !self.reachedEnd(lexpos) && cond(self.tokens()[lexpos.currentToken].tokPos.tok) {
+        if !self.reachedEnd(lexpos) && cond(&self.tokens()[lexpos.currentToken].tokPos.tok) {
             return self.tokens().get(lexpos.currentToken);
         }
         None
@@ -183,9 +187,9 @@ impl BufferedLexer {
     pub fn getConsumeTokenIf(
         &self,
         lexpos: &mut StateBufferedLexer,
-        cond: fn(Token) -> bool,
+        cond: fn(&Token) -> bool,
     ) -> Option<&FileTokPos<Token>> {
-        if !self.reachedEnd(lexpos) && cond(self.tokens()[lexpos.currentToken].tokPos.tok) {
+        if !self.reachedEnd(lexpos) && cond(&self.tokens()[lexpos.currentToken].tokPos.tok) {
             lexpos.currentToken += 1;
             return self.tokens().get(lexpos.currentToken - 1);
         }

@@ -3,7 +3,7 @@ use deriveMacros::CommonAst;
 use enum_dispatch::enum_dispatch;
 
 use crate::{
-    ast::Decl::{Asm::AstAsmDecl, Namespace::AstNamespaceDecl},
+    ast::Decl::{Asm::AstAsmDecl, Enum::AstCustomRustyCppEnum, Namespace::AstNamespaceDecl},
     utils::{debugnode::DebugNode, structs::SourceRange},
 };
 
@@ -47,4 +47,5 @@ pub enum AstDecl {
     AstEmptyDecl,
     AstAsmDecl,
     AstNamespaceDecl,
+    AstCustomRustyCppEnum,
 }

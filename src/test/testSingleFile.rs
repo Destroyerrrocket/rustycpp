@@ -104,6 +104,24 @@ macro_rules! e {
     };
 }
 
+macro_rules! w {
+    ($n:literal) => {
+        ($n, CompileMsgKind::Warning)
+    };
+}
+
+macro_rules! assert_tree_eq {
+    ($a:expr, $b:expr) => {{
+        let (a, b) = ($a, $b);
+        if a != b {
+            let (a, b) = (a.to_string(), b.to_string());
+            println!("left:\n{a}");
+            println!("right:\n{b}");
+            assert!(false, "assertion failed: `left == right` trees");
+        }
+    }};
+}
+
 #[test]
 #[named]
 fn parsesEmpty() {
@@ -187,4 +205,84 @@ fn parsesAttrDecl() {
 fn parsesAttrDeclError1() {
     let (_, e, s) = testUnsuccessfulFile!();
     checkErrors(e, s, &[e!(1)]);
+}
+
+#[test]
+#[named]
+fn parsesNamedNamespace() {
+    let ast = testSuccessfulFile!();
+    assert_tree_eq!(
+        ast.getDebugNode(),
+        debugTree!(
+            "AstTu",
+            (
+                "AstNamespaceDecl",
+                ("name: A"),
+                ("isInline: false"),
+                (
+                    "AstNamespaceDecl",
+                    ("name: B"),
+                    ("isInline: false"),
+                    ("AstNamespaceDecl", ("name: C"), ("isInline: false"))
+                ),
+                ("AstNamespaceDecl", ("name: C"), ("isInline: false")),
+                ("AstNamespaceDecl", ("name: C"), ("isInline: false")),
+                (
+                    "AstNamespaceDecl",
+                    ("name: D"),
+                    ("isInline: true"),
+                    ("AstNamespaceDecl", ("name: E"), ("isInline: false"))
+                )
+            )
+        )
+    );
+}
+
+#[test]
+#[named]
+fn parsesNamedNamespaceError1() {
+    let (_, e, s) = testUnsuccessfulFile!();
+    checkErrors(e, s, &[e!(2), e!(3), e!(3)]);
+}
+
+#[test]
+#[named]
+fn parses__rustycpp__enum() {
+    let ast = testSuccessfulFile!();
+    assert_tree_eq!(
+        ast.getDebugNode(),
+        debugTree!(
+            "AstTu",
+            (
+                "AstNamespaceDecl",
+                ("name: Enum"),
+                ("isInline: false"),
+                ("AstCustomRustyCppEnum", ("name: A"))
+            )
+        )
+    );
+}
+
+#[test]
+#[named]
+fn parses__rustycpp__enumError1() {
+    let (_, e, s) = testUnsuccessfulFile!();
+    checkErrors(e, s, &[e!(1), e!(2), e!(3), e!(5), e!(5)]);
+}
+
+#[test]
+#[named]
+fn parsesAsmDecl() {
+    let ast = testSuccessfulFile!();
+    assert_tree_eq!(
+        ast.getDebugNode(),
+        debugTree!("AstTu", ("AstAsmDecl", ("asm: hello")))
+    );
+}
+
+#[test]
+#[named]
+fn parsesAsmDeclError1() {
+    let (_, e, s) = testUnsuccessfulFile!();
+    checkErrors(e, s, &[e!(1), e!(2), w!(3), e!(4), e!(5), e!(6)]);
 }

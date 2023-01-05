@@ -256,6 +256,7 @@ impl Parser {
             Token::Less => todo!(),
             Token::Import => todo!(),
             Token::ImportableHeaderName(_) => todo!(),
+            Token::__rustycpp__ => self.parseCustom__rustycpp__Decl(lexpos, attr),
         }
     }
 
@@ -279,43 +280,54 @@ impl Parser {
             return vec![];
         }
         let parenPos = *lexpos;
-        if let Some(mut scoped) = self.parseBalancedPattern(lexpos) {
-            if let Some(content) = self.lexer().getConsumeToken(&mut scoped) {
-                let Token::StringLiteral(_, content) = content.tokPos.tok else {
-                    self.errors.push(CompileError::fromPreTo(
-                        "Expected a string literal for the 'asm' declaration.",
-                        content,
-                    ));
-                    return vec![];
-                };
-                if let Some(unused) = self.lexer().getConsumeToken(&mut scoped) {
-                    self.errors.push(CompileWarning::fromPreTo(
-                        "Unused content after the string literal for the 'asm' declaration.",
-                        unused,
-                    ));
-                }
-                return self.actOnAsmDecl(
-                    &attr,
-                    SourceRange::newDoubleTok(
-                        self.lexer().getWithOffsetSaturating(&startlexpos, 0),
-                        self.lexer().getWithOffsetSaturating(lexpos, -1),
-                    ),
-                    content,
-                );
-            } else {
-                self.errors.push(CompileError::fromPreTo(
-                    "Expected a string literal inside the 'asm' declaration.",
-                    self.lexer().getWithOffsetSaturating(&parenPos, 0),
-                ));
-                return vec![];
-            }
-        } else {
+        let Some(mut scoped) = self.parseBalancedPattern(lexpos) else {
             self.errors.push(CompileError::fromPreTo(
                 "Expected a closing parentheses for this '(' while evaluating the 'asm' declaration.",
                 self.lexer().getWithOffsetSaturating(&parenPos, 0),
             ));
             return vec![];
+        };
+
+        let Some(content) = self.lexer().getConsumeToken(&mut scoped) else {
+            self.errors.push(CompileError::fromPreTo(
+                "Expected a string literal inside the 'asm' declaration.",
+                self.lexer().getWithOffsetSaturating(&parenPos, 0),
+            ));
+            return vec![];
+        };
+
+        let Token::StringLiteral(_, content) = content.tokPos.tok else {
+            self.errors.push(CompileError::fromPreTo(
+                "Expected a string literal for the 'asm' declaration.",
+                content,
+            ));
+            return vec![];
+        };
+
+        if let Some(unused) = self.lexer().getConsumeToken(&mut scoped) {
+            self.errors.push(CompileWarning::fromPreTo(
+                "Unused content after the string literal for the 'asm' declaration.",
+                unused,
+            ));
         }
+
+        if self.lexer().getIfEq(lexpos, Token::Semicolon).is_none() {
+            self.errors.push(CompileError::fromPreTo(
+                "Expected a ';' after the 'asm' declaration.",
+                self.lexer().getWithOffsetSaturating(lexpos, -1),
+            ));
+        } else {
+            self.lexer().next(lexpos);
+        }
+
+        return self.actOnAsmDecl(
+            &attr,
+            SourceRange::newDoubleTok(
+                self.lexer().getWithOffsetSaturating(&startlexpos, 0),
+                self.lexer().getWithOffsetSaturating(lexpos, -1),
+            ),
+            content,
+        );
     }
 
     /**
@@ -360,14 +372,14 @@ impl Parser {
         match name {
             Some(fileTokPosMatchArm!(Token::Identifier(nameStr))) => {
                 self.errorAttributes(lexpos);
-                let Some(fileTokPosMatchArm!(tok)) = self.lexer().get(lexpos) else {
+                let Some(tok) = self.lexer().get(lexpos) else {
                     self.errors.push(CompileError::fromPreTo(
                         "Expected '{' (to introduce a namespace) or '=' (to make a namespace alias) after the namespace name.",
                         self.lexer().getWithOffsetSaturating(lexpos, -1),
                     ));
                     return vec![];
                 };
-                match tok {
+                match tok.tokPos.tok {
                     Token::LBrace => {
                         // named-namespace-definition
                         let astNamespace = self.actOnStartNamedNamespaceDefinition(
@@ -380,7 +392,14 @@ impl Parser {
                         self.actOnEndNamedNamespaceDefinition(contents);
                         return astNamespace;
                     }
-                    _ => todo!(),
+                    Token::Equal => todo!(),
+                    _ => {
+                        self.errors.push(CompileError::fromPreTo(
+                            "Expected '{' (to introduce a namespace) or '=' (to make a namespace alias) after the namespace name. Instead, we found this.",
+                            tok,
+                        ));
+                        return vec![];
+                    }
                 }
             }
             _ => todo!(),
@@ -421,5 +440,79 @@ impl Parser {
             }
         }
         return decls;
+    }
+
+    /**
+     * __rustycpp__ (stuff) custom operator
+     */
+    fn parseCustom__rustycpp__Decl(
+        &mut self,
+        lexpos: &mut StateBufferedLexer,
+        _attr: Vec<&'static AstAttribute>,
+    ) -> Vec<&'static AstDecl> {
+        let Some(rustyCpp) = self
+            .lexer()
+            .getConsumeTokenIfEq(lexpos, Token::__rustycpp__) else
+        {
+            self.errors.push(CompileError::fromPreTo(
+                "Expected '__rustycpp__' keyword. This is a bug. Report is please.",
+                self.lexer().getWithOffsetSaturating(lexpos, -1),
+            ));
+            return vec![];
+        };
+
+        let Some(lParen) = self.lexer().getConsumeTokenIfEq(lexpos, Token::LParen) else {
+            self.errors.push(CompileError::fromPreTo(
+                "Expected '(' after '__rustycpp__' keyword.",
+                self.lexer().getWithOffsetSaturating(lexpos, -1),
+            ));
+            return vec![];
+        };
+
+        let result = self.parseContentsOf__rustycpp__Decl(lexpos, rustyCpp);
+
+        while let Some(fileTokPosMatchArm!(tok)) = self.lexer().get(lexpos) {
+            if matches!(tok, Token::RParen) {
+                break;
+            } else {
+                self.lexer().next(lexpos);
+            }
+        }
+
+        if !self.lexer().consumeTokenIfEq(lexpos, Token::RParen) {
+            self.errors.push(CompileError::fromPreTo(
+                "Expected ')' to match this '('.",
+                lParen,
+            ));
+        };
+
+        return result;
+    }
+
+    fn parseContentsOf__rustycpp__Decl(
+        &mut self,
+        lexpos: &mut StateBufferedLexer,
+        rustyCpp: &FileTokPos<Token>,
+    ) -> Vec<&'static AstDecl> {
+        let Some(enumTok) = self.lexer().getConsumeTokenIfEq(lexpos, Token::Enum) else {
+            self.errors.push(CompileError::fromPreTo(
+                "Expected \"enum\" inside '__rustycpp__' keyword.",
+                rustyCpp,
+            ));
+            return vec![];
+        };
+
+        let Some(nameTok) = self.lexer().getConsumeTokenIf(lexpos, |t| matches!(t, Token::Identifier(_))) else {
+            self.errors.push(CompileError::fromPreTo(
+                "Expected enum name after 'enum'.",
+                enumTok,
+            ));
+            return vec![];
+        };
+
+        let location = SourceRange::newDoubleTok(enumTok, nameTok);
+        let fileTokPosMatchArm!(Token::Identifier(name)) = nameTok else {unreachable!()};
+
+        return self.actOnRustyCppEnumDefinition(*name, location);
     }
 }
