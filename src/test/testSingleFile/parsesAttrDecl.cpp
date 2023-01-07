@@ -1,1 +1,1 @@
-[[rustycpp::ignore]][[rustycpp::ignore]];
+[[rustycpp::unused]][[rustycpp::unused(contents), rustycpp::unused()]][[using rustycpp: unused]][[rustycpp::attrdoesnotexist]];

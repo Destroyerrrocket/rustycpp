@@ -180,21 +180,23 @@ fn parsesAttrError1() {
 #[named]
 fn parsesAttrError2() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, &s, &[e!(1), e!(1)]);
+    checkErrors(e, &s, &[e!(1)]);
 }
 
 #[test]
 #[named]
 fn parsesAttrDecl() {
     let ast = testSuccessfulFile!();
-    assert_eq!(
+    assert_tree_eq!(
         ast.getDebugNode(),
         debugTree!(
             "AstTu",
             (
                 "AstEmptyDecl",
-                ("AstAttribute", "kind: CXX11"),
-                ("AstAttribute", "kind: CXX11")
+                ("AstAttribute", ("AstRustyCppUnused")),
+                ("AstAttribute", ("AstRustyCppUnused"), ("AstRustyCppUnused")),
+                ("AstAttribute", ("AstRustyCppUnused")),
+                ("AstAttribute")
             )
         )
     );

@@ -2,9 +2,7 @@ use std::rc::Rc;
 
 use deriveMacros::CommonAst;
 
-use crate::utils::unsafeallocator::UnsafeAllocator;
-
-use super::common::AstDecl;
+use crate::{ast::Decl::AstDecl, utils::unsafeallocator::UnsafeAllocator};
 
 #[derive(Clone, CommonAst)]
 pub struct AstTu {

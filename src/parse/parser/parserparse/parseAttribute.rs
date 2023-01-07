@@ -1,7 +1,7 @@
-use crate::ast;
-use crate::ast::Attribute::AstAttribute;
-use crate::utils::structs::FileTokPos;
+use crate::ast::Attribute::{AstAttribute, AstCXXAttribute};
 use crate::utils::structs::TokPos;
+use crate::utils::structs::{CompileNote, FileTokPos};
+use crate::{ast, utils::stringref::StringRef};
 use crate::{
     fileTokPosMatchArm,
     lex::token::Token,
@@ -12,20 +12,21 @@ use crate::{
 use super::super::Parser;
 use super::parseMiscUtils::ParseMacroMatched;
 
-// TODO: Right now, no attributes are supported. The gramar parsed just uses an ignore-balanced pattern.
+mod rustycppunused;
+
 impl Parser {
     /**
      * Ignore unused attributes.
      * attribute-specifier-seq:
      *  attribute-specifier-seq [opt] attribute-specifier
      * attribute-specifier:
-     *  [ [ ignore-balanced ] ]
+     *  [ [ attribute-using-prefix [opt] attribute-list ] ]
      *  alignment-specifier
      * alignment-specifier:
      *  alignas ( ignore-balanced )
      */
     pub fn ignoreAttributes(&mut self, lexpos: &mut StateBufferedLexer) {
-        while let (_, ParseMacroMatched::Matched) = self.optParseAttributeSpecifier(lexpos) {}
+        while let (_, ParseMacroMatched::Matched) = self.optParseAttributeSpecifier(lexpos, true) {}
     }
 
     /**
@@ -33,13 +34,15 @@ impl Parser {
      * attribute-specifier-seq:
      *  attribute-specifier-seq [opt] attribute-specifier
      * attribute-specifier:
-     *  [ [ ignore-balanced ] ]
+     *  [ [ attribute-using-prefix [opt] attribute-list ] ]
      *  alignment-specifier
      * alignment-specifier:
      *  alignas ( ignore-balanced )
      */
     pub fn errorAttributes(&mut self, lexpos: &mut StateBufferedLexer) {
-        while let (attr, ParseMacroMatched::Matched) = self.optParseAttributeSpecifier(lexpos) {
+        while let (attr, ParseMacroMatched::Matched) =
+            self.optParseAttributeSpecifier(lexpos, false)
+        {
             if let Some(attr) = attr {
                 self.actWrongAttributeLocation(&[&attr]);
             }
@@ -51,7 +54,7 @@ impl Parser {
      * attribute-specifier-seq:
      *  attribute-specifier-seq [opt] attribute-specifier
      * attribute-specifier:
-     *  [ [ ignore-balanced ] ]
+     *  [ [ attribute-using-prefix [opt] attribute-list ] ]
      *  alignment-specifier
      * alignment-specifier:
      *  alignas ( ignore-balanced )
@@ -61,7 +64,9 @@ impl Parser {
         lexpos: &mut StateBufferedLexer,
     ) -> Vec<&'static AstAttribute> {
         let mut attributes = vec![];
-        while let (attr, ParseMacroMatched::Matched) = self.optParseAttributeSpecifier(lexpos) {
+        while let (attr, ParseMacroMatched::Matched) =
+            self.optParseAttributeSpecifier(lexpos, false)
+        {
             if let Some(attr) = attr {
                 attributes.push(&*self.alloc().alloc(attr));
             }
@@ -72,14 +77,15 @@ impl Parser {
     /**
      * Parses an optional attribute-specifier
      * attribute-specifier:
-     * [ [ ignore-balanced ] ]
-     * alignment-specifier
+     *  [ [ attribute-using-prefix [opt] attribute-list ] ]
+     *  alignment-specifier
      * alignment-specifier:
      *  alignas ( ignore-balanced )
      */
     fn optParseAttributeSpecifier(
         &mut self,
         lexpos: &mut StateBufferedLexer,
+        ignore: bool,
     ) -> (Option<AstAttribute>, ParseMacroMatched) {
         let start = self.lexer().get(lexpos);
         match start {
@@ -87,31 +93,8 @@ impl Parser {
                 let startSecondBracket = self.lexer().getWithOffset(lexpos, 1);
                 if let Some(fileTokPosMatchArm!(Token::LBracket)) = startSecondBracket {
                     // We know that we have a CXX11 attribute
-                    self.lexer().next(lexpos);
-                    let Some(contents) = self.parseBalancedPattern(lexpos) else {
-                        self.errors.push(CompileError::fromSourceRange(
-                            "Couldn't find matching ]] for the start of this attribute.",
-                            &SourceRange::newDoubleTok(start.unwrap(), startSecondBracket.unwrap()),
-                        ));
-                        return (None, ParseMacroMatched::Matched);
-                    };
-                    let Some(endBracket) =
-                        self.lexer().getConsumeTokenIfEq(lexpos, Token::RBracket) else {
-                        self.errors.push(CompileError::fromSourceRange(
-                            "This attribute is missing a ']'. Instert a ] at the end.",
-                            &SourceRange::newDoubleTok(
-                                start.unwrap(),
-                                self.lexer().getWithOffsetSaturating(lexpos, -1),
-                            ),
-                        ));
-                        return (None, ParseMacroMatched::Matched);
-                    };
                     return (
-                        Some(AstAttribute::new(
-                            ast::Attribute::Kind::CXX11,
-                            SourceRange::newDoubleTok(start.unwrap(), endBracket),
-                            contents,
-                        )),
+                        self.parseCXX11Attribute(lexpos, ignore),
                         ParseMacroMatched::Matched,
                     );
                 } // Ignore otherwise
@@ -125,7 +108,7 @@ impl Parser {
                     ));
                     return (None, ParseMacroMatched::Matched);
                 };
-                let Some(contents) = self.parseBalancedPattern(lexpos) else {
+                let Some(_) = self.parseBalancedPattern(lexpos) else {
                     self.errors.push(CompileError::fromPreTo(
                         "Couldn't find matching ')' for the start of this alignas attribute.",
                         startSecondParen,
@@ -135,9 +118,8 @@ impl Parser {
                 let endParen = self.lexer().getWithOffsetSaturating(lexpos, -1); // Saturating not needed in theory, but just in case
                 return (
                     Some(AstAttribute::new(
-                        ast::Attribute::Kind::CXX11,
+                        ast::Attribute::Kind::AlignAs,
                         SourceRange::newDoubleTok(start.unwrap(), endParen),
-                        contents,
                     )),
                     ParseMacroMatched::Matched,
                 );
@@ -145,5 +127,209 @@ impl Parser {
             _ => (),
         }
         (None, ParseMacroMatched::NotMatched)
+    }
+
+    /**
+     * ASSUMED THAT THE FIRST TWO BRACKETS ARE ALREADY MATCHED, BUT NOT CONSUMED
+     * Parses a CXX11 attribute
+     * attribute-specifier:
+     *  [ [ attribute-using-prefix [opt] attribute-list ] ]
+     * attribute-using-prefix:
+     *  using attribute-namespace :
+     * attribute-list:
+     *  attribute [opt]
+     *  attribute-list , attribute [opt]
+     *  attribute ... [TODO: Not yet suported]
+     *  attribute-list , attribute ... [TODO: Not yet suported]
+     * attribute:
+     *  attribute-token attribute-argument-clause [opt]
+     * attribute-token:
+     *  identifier
+     *  attribute-scoped-token
+     * attribute-scoped-token:
+     *  attribute-namespace :: identifier
+     * attribute-namespace:
+     *  identifier
+     * attribute-argument-clause:
+     *  ( balanced-token-seq [opt] )
+     */
+    fn parseCXX11Attribute(
+        &mut self,
+        lexpos: &mut StateBufferedLexer,
+        ignore: bool,
+    ) -> Option<AstAttribute> {
+        #[allow(clippy::debug_assert_with_mut_call)]
+        {
+            debug_assert!(self.lexer().ifEqOffset(lexpos, Token::LBracket, 0));
+            debug_assert!(self.lexer().ifEqOffset(lexpos, Token::LBracket, 1));
+        }
+
+        self.lexer().moveForward(lexpos, 2);
+        let usingNamespace = {
+            if let Some(usingNamespaceRangeStart) =
+                self.lexer().getConsumeTokenIfEq(lexpos, Token::Using)
+            {
+                let Some(namespace) = self.lexer().getConsumeTokenIfIdentifier(lexpos) else {
+                    self.errors.push(CompileError::fromPreTo(
+                        "This attribute using prefix is missing a namespace.",
+                        usingNamespaceRangeStart,
+                    ));
+
+                    // Skip to the end of the attribute
+                    loop {
+                        if self.lexer().ifEqOffset(lexpos, Token::RBracket, 0)
+                            && self.lexer().ifEqOffset(lexpos, Token::RBracket, 1)
+                        {
+                            self.lexer().moveForward(lexpos, 2);
+                            break;
+                        }
+                        if !self.lexer().next(lexpos) {
+                            break;
+                        }
+                    }
+                    return None;
+                };
+                let range = SourceRange::newDoubleTok(usingNamespaceRangeStart, namespace);
+                let Token::Identifier(namespaceStr) = namespace.tokPos.tok else {
+                    unreachable!();
+                };
+                if !self.lexer().consumeTokenIfEq(lexpos, Token::Colon) {
+                    self.errors.push(CompileError::fromPreTo(
+                        "This attribute using prefix is missing a ':'.",
+                        namespace,
+                    ));
+                }
+                Some((range, namespaceStr))
+            } else {
+                None
+            }
+        };
+
+        let mut attributes = vec![];
+        loop {
+            if self.lexer().consumeTokenIfEq(lexpos, Token::RBracket) {
+                if !self.lexer().consumeTokenIfEq(lexpos, Token::RBracket) {
+                    self.errors.push(CompileError::fromPreTo(
+                        "This attribute is missing a final ']'.",
+                        self.lexer().getWithOffsetSaturating(lexpos, -1),
+                    ));
+                }
+                break;
+            } else if self
+                .lexer()
+                .getIf(lexpos, |t| matches!(t, Token::Identifier(_)))
+                .is_some()
+            {
+                if let Some(attr) = self.optParseAttributeElement(lexpos, &usingNamespace) {
+                    if !ignore {
+                        attributes.push(attr);
+                    }
+                }
+            } else if self.lexer().consumeTokenIfEq(lexpos, Token::Comma) {
+            } else {
+                self.errors.push(CompileError::fromPreTo(
+                    "This attribute is missing an identifier.",
+                    self.lexer().getWithOffsetSaturating(lexpos, 0),
+                ));
+                break;
+            }
+        }
+        if ignore {
+            return None;
+        }
+        let attributes = self.alloc().alloc_slice_copy(attributes.as_slice());
+        Some(AstAttribute::new(
+            ast::Attribute::Kind::Cxx(attributes),
+            SourceRange::newDoubleTok(
+                self.lexer().getWithOffsetSaturating(lexpos, -2),
+                self.lexer().getWithOffsetSaturating(lexpos, -1),
+            ),
+        ))
+    }
+
+    /**
+     * Parses a CXX11 attribute element, if present.
+     *  attribute [opt]
+     * attribute:
+     *  attribute-token attribute-argument-clause [opt]
+     * attribute-token:
+     *  identifier
+     *  attribute-scoped-token
+     * attribute-scoped-token:
+     *  attribute-namespace :: identifier
+     * attribute-namespace:
+     *  identifier
+     * attribute-argument-clause:
+     *  ( balanced-token-seq [opt] )
+     */
+    fn optParseAttributeElement(
+        &mut self,
+        lexpos: &mut StateBufferedLexer,
+        usingNamespace: &Option<(SourceRange, StringRef)>,
+    ) -> Option<AstCXXAttribute> {
+        let Some(nameAttr) = self.lexer().getConsumeTokenIfIdentifier(lexpos) else {
+            return None;
+        };
+
+        let (namespace, nameAttr) = {
+            if let Some(doubleColon) = self.lexer().getConsumeTokenIfEq(lexpos, Token::DoubleColon)
+            {
+                let namespaceAttr = nameAttr;
+                let Some(realName) = self.lexer().getConsumeTokenIfIdentifier(lexpos) else {
+                self.errors.push(CompileError::fromSourceRange(
+                    "This attribute prefix is missing an attribute.",
+                    &SourceRange::newDoubleTok(nameAttr, doubleColon),
+                ));
+                return None;
+            };
+
+                if usingNamespace.is_some() {
+                    self.errors.push(CompileError::fromSourceRange(
+                    "This attribute is using a namespace, but the attribute is prefixed with a namespace as well. You can only use one or the other.",
+                    &SourceRange::newDoubleTok(nameAttr, realName),
+                ));
+                    return None;
+                }
+                let Token::Identifier(namespaceAttr) = namespaceAttr.tokPos.tok else {
+                    unreachable!();
+                };
+
+                (Some(namespaceAttr), realName)
+            } else if let Some((_, namespaceName)) = usingNamespace {
+                (Some(*namespaceName), nameAttr)
+            } else {
+                (None, nameAttr)
+            }
+        };
+
+        let parens = {
+            if let Some(lParenStart) = self.lexer().getIfEq(lexpos, Token::LParen) {
+                let Some(contents) = self.parseBalancedPattern(lexpos) else {
+                self.errors.push(CompileError::fromPreTo(
+                    "Couldn't find matching ')' for the start of this attribute argument clause.",
+                    lParenStart,
+                ));
+                return None;
+            };
+                Some(contents)
+            } else {
+                None
+            }
+        };
+
+        let Token::Identifier(name) = nameAttr.tokPos.tok else {
+            unreachable!();
+        };
+
+        let Some(dispatcher) = ast::Attribute::ATTRIBUTE_DISPATCHER.getAtrributeKindInfo(namespace, name) else {
+            self.errors.push(CompileNote::fromPreTo(
+                format!("The attribute \"{}\" is not supported.",
+                    namespace.map_or_else(|| name.to_string(), |namespace| format!("{namespace}::{name}"))
+                ),
+                nameAttr,
+            ));
+            return None;
+        };
+        (dispatcher.parser)(self, name, parens)
     }
 }

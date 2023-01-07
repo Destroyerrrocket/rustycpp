@@ -1,5 +1,5 @@
 use crate::{
-    ast::common::AstDecl,
+    ast::Decl::AstDecl,
     parse::parser::ModuleImportState,
     utils::structs::{CompileError, CompileMsgImpl, SourceRange},
 };

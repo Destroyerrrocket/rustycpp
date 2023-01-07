@@ -233,6 +233,15 @@ impl CompileMsgImpl for CompileWarning {
     }
 }
 
+#[doc(hidden)]
+pub struct CompileNote;
+#[doc(hidden)]
+impl CompileMsgImpl for CompileNote {
+    fn getKind() -> CompileMsgKind {
+        CompileMsgKind::Warning
+    }
+}
+
 #[derive(Debug, Clone)]
 /// A token and its possition in a file
 pub struct TokPos<T: Clone + Debug> {

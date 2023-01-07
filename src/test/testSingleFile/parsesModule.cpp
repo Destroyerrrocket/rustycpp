@@ -1,4 +1,4 @@
 module;
-export module foo.foo:bar.bar [[foo.[].attr]] alignas(invalid);
+export module foo.foo:bar.bar [[foo::bar]] alignas(invalid);
 module :private;
 

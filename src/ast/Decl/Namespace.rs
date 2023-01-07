@@ -4,8 +4,8 @@ use deriveMacros::{CommonAst, DeclAst};
 
 use crate::{
     ast::{
-        common::{AstDecl, BaseDecl},
         Attribute::AstAttribute,
+        Decl::{AstDecl, BaseDecl},
     },
     utils::{stringref::StringRef, structs::SourceRange},
 };

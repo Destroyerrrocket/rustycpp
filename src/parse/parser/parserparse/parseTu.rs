@@ -1,4 +1,4 @@
-use crate::ast::common::AstDecl;
+use crate::ast::Decl::AstDecl;
 use crate::utils::structs::FileTokPos;
 use crate::utils::structs::SourceRange;
 use crate::utils::structs::TokPos;

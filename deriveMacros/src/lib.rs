@@ -101,8 +101,8 @@ fn impl_CommonAst(ast: &DeriveInput) -> TokenStream {
                 quote!(#name::#vident(v) => v.getDebugNode())
             });
             quote!(
-                impl CommonAst for #name {
-                fn getDebugNode(&self) -> DebugNode {
+                impl crate::ast::common::CommonAst for #name {
+                fn getDebugNode(&self) -> crate::utils::debugnode::DebugNode {
                     match self {
                         #(#arms),*
                     }
@@ -129,8 +129,8 @@ fn impl_DeclAst(ast: &DeriveInput) -> TokenStream {
                     if let Some(field) = field {
                         let field = field.ident.to_token_stream();
                         quote! {
-                            impl #generics crate::ast::common::DeclAst for #name {
-                                fn getBaseDecl(&self) -> &crate::ast::common::BaseDecl {
+                            impl #generics crate::ast::Decl::DeclAst for #name {
+                                fn getBaseDecl(&self) -> &crate::ast::Decl::BaseDecl {
                                     return &self.#field;
                                 }
                             }
@@ -142,19 +142,15 @@ fn impl_DeclAst(ast: &DeriveInput) -> TokenStream {
                     }
                 }
                 syn::Fields::Unnamed(_) => {
-                    quote!(compile_error!("Can't derive CommonAst for tuple struct"))
+                    quote!(compile_error!("Can't derive DeclAst for tuple struct"))
                 }
-                syn::Fields::Unit => quote! {
-                    impl crate::ast::common::CommonAst for #name {
-                        fn getDebugNode(&self) -> crate::utils::debugnode::DebugNode {
-                            crate::utils::debugnode::DebugNode::new(stringify!(#name).to_string())
-                        }
-                    }
-                },
+                syn::Fields::Unit => {
+                    quote!(compile_error!("Can't derive DeclAst for unit struct"))
+                }
             }
         }
-        syn::Data::Enum(_) => quote!(compile_error!("Can't derive CommonAst for enum")),
-        syn::Data::Union(_) => quote!(compile_error!("Can't derive CommonAst for union")),
+        syn::Data::Enum(_) => quote!(compile_error!("Can't derive DeclAst for enum")),
+        syn::Data::Union(_) => quote!(compile_error!("Can't derive DeclAst for union")),
     }
 }
 

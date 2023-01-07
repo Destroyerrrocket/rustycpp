@@ -1,7 +1,7 @@
 use deriveMacros::{CommonAst, DeclAst};
 
 use crate::{
-    ast::{common::BaseDecl, Attribute::AstAttribute},
+    ast::{Attribute::AstAttribute, Decl::BaseDecl},
     utils::{stringref::StringRef, structs::SourceRange},
 };
 

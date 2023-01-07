@@ -1,9 +1,8 @@
 use crate::{
     ast::{
-        common::AstDecl,
         Attribute::AstAttribute,
         Decl::{
-            Asm::AstAsmDecl, Empty::AstEmptyDecl, Enum::AstCustomRustyCppEnum,
+            Asm::AstAsmDecl, AstDecl, Empty::AstEmptyDecl, Enum::AstCustomRustyCppEnum,
             Namespace::AstNamespaceDecl,
         },
     },

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    ast::common::AstDecl,
+    ast::Decl::AstDecl,
     sema::scope::{Child, Scope, ScopeKind},
     utils::stringref::StringRef,
 };

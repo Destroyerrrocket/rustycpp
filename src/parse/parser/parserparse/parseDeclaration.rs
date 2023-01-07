@@ -1,5 +1,5 @@
 use crate::{
-    ast::{common::AstDecl, Attribute::AstAttribute},
+    ast::{Attribute::AstAttribute, Decl::AstDecl},
     fileTokPosMatchArm,
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,
@@ -501,7 +501,7 @@ impl Parser {
             return vec![];
         };
 
-        let Some(nameTok) = self.lexer().getConsumeTokenIf(lexpos, |t| matches!(t, Token::Identifier(_))) else {
+        let Some(nameTok) = self.lexer().getConsumeTokenIfIdentifier(lexpos) else {
             self.errors.push(CompileError::fromPreTo(
                 "Expected enum name after 'enum'.",
                 enumTok,

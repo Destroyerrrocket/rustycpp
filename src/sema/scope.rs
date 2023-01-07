@@ -6,7 +6,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
  */
 use bitflags::bitflags;
 
-use crate::{ast::common::AstDecl, utils::stringref::StringRef};
+use crate::{ast::Decl::AstDecl, utils::stringref::StringRef};
 bitflags! {
 /// `ScopeKind` - This bitflag is used to configure the kind of scope we have. Based on clang's ScopeFlags (comments from them).
 pub struct ScopeKind : u32 {

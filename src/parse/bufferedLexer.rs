@@ -183,6 +183,22 @@ impl BufferedLexer {
         None
     }
 
+    pub fn getConsumeTokenIfIdentifier(
+        &self,
+        lexpos: &mut StateBufferedLexer,
+    ) -> Option<&FileTokPos<Token>> {
+        if !self.reachedEnd(lexpos)
+            && matches!(
+                self.tokens()[lexpos.currentToken].tokPos.tok,
+                Token::Identifier(_)
+            )
+        {
+            lexpos.currentToken += 1;
+            return self.tokens().get(lexpos.currentToken - 1);
+        }
+        None
+    }
+
     pub fn getConsumeTokenIf(
         &self,
         lexpos: &mut StateBufferedLexer,
