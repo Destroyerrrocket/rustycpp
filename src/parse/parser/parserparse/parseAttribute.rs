@@ -108,7 +108,7 @@ impl Parser {
                     ));
                     return (None, ParseMacroMatched::Matched);
                 };
-                let Some(_) = self.parseBalancedPattern(lexpos) else {
+                let Some(_) = self.parseAlmostBalancedPattern(lexpos) else {
                     self.errors.push(CompileError::fromPreTo(
                         "Couldn't find matching ')' for the start of this alignas attribute.",
                         startSecondParen,
@@ -175,18 +175,6 @@ impl Parser {
                         usingNamespaceRangeStart,
                     ));
 
-                    // Skip to the end of the attribute
-                    loop {
-                        if self.lexer().ifEqOffset(lexpos, Token::RBracket, 0)
-                            && self.lexer().ifEqOffset(lexpos, Token::RBracket, 1)
-                        {
-                            self.lexer().moveForward(lexpos, 2);
-                            break;
-                        }
-                        if !self.lexer().next(lexpos) {
-                            break;
-                        }
-                    }
                     return None;
                 };
                 let range = SourceRange::newDoubleTok(usingNamespaceRangeStart, namespace);
@@ -288,7 +276,6 @@ impl Parser {
                     "This attribute is using a namespace, but the attribute is prefixed with a namespace as well. You can only use one or the other.",
                     &SourceRange::newDoubleTok(nameAttr, realName),
                 ));
-                    return None;
                 }
                 let Token::Identifier(namespaceAttr) = namespaceAttr.tokPos.tok else {
                     unreachable!();
@@ -304,7 +291,7 @@ impl Parser {
 
         let parens = {
             if let Some(lParenStart) = self.lexer().getIfEq(lexpos, Token::LParen) {
-                let Some(contents) = self.parseBalancedPattern(lexpos) else {
+                let Some(contents) = self.parseAlmostBalancedPattern(lexpos) else {
                 self.errors.push(CompileError::fromPreTo(
                     "Couldn't find matching ')' for the start of this attribute argument clause.",
                     lParenStart,

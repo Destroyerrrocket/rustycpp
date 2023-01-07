@@ -281,7 +281,7 @@ impl Parser {
             return vec![];
         }
         let parenPos = *lexpos;
-        let Some(mut scoped) = self.parseBalancedPattern(lexpos) else {
+        let Some(mut scoped) = self.parseAlmostBalancedPattern(lexpos) else {
             self.errors.push(CompileError::fromPreTo(
                 "Expected a closing parentheses for this '(' while evaluating the 'asm' declaration.",
                 self.lexer().getWithOffsetSaturating(&parenPos, 0),

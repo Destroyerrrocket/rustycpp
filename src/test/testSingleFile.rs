@@ -211,6 +211,13 @@ fn parsesAttrDeclError1() {
 
 #[test]
 #[named]
+fn parsesAttrDeclError2() {
+    let (_, e, s) = testUnsuccessfulFile!();
+    checkErrors(e, &s, &[e!(1), e!(2), e!(3), e!(4), e!(5), e!(6)]);
+}
+
+#[test]
+#[named]
 fn parsesNamedNamespace() {
     let ast = testSuccessfulFile!();
     assert_tree_eq!(
