@@ -77,9 +77,9 @@ impl MultiLexer {
 
     /// Push a new file. Please be careful when you're doing this, as the pushed
     /// tokens will still be returned first!
-    pub fn pushFile(&mut self, path: String) {
+    pub fn pushFile(&mut self, path: &str) {
         let mut fileMapping = self.fileMapping.lock().unwrap();
-        let compFile = fileMapping.getAddFile(path.as_str());
+        let compFile = fileMapping.getAddFile(path);
         let lexer = PreLexer::new(fileMapping.getOpenedFile(compFile).content().to_string());
         self.files.push(FileLexer { compFile, lexer });
     }

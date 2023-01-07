@@ -74,7 +74,7 @@ impl Parser {
         }
         // TODO: Move to
         let attrs = self.parseAttributes(lexpos);
-        let res = self.parseDeclaration(lexpos, attrs);
+        let res = self.parseDeclaration(lexpos, &attrs);
         self.actOnTopLevelDecl(&res);
         res
     }

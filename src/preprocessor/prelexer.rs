@@ -103,11 +103,10 @@ impl PreLexer {
                             Some(PreToken::Whitespace(WhiteCom::Comment(content))),
                             contentLen,
                         );
-                    } else {
-                        let errContent = lexer.slice().to_string();
-                        let len = errContent.len();
-                        return (Some(PreToken::Unknown(errContent)), len);
                     }
+                    let errContent = lexer.slice().to_string();
+                    let len = errContent.len();
+                    return (Some(PreToken::Unknown(errContent)), len);
                 }
 
                 PreTokenLexer::Error => {
@@ -116,7 +115,7 @@ impl PreLexer {
                     return (Some(PreToken::Unknown(errContent)), len);
                 }
                 _ => {
-                    return (Some(PreToken::new(idxLex, content)), len);
+                    return (Some(PreToken::new(&idxLex, content)), len);
                 }
             }
         }
@@ -138,7 +137,7 @@ impl PreLexer {
             if regex_find!(r#"^<::[^:>]"#, &self.current).is_some() {
                 (kind, idx) = (
                     Some(PreToken::new(
-                        PreTokenLexer::OperatorPunctuator,
+                        &PreTokenLexer::OperatorPunctuator,
                         "<".to_string(),
                     )),
                     1,

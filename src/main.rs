@@ -30,9 +30,6 @@
 #![allow(
     non_snake_case,
     dead_code,
-    clippy::redundant_else,
-    clippy::manual_assert,
-    clippy::needless_pass_by_value,
     clippy::missing_const_for_fn, // Bugged
     clippy::multiple_crate_versions, // Bugged
 )]
@@ -79,7 +76,7 @@ struct Args {
 /// Wrapper for main, to allow for the use of `?` in main
 fn execCompiler(
     parameters: Parameters,
-    args: Args,
+    args: &Args,
 ) -> Result<(), (CompilerState, Vec<CompileMsg>)> {
     let mut compiler = Compiler::new(parameters);
     if args.printDependencyTree {
@@ -102,7 +99,7 @@ fn main() {
     }
 
     let parameters = Parameters::new_file(&args.files).unwrap();
-    if let Err((compilerState, errors)) = execCompiler(parameters, args) {
+    if let Err((compilerState, errors)) = execCompiler(parameters, &args) {
         for err in errors {
             err.print(&compilerState.compileFiles);
         }

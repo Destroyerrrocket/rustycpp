@@ -23,7 +23,7 @@ macro_rules! testSingleFile {
 macro_rules! testSuccessfulFile {
     () => {{
         let (ast, errors, compilerState) = testSingleFile!();
-        assertErrors(errors, compilerState);
+        assertErrors(&errors, &compilerState);
         ast.into_iter().next().unwrap().1
     }};
 }
@@ -56,20 +56,20 @@ fn testSingleFile(
     let (ast, errors) = tmpRes;
 
     if let Err((compilerState, errors)) = crashed.clone() {
-        assertErrors(errors, compilerState);
+        assertErrors(&errors, &compilerState);
         unreachable!();
     }
     (ast, errors, crashed.unwrap())
 }
 
-fn assertErrors(errors: Vec<CompileMsg>, state: CompilerState) {
+fn assertErrors(errors: &[CompileMsg], state: &CompilerState) {
     errors.iter().for_each(|e| e.print(&state.compileFiles));
     assert!(!errors.iter().any(|e| e.severity() >= CompileMsgKind::Error));
 }
 
 fn checkErrors(
     mut errors: Vec<CompileMsg>,
-    state: CompilerState,
+    state: &CompilerState,
     expectedErrors: &[(usize, CompileMsgKind)],
 ) {
     errors.iter().for_each(|e| e.print(&state.compileFiles));
@@ -138,49 +138,49 @@ fn parsesModule() {
 #[named]
 fn parsesModuleError1() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1), e!(2)]);
+    checkErrors(e, &s, &[e!(1), e!(2)]);
 }
 
 #[test]
 #[named]
 fn parsesModuleError2() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1), e!(2)]);
+    checkErrors(e, &s, &[e!(1), e!(2)]);
 }
 
 #[test]
 #[named]
 fn parsesModuleError3() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1), e!(2)]);
+    checkErrors(e, &s, &[e!(1), e!(2)]);
 }
 
 #[test]
 #[named]
 fn parsesModuleError4() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1)]);
+    checkErrors(e, &s, &[e!(1)]);
 }
 
 #[test]
 #[named]
 fn parsesModuleError5() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1)]);
+    checkErrors(e, &s, &[e!(1)]);
 }
 
 #[test]
 #[named]
 fn parsesAttrError1() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1), e!(1), e!(1), e!(1)]);
+    checkErrors(e, &s, &[e!(1), e!(1), e!(1), e!(1)]);
 }
 
 #[test]
 #[named]
 fn parsesAttrError2() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1), e!(1)]);
+    checkErrors(e, &s, &[e!(1), e!(1)]);
 }
 
 #[test]
@@ -204,7 +204,7 @@ fn parsesAttrDecl() {
 #[named]
 fn parsesAttrDeclError1() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1)]);
+    checkErrors(e, &s, &[e!(1)]);
 }
 
 #[test]
@@ -242,7 +242,7 @@ fn parsesNamedNamespace() {
 #[named]
 fn parsesNamedNamespaceError1() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(2), e!(3), e!(3)]);
+    checkErrors(e, &s, &[e!(2), e!(3), e!(3)]);
 }
 
 #[test]
@@ -267,7 +267,7 @@ fn parses__rustycpp__enum() {
 #[named]
 fn parses__rustycpp__enumError1() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1), e!(2), e!(3), e!(5), e!(5)]);
+    checkErrors(e, &s, &[e!(1), e!(2), e!(3), e!(5), e!(5)]);
 }
 
 #[test]
@@ -284,5 +284,5 @@ fn parsesAsmDecl() {
 #[named]
 fn parsesAsmDeclError1() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, s, &[e!(1), e!(2), w!(3), e!(4), e!(5), e!(6)]);
+    checkErrors(e, &s, &[e!(1), e!(2), w!(3), e!(4), e!(5), e!(6)]);
 }

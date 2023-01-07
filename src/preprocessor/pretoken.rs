@@ -246,7 +246,7 @@ pub enum PreToken {
 }
 
 impl PreToken {
-    pub fn new(tok: PreTokenLexer, content: String) -> Self {
+    pub fn new(tok: &PreTokenLexer, content: String) -> Self {
         match tok {
             PreTokenLexer::Ident => Self::Ident(content),
             PreTokenLexer::PreprocessingOperatorHash => {

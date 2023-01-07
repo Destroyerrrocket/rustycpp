@@ -32,7 +32,7 @@ impl Parser {
     pub fn parseDeclaration(
         &mut self,
         lexpos: &mut StateBufferedLexer,
-        attr: Vec<&'static AstAttribute>,
+        attr: &Vec<&'static AstAttribute>,
     ) -> Vec<&'static AstDecl> {
         let tok = self.lexer().get(lexpos);
         if tok.is_none() {
@@ -188,7 +188,7 @@ impl Parser {
              */
             Token::Semicolon => {
                 self.lexer().next(lexpos);
-                return self.actOnEmptyDecl(&attr, SourceRange::newSingleTok(tok));
+                return self.actOnEmptyDecl(attr, SourceRange::newSingleTok(tok));
             }
             /**
              * asm-declaration:
@@ -268,7 +268,7 @@ impl Parser {
     pub fn parseAsmDeclaration(
         &mut self,
         lexpos: &mut StateBufferedLexer,
-        attr: Vec<&'static AstAttribute>,
+        attr: &Vec<&'static AstAttribute>,
     ) -> Vec<&'static AstDecl> {
         let startlexpos = *lexpos;
         let startedAsm = self.lexer().consumeTokenIfEq(lexpos, Token::Asm);
@@ -322,7 +322,7 @@ impl Parser {
         }
 
         return self.actOnAsmDecl(
-            &attr,
+            attr,
             SourceRange::newDoubleTok(
                 self.lexer().getWithOffsetSaturating(&startlexpos, 0),
                 self.lexer().getWithOffsetSaturating(lexpos, -1),
@@ -354,9 +354,9 @@ impl Parser {
     pub fn parseNamespaceDeclaration(
         &mut self,
         lexpos: &mut StateBufferedLexer,
-        attr: Vec<&'static AstAttribute>,
+        attr: &[&'static AstAttribute],
     ) -> Vec<&'static AstDecl> {
-        self.actWrongAttributeLocation(&attr);
+        self.actWrongAttributeLocation(attr);
 
         let isInline = self.lexer().consumeTokenIfEq(lexpos, Token::Inline);
 
@@ -390,7 +390,7 @@ impl Parser {
                             SourceRange::newSingleTok(name.unwrap()),
                         );
                         let contents = self.parseNamespaceBody(lexpos);
-                        self.actOnEndNamedNamespaceDefinition(contents);
+                        self.actOnEndNamedNamespaceDefinition(&contents);
                         astNamespace
                     }
                     Token::Equal => todo!(),
@@ -427,11 +427,10 @@ impl Parser {
                 if matches!(tok, Token::RBrace) {
                     self.lexer().consumeToken(lexpos);
                     break;
-                } else {
-                    let attrs = self.parseAttributes(lexpos);
-                    let newDecls = self.parseDeclaration(lexpos, attrs);
-                    decls.extend(newDecls);
                 }
+                let attrs = self.parseAttributes(lexpos);
+                let newDecls = self.parseDeclaration(lexpos, &attrs);
+                decls.extend(newDecls);
             } else {
                 self.errors.push(CompileError::fromPreTo(
                     "Expected '}' to end the namespace body. Maybe insert one here?",
@@ -449,7 +448,7 @@ impl Parser {
     fn parseCustom__rustycpp__Decl(
         &mut self,
         lexpos: &mut StateBufferedLexer,
-        _attr: Vec<&'static AstAttribute>,
+        _attr: &[&'static AstAttribute],
     ) -> Vec<&'static AstDecl> {
         let Some(rustyCpp) = self
             .lexer()
@@ -475,9 +474,8 @@ impl Parser {
         while let Some(fileTokPosMatchArm!(tok)) = self.lexer().get(lexpos) {
             if matches!(tok, Token::RParen) {
                 break;
-            } else {
-                self.lexer().next(lexpos);
             }
+            self.lexer().next(lexpos);
         }
 
         if !self.lexer().consumeTokenIfEq(lexpos, Token::RParen) {

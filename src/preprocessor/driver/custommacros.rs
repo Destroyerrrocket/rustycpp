@@ -21,7 +21,7 @@ trait CustomMacro {
     /// Macro information
     fn macroInfo() -> DefineAst;
     /// Expand function
-    fn expand(expandData: ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg>;
+    fn expand(expandData: &ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg>;
 }
 
 /// Trait of a custom macro
@@ -39,7 +39,7 @@ macro_rules! declCMVar {
                 }
             }
             fn expand(
-                expandData: ExpandData,
+                expandData: &ExpandData,
             ) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
                 let expanded = $expand;
                 let mut res = VecDeque::new();
@@ -81,7 +81,7 @@ impl CustomMacro for __cplusplus {
         }
     }
 
-    fn expand(expandData: ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
+    fn expand(expandData: &ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         let mut res = VecDeque::new();
         res.push_back(FileTokPos::new_meta_c(
             PreToken::DisableMacro(stringify!(__cplusplus).to_string()),
@@ -114,7 +114,7 @@ impl CustomMacro for __has_include {
         }
     }
 
-    fn expand(expandData: ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
+    fn expand(expandData: &ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         let mut res = VecDeque::new();
         res.push_back(FileTokPos::new_meta_c(
             PreToken::DisableMacro(stringify!(__has_include).to_string()),
@@ -173,7 +173,7 @@ impl CustomMacro for __has_cpp_attribute {
         }
     }
 
-    fn expand(expandData: ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
+    fn expand(expandData: &ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         let mut res = VecDeque::new();
         res.push_back(FileTokPos::new_meta_c(
             PreToken::DisableMacro(stringify!(__has_include).to_string()),

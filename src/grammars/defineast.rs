@@ -67,7 +67,8 @@ pub enum PreTokenDefine {
 }
 
 #[doc(hidden)]
-type DefineExpansionFunc = dyn Fn(ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg>;
+type DefineExpansionFunc =
+    dyn Fn(&ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg>;
 #[derive(Clone)]
 /// A macro definition, with all the needed data
 pub struct DefineAst {

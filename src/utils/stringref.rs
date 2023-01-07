@@ -73,7 +73,7 @@ impl StringRef {
         }
     }
 
-    pub fn new_stringable<T: ToString>(str: T) -> Self {
+    pub fn new_stringable<T: ToString>(str: &T) -> Self {
         return Self::from_str(str.to_string().as_str());
     }
 }

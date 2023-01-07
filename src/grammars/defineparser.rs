@@ -1,3 +1,5 @@
+#![allow(clippy::redundant_else)]
+
 use std::collections::VecDeque;
 
 use crate::preprocessor::pretoken::PreprocessingOperator;
@@ -46,9 +48,9 @@ macro_rules! armPP {
     };
 }
 
-fn normal(input: FileTokPos<PreTokenDefinePreParse>) -> PreTokenDefine {
+fn normal(input: &FileTokPos<PreTokenDefinePreParse>) -> PreTokenDefine {
     if let armPP!(PreTokenDefinePreParse::Normal(ref d)) = input {
-        PreTokenDefine::Normal(FileTokPos::new_meta_c(d.clone(), &input))
+        PreTokenDefine::Normal(FileTokPos::new_meta_c(d.clone(), input))
     } else {
         panic!("Expected a normal token")
     }
@@ -59,7 +61,7 @@ fn ReTokWhiteSp(input: In) -> ParseRes {
         input,
         PreTokenDefinePreParse::Normal(PreToken::Whitespace(_))
     ) {
-        let norm = normal(input.pop_front().unwrap());
+        let norm = normal(&input.pop_front().unwrap());
         Ok(norm)
     } else {
         Err(CompileError::fromPreTo(
@@ -79,7 +81,7 @@ fn ReTokNoWhiteSp(input: In) -> ParseRes {
             &input[0],
         ))
     } else if matchesPP!(input, PreTokenDefinePreParse::Normal(_)) {
-        let norm = normal(input.pop_front().unwrap());
+        let norm = normal(&input.pop_front().unwrap());
         Ok(norm)
     } else {
         Err(CompileError::fromPreTo(

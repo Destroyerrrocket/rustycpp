@@ -69,10 +69,9 @@ impl BufferedLexer {
         if lexpos.currentToken >= self.tokens().len() {
             if self.tryGetNextToken() {
                 return false;
-            } else {
-                lexpos.maximumToken = lexpos.currentToken.saturating_sub(1);
-                return true;
             }
+            lexpos.maximumToken = lexpos.currentToken.saturating_sub(1);
+            return true;
         }
         false
     }

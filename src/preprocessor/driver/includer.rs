@@ -22,9 +22,9 @@ impl Preprocessor {
     pub fn includeFile(
         &mut self,
         preToken: &FileTokPos<PreToken>,
-        file: String,
+        file: &str,
     ) -> Result<(), CompileMsg> {
-        if self.multilexer.hasFileAccess(&file) {
+        if self.multilexer.hasFileAccess(file) {
             self.multilexer.pushFile(file);
         } else {
             return Err(CompileError::fromPreTo(

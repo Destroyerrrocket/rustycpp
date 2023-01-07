@@ -73,11 +73,11 @@ impl Parser {
     /**
      * named-namespace-definition
      */
-    pub fn actOnEndNamedNamespaceDefinition(&mut self, contents: Vec<&'static AstDecl>) {
+    pub fn actOnEndNamedNamespaceDefinition(&mut self, contents: &[&'static AstDecl]) {
         let Some(AstDecl::AstNamespaceDecl(namespaceDecl)) =
             self.currentScope.borrow().causingDecl else {unreachable!();};
 
-        let contents = self.alloc().alloc_slice_copy(contents.as_slice());
+        let contents = self.alloc().alloc_slice_copy(contents);
         namespaceDecl.setContents(contents);
 
         let newCurrent = self.currentScope.borrow().parent.clone().unwrap();

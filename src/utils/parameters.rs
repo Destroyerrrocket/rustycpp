@@ -27,12 +27,12 @@ impl Parameters {
     /// Parses the config file, and returns the results.
     pub fn new_file(file: &str) -> Result<Self, String> {
         let contents = fs::read_to_string(file).map_err(|x| x.to_string())?;
-        Self::new().parse(contents)
+        Self::new().parse(&contents)
     }
 
     /// Parses the config file.
-    fn parse(mut self, contents: String) -> Result<Self, String> {
-        let parsing = parse(contents.as_str()).map_err(|x| x.to_string())?;
+    fn parse(mut self, contents: &str) -> Result<Self, String> {
+        let parsing = parse(contents).map_err(|x| x.to_string())?;
         if let JsonValue::Object(obj) = parsing {
             for (key, value) in obj.iter() {
                 match key {

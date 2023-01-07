@@ -334,10 +334,10 @@ impl Preprocessor {
 
     /// Evaluates an if statement expression, returning the evaluation result. Does not alter the state of the preprocessor
     pub fn evalIfScope(
-        sequence: VecDeque<FileTokPos<PreToken>>,
+        sequence: &VecDeque<FileTokPos<PreToken>>,
         token: &FileTokPos<PreToken>,
     ) -> Result<(bool, Vec<CompileMsg>), Vec<CompileMsg>> {
-        let mut numSequence = Self::transformToParserTokens(&sequence, token)?;
+        let mut numSequence = Self::transformToParserTokens(sequence, token)?;
         let last = numSequence.back().unwrap().clone();
         let (n, err) = macrointconstantexpressionparser::exprRes((&mut numSequence, &last))?;
         Ok((n != 0, err))

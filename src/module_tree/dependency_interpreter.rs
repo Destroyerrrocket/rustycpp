@@ -172,26 +172,25 @@ pub fn generateNode(
                             tu,
                         ));
                         return Err(err);
-                    } else {
-                        if modulePrivateFound {
-                            err.push(CompileError::onFile(
-                                format!(
-                                    "Private part of a module already defined in module {}",
-                                    moduleName.unwrap()
-                                ),
-                                tu,
-                            ));
-                            return Err(err);
-                        }
-                        modulePrivateFound = true;
-                        res = parseModulePartOfModuleFile(
-                            &mut iter,
-                            moduleName.as_ref().unwrap().to_string(),
-                            fileMap,
-                        )
-                        .map_err(|err| vec![CompileError::onFile(err, tu)])?;
-                        continue;
                     }
+                    if modulePrivateFound {
+                        err.push(CompileError::onFile(
+                            format!(
+                                "Private part of a module already defined in module {}",
+                                moduleName.unwrap()
+                            ),
+                            tu,
+                        ));
+                        return Err(err);
+                    }
+                    modulePrivateFound = true;
+                    res = parseModulePartOfModuleFile(
+                        &mut iter,
+                        moduleName.as_ref().unwrap().to_string(),
+                        fileMap,
+                    )
+                    .map_err(|err| vec![CompileError::onFile(err, tu)])?;
+                    continue;
                 }
                 moduleName = Some(name.to_string());
                 res = parseModulePartOfModuleFile(&mut iter, name.to_string(), fileMap)

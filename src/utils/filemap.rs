@@ -38,7 +38,7 @@ impl<'a> FileMap {
         };
         me.files.push(Either::CompileFile(Arc::new(CompileFile::new(
             "<unknown>".to_string(),
-            "You are trying to read an invalid file".to_owned(),
+            "You are trying to read an invalid file",
         ))));
         me.resolvedPaths.insert("<unknown>".to_owned(), 0);
         me
@@ -51,7 +51,7 @@ impl<'a> FileMap {
             panic!("Error reading {pathStr}. Error: {err}");
         }
 
-        let res = Arc::new(CompileFile::new(pathStr.clone(), filecontents));
+        let res = Arc::new(CompileFile::new(pathStr.clone(), &filecontents));
         self.files
             .insert(path as usize, Either::CompileFile(res.clone()));
         res
@@ -131,7 +131,7 @@ impl<'a> FileMap {
     }
 
     /// Add a fake test file. Intened for testing.
-    pub fn addTestFile(&mut self, path: String, content: String) {
+    pub fn addTestFile(&mut self, path: String, content: &str) {
         self.resolvedPaths
             .insert(path.clone(), self.files.len() as u64);
         self.reverseResolved

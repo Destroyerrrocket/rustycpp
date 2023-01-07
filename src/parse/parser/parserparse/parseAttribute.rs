@@ -88,64 +88,59 @@ impl Parser {
                 if let Some(fileTokPosMatchArm!(Token::LBracket)) = startSecondBracket {
                     // We know that we have a CXX11 attribute
                     self.lexer().next(lexpos);
-                    if let Some(contents) = self.parseBalancedPattern(lexpos) {
-                        if let Some(endBracket) =
-                            self.lexer().getConsumeTokenIfEq(lexpos, Token::RBracket)
-                        {
-                            return (
-                                Some(AstAttribute::new(
-                                    ast::Attribute::Kind::CXX11,
-                                    SourceRange::newDoubleTok(start.unwrap(), endBracket),
-                                    contents,
-                                )),
-                                ParseMacroMatched::Matched,
-                            );
-                        } else {
-                            self.errors.push(CompileError::fromSourceRange(
-                                "This attribute is missing a ']'. Instert a ] at the end.",
-                                &SourceRange::newDoubleTok(
-                                    start.unwrap(),
-                                    self.lexer().getWithOffsetSaturating(lexpos, -1),
-                                ),
-                            ));
-                            return (None, ParseMacroMatched::Matched);
-                        }
-                    } else {
+                    let Some(contents) = self.parseBalancedPattern(lexpos) else {
                         self.errors.push(CompileError::fromSourceRange(
                             "Couldn't find matching ]] for the start of this attribute.",
                             &SourceRange::newDoubleTok(start.unwrap(), startSecondBracket.unwrap()),
                         ));
                         return (None, ParseMacroMatched::Matched);
-                    }
+                    };
+                    let Some(endBracket) =
+                        self.lexer().getConsumeTokenIfEq(lexpos, Token::RBracket) else {
+                        self.errors.push(CompileError::fromSourceRange(
+                            "This attribute is missing a ']'. Instert a ] at the end.",
+                            &SourceRange::newDoubleTok(
+                                start.unwrap(),
+                                self.lexer().getWithOffsetSaturating(lexpos, -1),
+                            ),
+                        ));
+                        return (None, ParseMacroMatched::Matched);
+                    };
+                    return (
+                        Some(AstAttribute::new(
+                            ast::Attribute::Kind::CXX11,
+                            SourceRange::newDoubleTok(start.unwrap(), endBracket),
+                            contents,
+                        )),
+                        ParseMacroMatched::Matched,
+                    );
                 } // Ignore otherwise
             }
             Some(fileTokPosMatchArm!(Token::Alignas)) => {
                 self.lexer().next(lexpos);
-                if let Some(startSecondParen) = self.lexer().getIfEq(lexpos, Token::LParen) {
-                    if let Some(contents) = self.parseBalancedPattern(lexpos) {
-                        let endParen = self.lexer().getWithOffsetSaturating(lexpos, -1); // Saturating not needed in theory, but just in case
-                        return (
-                            Some(AstAttribute::new(
-                                ast::Attribute::Kind::CXX11,
-                                SourceRange::newDoubleTok(start.unwrap(), endParen),
-                                contents,
-                            )),
-                            ParseMacroMatched::Matched,
-                        );
-                    } else {
-                        self.errors.push(CompileError::fromPreTo(
-                            "Couldn't find matching ')' for the start of this alignas attribute.",
-                            startSecondParen,
-                        ));
-                        return (None, ParseMacroMatched::Matched);
-                    }
-                } else {
+                let Some(startSecondParen) = self.lexer().getIfEq(lexpos, Token::LParen) else {
                     self.errors.push(CompileError::fromPreTo(
                         "This alignas attribute is missing the '( type or constant expression )'.",
                         start.unwrap(),
                     ));
                     return (None, ParseMacroMatched::Matched);
-                }
+                };
+                let Some(contents) = self.parseBalancedPattern(lexpos) else {
+                    self.errors.push(CompileError::fromPreTo(
+                        "Couldn't find matching ')' for the start of this alignas attribute.",
+                        startSecondParen,
+                    ));
+                    return (None, ParseMacroMatched::Matched);
+                };
+                let endParen = self.lexer().getWithOffsetSaturating(lexpos, -1); // Saturating not needed in theory, but just in case
+                return (
+                    Some(AstAttribute::new(
+                        ast::Attribute::Kind::CXX11,
+                        SourceRange::newDoubleTok(start.unwrap(), endParen),
+                        contents,
+                    )),
+                    ParseMacroMatched::Matched,
+                );
             }
             _ => (),
         }

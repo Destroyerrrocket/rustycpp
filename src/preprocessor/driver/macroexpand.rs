@@ -80,7 +80,7 @@ impl Preprocessor {
     /// Expand a [`PreTokenDefine::Arg`]
     fn expandArg(
         mut result: VecDeque<FileTokPos<PreToken>>,
-        expandData: ExpandData,
+        expandData: &ExpandData,
         a: &FileTokPos<String>,
     ) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         if expandData.expandArg {
@@ -148,7 +148,7 @@ impl Preprocessor {
     /// Expand a [`PreTokenDefine::VariadicArg`]
     fn expandVariadicArg(
         mut result: VecDeque<FileTokPos<PreToken>>,
-        expandData: ExpandData,
+        expandData: &ExpandData,
         vaTok: &FileTokPos<()>,
     ) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         if expandData.expandArg {
@@ -203,11 +203,11 @@ impl Preprocessor {
     /// Expand a [`PreTokenDefine::Hash`]
     fn expandHash(
         mut result: VecDeque<FileTokPos<PreToken>>,
-        expandData: ExpandData,
+        expandData: &ExpandData,
         pos: &FileTokPos<()>,
         tokie: &Vec<PreTokenDefine>,
     ) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
-        let mut resChild = Self::expand(ExpandData {
+        let mut resChild = Self::expand(&ExpandData {
             definitions: expandData.definitions,
             disabledMacros: expandData.disabledMacros,
             lexer: expandData.lexer,
@@ -272,7 +272,7 @@ impl Preprocessor {
     /// Expand a [`PreTokenDefine::HashHash`]
     fn expandHashHash(
         mut result: VecDeque<FileTokPos<PreToken>>,
-        expandData: ExpandData,
+        expandData: &ExpandData,
         pos: &FileTokPos<()>,
         left: &Vec<PreTokenDefine>,
         right: &Vec<PreTokenDefine>,
@@ -283,7 +283,7 @@ impl Preprocessor {
             PreTokenDefine::Normal(fileTokPosMatchArm!(PreToken::OperatorPunctuator(",")))
         ) && matches!(right.first().unwrap(), PreTokenDefine::VariadicArg(_))
         {
-            let mut expR = Self::expand(ExpandData {
+            let mut expR = Self::expand(&ExpandData {
                 definitions: &HashMap::new(),
                 disabledMacros: &HashMultiSet::new(),
                 lexer: expandData.lexer,
@@ -310,7 +310,7 @@ impl Preprocessor {
             }
         } else {
             // We extract the contents of the left and right side
-            let mut expL = Self::expand(ExpandData {
+            let mut expL = Self::expand(&ExpandData {
                 definitions: &HashMap::new(),
                 disabledMacros: &HashMultiSet::new(),
                 lexer: expandData.lexer,
@@ -324,7 +324,7 @@ impl Preprocessor {
             })?;
             expL.pop_back();
             expL.pop_front();
-            let mut expR = Self::expand(ExpandData {
+            let mut expR = Self::expand(&ExpandData {
                 definitions: &HashMap::new(),
                 disabledMacros: &HashMultiSet::new(),
                 lexer: expandData.lexer,
@@ -373,11 +373,11 @@ impl Preprocessor {
     /// Expand a [`PreTokenDefine::VariadicOpt`]
     fn expandVariadicOpt(
         mut result: VecDeque<FileTokPos<PreToken>>,
-        expandData: ExpandData,
+        expandData: &ExpandData,
         pos: &FileTokPos<()>,
         tokies: &Vec<PreTokenDefine>,
     ) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
-        let vaOptEnabled = Self::expand(ExpandData {
+        let vaOptEnabled = Self::expand(&ExpandData {
             definitions: expandData.definitions,
             disabledMacros: expandData.disabledMacros,
             lexer: expandData.lexer,
@@ -402,7 +402,7 @@ impl Preprocessor {
             })
         });
         if vaOptEnabled {
-            let mut res = Self::expand(ExpandData {
+            let mut res = Self::expand(&ExpandData {
                 definitions: expandData.definitions,
                 disabledMacros: expandData.disabledMacros,
                 lexer: expandData.lexer,
@@ -432,7 +432,7 @@ impl Preprocessor {
     }
 
     /// Expand the given macro, with the necessary invocation data
-    pub fn expand(expandData: ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
+    pub fn expand(expandData: &ExpandData) -> Result<VecDeque<FileTokPos<PreToken>>, CompileMsg> {
         let mut result = VecDeque::new();
         for tok in expandData.replacement {
             match tok {
@@ -440,19 +440,19 @@ impl Preprocessor {
                     result = Self::expandNormal(result, t);
                 }
                 PreTokenDefine::Arg(a) => {
-                    result = Self::expandArg(result, expandData.clone(), a)?;
+                    result = Self::expandArg(result, expandData, a)?;
                 }
                 PreTokenDefine::VariadicArg(vaTok) => {
-                    result = Self::expandVariadicArg(result, expandData.clone(), vaTok)?;
+                    result = Self::expandVariadicArg(result, expandData, vaTok)?;
                 }
                 PreTokenDefine::Hash(pos, tokie) => {
-                    result = Self::expandHash(result, expandData.clone(), pos, tokie)?;
+                    result = Self::expandHash(result, expandData, pos, tokie)?;
                 }
                 PreTokenDefine::HashHash(pos, left, right) => {
-                    result = Self::expandHashHash(result, expandData.clone(), pos, left, right)?;
+                    result = Self::expandHashHash(result, expandData, pos, left, right)?;
                 }
                 PreTokenDefine::VariadicOpt(pos, tokies) => {
-                    result = Self::expandVariadicOpt(result, expandData.clone(), pos, tokies)?;
+                    result = Self::expandVariadicOpt(result, expandData, pos, tokies)?;
                 }
             }
         }
@@ -526,7 +526,7 @@ impl Preprocessor {
         lexer: &mut MultiLexer,
         min: usize,
         max: usize,
-        openParen: FileTokPos<PreToken>,
+        openParen: &FileTokPos<PreToken>,
     ) -> Result<Vec<Vec<FileTokPos<PreToken>>>, CompileMsg> {
         let mut openParens: usize = 0;
 
@@ -538,7 +538,7 @@ impl Preprocessor {
                 (_, None) => {
                     return Err(CompileError::fromPreTo(
                         "Expected matching closing parentheses for this '('",
-                        &openParen,
+                        openParen,
                     ));
                 }
                 (0, Some(fileTokPosMatchArm!(PreToken::OperatorPunctuator(",")))) => {
@@ -594,12 +594,11 @@ impl Preprocessor {
                 format!("Expected at least {min} parameters. found {len}"),
                 &closeParen,
             ));
-        } else {
-            return Err(CompileError::fromPreTo(
-                format!("Expected at most {max} parameters. found {len}"),
-                &closeParen,
-            ));
         }
+        return Err(CompileError::fromPreTo(
+            format!("Expected at most {max} parameters. found {len}"),
+            &closeParen,
+        ));
     }
 
     /// Internal function to expand a macro invocation. See `Preprocessor::macroExpand` for more information.
@@ -651,12 +650,12 @@ impl Preprocessor {
                         return Ok(vec![newToken]);
                     }
 
-                    let paramsRes = Self::parseParams(lexer, min, max, tokParen)?;
+                    let paramsRes = Self::parseParams(lexer, min, max, &tokParen)?;
                     let ParamMapResult {
                         namedParameters: namedArgs,
                         varadicParameters: variadic,
                     } = Self::generateParamMap(paramsRes, params);
-                    let success = (macroAst.expandFunc)(ExpandData {
+                    let success = (macroAst.expandFunc)(&ExpandData {
                         definitions,
                         disabledMacros,
                         lexer,
@@ -691,7 +690,7 @@ impl Preprocessor {
                             .collect(),
                     );
                 } else {
-                    let success = (macroAst.expandFunc)(ExpandData {
+                    let success = (macroAst.expandFunc)(&ExpandData {
                         definitions,
                         disabledMacros,
                         lexer,

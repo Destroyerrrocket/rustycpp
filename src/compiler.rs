@@ -89,9 +89,7 @@ impl Compiler {
         let mut tuDone = VecDeque::new();
         loop {
             while dependencyIterator.wouldLockIfNext() {
-                if tuDone.is_empty() {
-                    panic!("Internal error: Somehow we don't have any TU that are done left, but the dependency iterator is still locked!");
-                }
+                assert!(!tuDone.is_empty(), "Internal error: Somehow we don't have any TU that are done left, but the dependency iterator is still locked!");
                 let tu = tuDone.pop_front().unwrap();
                 dependencyIterator.markDone(tu, 0);
                 println!("=== Once {tu} completes ===");
@@ -130,9 +128,10 @@ impl Compiler {
                             }
                             Err(err) => {
                                 log::info!("{}", err.to_string(&compilerState.compileFiles));
-                                if err.severity() == CompileMsgKind::FatalError {
-                                    panic!("Force stop. Unrecoverable error");
-                                }
+                                assert!(
+                                    err.severity() != CompileMsgKind::FatalError,
+                                    "Force stop. Unrecoverable error"
+                                );
                             }
                         }
                     }
@@ -211,7 +210,7 @@ impl Compiler {
                         output.push_str(&err.to_string(&compilerState.compileFiles));
                         output.push('\n');
                     }
-                    output.push_str(&Parser::printStringTree(ast));
+                    output.push_str(&Parser::printStringTree(&ast));
                     output.push('\n');
 
                     print!("{output}");

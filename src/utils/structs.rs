@@ -25,7 +25,7 @@ impl PartialEq for CompileFile {
 
 impl CompileFile {
     /// A file to be compiled
-    pub fn new(path: String, content: String) -> Self {
+    pub fn new(path: String, content: &str) -> Self {
         let contentFile = Arc::new(content.replace("\r\n", "\n"));
         Self {
             path,

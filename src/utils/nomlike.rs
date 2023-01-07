@@ -1,3 +1,5 @@
+#![allow(clippy::redundant_else)]
+
 /// This macro is used to create a parser that will return the result of the first parser that succeeds.
 #[macro_export]
 macro_rules! p_alt {

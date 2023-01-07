@@ -291,13 +291,13 @@ impl Preprocessor {
     }
 
     /// Parse a macro definition and add it to the list of definitions
-    pub fn defineMacro(&mut self, preToken: FileTokPos<PreToken>) {
+    pub fn defineMacro(&mut self, preToken: &FileTokPos<PreToken>) {
         let vecPrepro = Iterator::take_while(&mut self.multilexer, |pre| {
             pre.tokPos.tok != PreToken::Newline
         })
         .collect::<Vec<FileTokPos<PreToken>>>();
         {
-            let res = self.defineMacroImpl(vecPrepro, &preToken);
+            let res = self.defineMacroImpl(vecPrepro, preToken);
             if let Err(err) = res {
                 self.errors.push_back(err);
             };

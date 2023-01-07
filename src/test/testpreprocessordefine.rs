@@ -34,7 +34,7 @@ fn generateFileMap(files: &[(&'static str, &'static str)]) -> (CompilerState, u6
         fileMap
             .lock()
             .unwrap()
-            .addTestFile((*filePath).to_string(), (*fileContents).to_string());
+            .addTestFile((*filePath).to_string(), fileContents);
         compileUnits
             .lock()
             .unwrap()

@@ -94,7 +94,7 @@ impl Preprocessor {
     }
 
     /// Creates a new preprocessor from the given parameters, filemap and path
-    fn undefineMacro(&mut self, preToken: FileTokPos<PreToken>) {
+    fn undefineMacro(&mut self, preToken: &FileTokPos<PreToken>) {
         let vecPrepro = Iterator::take_while(&mut self.multilexer, |pre| {
             pre.tokPos.tok != PreToken::Newline
         });
@@ -103,7 +103,7 @@ impl Preprocessor {
             None => {
                 self.errors.push_back(CompileError::fromPreTo(
                     "Expected an identifier to undefine",
-                    &preToken,
+                    preToken,
                 ));
             }
             Some(e) => match e.tokPos.tok {
@@ -111,14 +111,14 @@ impl Preprocessor {
                     if self.definitions.remove(&id).is_none() {
                         self.errors.push_back(CompileError::fromPreTo(
                             format!("Macro {id} is not defined when reached"),
-                            &preToken,
+                            preToken,
                         ));
                     }
                 }
                 _ => {
                     self.errors.push_back(CompileError::fromPreTo(
                         format!("Expected an identifier, found: {}", e.tokPos.tok.to_str()),
-                        &preToken,
+                        preToken,
                     ));
                 }
             },
@@ -130,7 +130,7 @@ impl Preprocessor {
     }
 
     /// Consume a #ifdef or #ifndef and return the macro name if it exists
-    fn consumeMacroDef(&mut self, _PreToken: FileTokPos<PreToken>) -> Option<String> {
+    fn consumeMacroDef(&mut self, _PreToken: &FileTokPos<PreToken>) -> Option<String> {
         let identStr;
         loop {
             let inIdent = self.multilexer.next();
@@ -326,7 +326,7 @@ impl Preprocessor {
 
     /// Encountered a preprocessor directive. Evaluate it accordingly, alering
     /// the state of the preprocessor.
-    fn preprocessorDirective(&mut self, _PreToken: FileTokPos<PreToken>) {
+    fn preprocessorDirective(&mut self, _PreToken: &FileTokPos<PreToken>) {
         let operation;
         let enabledBlock = matches!(self.scope.last(), Some(ScopeStatus::Success) | None);
         loop {
@@ -352,7 +352,7 @@ impl Preprocessor {
                     self.multilexer.expectHeader();
                     match self.consumeMacroInclude(&operation) {
                         Ok(path) => {
-                            if let Err(err) = self.includeFile(&operation, path) {
+                            if let Err(err) = self.includeFile(&operation, &path) {
                                 self.errors.push_back(err);
                             }
                         }
@@ -362,10 +362,10 @@ impl Preprocessor {
                     }
                 }
                 "define" => {
-                    self.defineMacro(operation);
+                    self.defineMacro(&operation);
                 }
                 "undef" => {
-                    self.undefineMacro(operation);
+                    self.undefineMacro(&operation);
                 }
                 "if" => {
                     let sequenceToEval = self.consumeMacroExpr();
@@ -373,23 +373,25 @@ impl Preprocessor {
                         Err(err) => {
                             self.errors.push_back(err);
                         }
-                        Ok(sequenceToEval) => match Self::evalIfScope(sequenceToEval, &operation) {
-                            Ok((b, err)) => {
-                                self.errors.extend(err);
-                                if b {
-                                    self.scope.push(ScopeStatus::Success);
-                                } else {
-                                    self.scope.push(ScopeStatus::Failure);
+                        Ok(sequenceToEval) => {
+                            match Self::evalIfScope(&sequenceToEval, &operation) {
+                                Ok((b, err)) => {
+                                    self.errors.extend(err);
+                                    if b {
+                                        self.scope.push(ScopeStatus::Success);
+                                    } else {
+                                        self.scope.push(ScopeStatus::Failure);
+                                    }
+                                }
+                                Err(err) => {
+                                    self.errors.extend(err);
                                 }
                             }
-                            Err(err) => {
-                                self.errors.extend(err);
-                            }
-                        },
+                        }
                     }
                 }
                 "ifdef" => {
-                    let t = self.consumeMacroDef(operation);
+                    let t = self.consumeMacroDef(&operation);
                     self.scope.push(if self.evalIfDef(t) {
                         ScopeStatus::Success
                     } else {
@@ -397,7 +399,7 @@ impl Preprocessor {
                     });
                 }
                 "ifndef" => {
-                    let t = self.consumeMacroDef(operation);
+                    let t = self.consumeMacroDef(&operation);
                     let t2 = if self.evalIfDef(t) {
                         ScopeStatus::Failure
                     } else {
@@ -471,7 +473,7 @@ impl Preprocessor {
                             self.errors.push_back(err);
                         }
                         Ok(sequenceToEval) => {
-                            match Self::evalIfScope(sequenceToEval, &operation) {
+                            match Self::evalIfScope(&sequenceToEval, &operation) {
                                 Ok((true, err)) => {
                                     let scope = self.scope.last_mut().unwrap();
                                     *scope = ScopeStatus::Success;
@@ -528,7 +530,7 @@ impl Preprocessor {
                                 break;
                             }
                             PreToken::PreprocessingOperator(PreprocessingOperator::Hash) => {
-                                self.preprocessorDirective(newToken);
+                                self.preprocessorDirective(&newToken);
                                 break;
                             }
 
@@ -554,41 +556,40 @@ impl Preprocessor {
                                 continue;
                             }
                         }
-                    } else {
-                        match newToken.tokPos.tok {
-                            PreToken::EnableMacro(macroName) => {
-                                self.disabledMacros.remove(&macroName);
-                                break;
-                            }
-                            PreToken::DisableMacro(macroName) => {
-                                self.disabledMacros.insert(macroName);
-                                break;
-                            }
-                            PreToken::Newline => {
-                                self.atStartLine = true;
-                                self.generated.push_back(newToken);
-                                break;
-                            }
-                            PreToken::Ident(_) => {
-                                let toks = self.macroExpand(newToken);
-                                match toks {
-                                    Ok(toks) => {
-                                        self.generated.append(
-                                            &mut toks
-                                                .into_iter()
-                                                .collect::<VecDeque<FileTokPos<PreToken>>>(),
-                                        );
-                                    }
-                                    Err(err) => {
-                                        self.errors.push_back(err);
-                                    }
-                                };
-                                break;
-                            }
-                            _ => {
-                                self.generated.push_back(newToken);
-                                break;
-                            }
+                    }
+                    match newToken.tokPos.tok {
+                        PreToken::EnableMacro(macroName) => {
+                            self.disabledMacros.remove(&macroName);
+                            break;
+                        }
+                        PreToken::DisableMacro(macroName) => {
+                            self.disabledMacros.insert(macroName);
+                            break;
+                        }
+                        PreToken::Newline => {
+                            self.atStartLine = true;
+                            self.generated.push_back(newToken);
+                            break;
+                        }
+                        PreToken::Ident(_) => {
+                            let toks = self.macroExpand(newToken);
+                            match toks {
+                                Ok(toks) => {
+                                    self.generated.append(
+                                        &mut toks
+                                            .into_iter()
+                                            .collect::<VecDeque<FileTokPos<PreToken>>>(),
+                                    );
+                                }
+                                Err(err) => {
+                                    self.errors.push_back(err);
+                                }
+                            };
+                            break;
+                        }
+                        _ => {
+                            self.generated.push_back(newToken);
+                            break;
                         }
                     }
                 }
@@ -599,7 +600,7 @@ impl Preprocessor {
                                 break;
                             }
                             PreToken::PreprocessingOperator(PreprocessingOperator::Hash) => {
-                                self.preprocessorDirective(newToken);
+                                self.preprocessorDirective(&newToken);
                                 break;
                             }
 
@@ -625,15 +626,14 @@ impl Preprocessor {
                                 break;
                             }
                         }
-                    } else {
-                        match newToken.tokPos.tok {
-                            PreToken::Newline => {
-                                self.atStartLine = true;
-                                break;
-                            }
-                            _ => {
-                                break;
-                            }
+                    }
+                    match newToken.tokPos.tok {
+                        PreToken::Newline => {
+                            self.atStartLine = true;
+                            break;
+                        }
+                        _ => {
+                            break;
                         }
                     }
                 }
