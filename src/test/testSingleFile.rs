@@ -59,7 +59,7 @@ fn testSingleFile(
         assertErrors(errors, compilerState);
         unreachable!();
     }
-    return (ast, errors, crashed.unwrap());
+    (ast, errors, crashed.unwrap())
 }
 
 fn assertErrors(errors: Vec<CompileMsg>, state: CompilerState) {

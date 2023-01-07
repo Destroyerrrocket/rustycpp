@@ -1,5 +1,6 @@
 //! The Preprocessor is responsible for evaluating the step 4 of the C++
 //! translation.
+#![allow(clippy::too_many_lines)]
 
 use crate::{
     compiler::TranslationUnit,
@@ -126,7 +127,6 @@ impl Preprocessor {
         for defi in self.definitions.values() {
             log::trace!("{:?}", defi);
         }
-        return;
     }
 
     /// Consume a #ifdef or #ifndef and return the macro name if it exists
@@ -157,7 +157,7 @@ impl Preprocessor {
             }
         }
         self.reachNl();
-        return Some(identStr);
+        Some(identStr)
     }
 
     /// Reach the nl.
@@ -184,7 +184,7 @@ impl Preprocessor {
         if let Some(macroName) = def {
             return self.definitions.contains_key(&macroName);
         }
-        return false;
+        false
     }
 
     /// If applicable, generate a module token
@@ -211,7 +211,7 @@ impl Preprocessor {
         toks.push_front(module);
         self.multilexer.pushTokensDec(toks);
 
-        return VecDeque::new();
+        VecDeque::new()
     }
 
     /// If applicable, generate a import token
@@ -271,7 +271,7 @@ impl Preprocessor {
         toks.push_front(import);
         self.multilexer.pushTokensDec(toks);
 
-        return VecDeque::new();
+        VecDeque::new()
     }
 
     /// If applicable, generate a module/import token
@@ -321,7 +321,7 @@ impl Preprocessor {
         }
 
         self.atStartLine = false;
-        return VecDeque::new();
+        VecDeque::new()
     }
 
     /// Encountered a preprocessor directive. Evaluate it accordingly, alering

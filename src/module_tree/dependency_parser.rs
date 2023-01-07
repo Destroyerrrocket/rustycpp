@@ -76,7 +76,7 @@ fn parseModuleOp(
             Some(atEnd),
         ));
     }
-    return Ok(Some(ModuleOperator::Module(name)));
+    Ok(Some(ModuleOperator::Module(name)))
 }
 
 /// When encountering an import operator, validates it can be used and parses it.
@@ -142,7 +142,7 @@ fn parseImportOp(
             Some(atEnd),
         ));
     }
-    return Ok(Some(ModuleOperator::Import(name)));
+    Ok(Some(ModuleOperator::Import(name)))
 }
 
 /// When encountering an export operator, validates it can be used and parses it.

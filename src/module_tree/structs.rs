@@ -27,12 +27,11 @@ pub enum ModuleDeclaration {
 
 impl Display for ModuleDeclaration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        #[allow(clippy::match_same_arms)]
         match self {
             Self::ExportPrimary(module) => format!("export module {module}").fmt(f),
             Self::Primary(module) => format!("module {module}").fmt(f),
             Self::ExportPartition(module, part) => format!("export module {module}:{part}").fmt(f),
-            Self::Partition(module, part) => format!("export module {module}:{part}").fmt(f),
+            Self::Partition(module, part) => format!("module {module}:{part}").fmt(f),
             Self::ModuleHeaderUnit(path) => format!("<{path}>").fmt(f),
             Self::Global(path) => format!("Global module file {path}").fmt(f),
         }

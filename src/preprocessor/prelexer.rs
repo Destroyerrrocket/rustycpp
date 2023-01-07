@@ -59,7 +59,7 @@ impl PreLexer {
                 }
             }
         }
-        return maybe_remove;
+        maybe_remove
     }
 
     fn getNextTokenNonSpliced(&mut self) -> (Option<PreToken>, usize) {
@@ -120,7 +120,7 @@ impl PreLexer {
                 }
             }
         }
-        return (None, 0);
+        (None, 0)
     }
 
     fn applySplice(&mut self, splice_point: usize) {
@@ -172,7 +172,7 @@ impl PreLexer {
             );
             return (None, 0, 0);
         }
-        return (kind, idx, splices);
+        (kind, idx, splices)
     }
 
     fn doNext(&mut self) -> Option<TokPos<PreToken>> {
@@ -220,7 +220,7 @@ impl PreLexer {
             self.current = self.current[idx..].to_string();
             (self.line, self.column) = (lineEnd, columnEnd);
         }
-        return res;
+        res
     }
 }
 impl Iterator for PreLexer {
@@ -246,6 +246,6 @@ impl Iterator for PreLexer {
                 end: self.diff + 1,
             });
         }
-        return None;
+        None
     }
 }

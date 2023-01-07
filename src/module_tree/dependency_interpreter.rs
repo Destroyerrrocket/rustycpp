@@ -93,6 +93,7 @@ where
 }
 
 /// From the Module operations, generates a `Node` with the module field filled, and extra nodes for header imports. Also returns the resolved dependency names
+#[allow(clippy::too_many_lines)]
 pub fn generateNode(
     (tu, ops): (TranslationUnit, Vec<ModuleOperator>),
     genNewArcTable: &mut HashMap<ModuleDeclaration, Arc<(ModuleDeclaration, TranslationUnit)>>,

@@ -329,7 +329,7 @@ impl Preprocessor {
                 token,
             )]);
         }
-        return Ok(intconstantValues);
+        Ok(intconstantValues)
     }
 
     /// Evaluates an if statement expression, returning the evaluation result. Does not alter the state of the preprocessor

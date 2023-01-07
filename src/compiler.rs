@@ -76,7 +76,7 @@ impl Compiler {
             &mut self.compilerState.compileFiles,
             &mut self.compilerState.compileUnits,
         )?;
-        return Ok(tree);
+        Ok(tree)
     }
 
     /// Executes the preprocessing stage

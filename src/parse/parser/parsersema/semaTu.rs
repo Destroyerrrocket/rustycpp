@@ -35,7 +35,6 @@ impl Parser {
                     "Can't start a global module section if it is not at the start of the file",
                     &location,
                 ));
-                return;
             }
         } else if moduleName.is_empty() && modulePartition.as_ref().is_some_and(|p| p == "private")
         {

@@ -42,19 +42,19 @@ fn generateFileMap(files: &[(&'static str, String)]) -> (CompilerState, u64) {
             .insert(i as u64 + 1, StateCompileUnit::new());
     }
 
-    return (
+    (
         CompilerState {
             parameters,
             compileFiles: fileMap,
             compileUnits,
         },
         1,
-    );
+    )
 }
 
 fn getToksPreprocessed(files: &[(&'static str, String)]) -> Vec<Result<PreToken, CompileMsg>> {
     let prep = Preprocessor::new(generateFileMap(files));
-    return prep.map(|x| x.map(|x| x.tokPos.tok)).collect::<Vec<_>>();
+    prep.map(|x| x.map(|x| x.tokPos.tok)).collect::<Vec<_>>()
 }
 
 fn getToksPreprocessedNoWs(files: &[(&'static str, String)]) -> Vec<Result<PreToken, CompileMsg>> {
@@ -71,7 +71,7 @@ fn getToksPreprocessedNoWs(files: &[(&'static str, String)]) -> Vec<Result<PreTo
             )
         })
     });
-    return res;
+    res
 }
 
 fn checkForCorrectEvalOfIfClause(string: &'static str) {

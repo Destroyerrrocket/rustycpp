@@ -74,7 +74,7 @@ impl Preprocessor {
         t: &FileTokPos<PreToken>,
     ) -> VecDeque<FileTokPos<PreToken>> {
         result.push_back(t.clone());
-        return result;
+        result
     }
 
     /// Expand a [`PreTokenDefine::Arg`]
@@ -142,7 +142,7 @@ impl Preprocessor {
                 FileTokPos::new_meta_c(PreToken::ValidNop, a);
             }
         }
-        return Ok(result);
+        Ok(result)
     }
 
     /// Expand a [`PreTokenDefine::VariadicArg`]
@@ -197,7 +197,7 @@ impl Preprocessor {
                 result.push_back(FileTokPos::new_meta_c(PreToken::ValidNop, vaTok));
             }
         }
-        return Ok(result);
+        Ok(result)
     }
 
     /// Expand a [`PreTokenDefine::Hash`]
@@ -266,7 +266,7 @@ impl Preprocessor {
             PreToken::RawStringLiteral(text),
             pos,
         ));
-        return Ok(result);
+        Ok(result)
     }
 
     /// Expand a [`PreTokenDefine::HashHash`]
@@ -367,7 +367,7 @@ impl Preprocessor {
                 result.push_back(FileTokPos::new_meta_c(PreToken::ValidNop, pos));
             }
         }
-        return Ok(result);
+        Ok(result)
     }
 
     /// Expand a [`PreTokenDefine::VariadicOpt`]
@@ -428,7 +428,7 @@ impl Preprocessor {
                 result.push_back(FileTokPos::new_meta_c(PreToken::ValidNop, pos));
             }
         }
-        return Ok(result);
+        Ok(result)
     }
 
     /// Expand the given macro, with the necessary invocation data
@@ -462,7 +462,7 @@ impl Preprocessor {
         result.push_back(FileTokPos::new_meta(PreToken::EnableMacro(
             expandData.astId.clone(),
         )));
-        return Ok(result);
+        Ok(result)
     }
 }
 
@@ -482,10 +482,10 @@ impl Preprocessor {
         for param in params {
             named.insert(param.clone(), paramRes.remove(0));
         }
-        return ParamMapResult {
+        ParamMapResult {
             namedParameters: named,
             varadicParameters: paramRes,
-        };
+        }
     }
 
     /// Check that the macro function invocation has a matching closing parenthesis
@@ -716,7 +716,7 @@ impl Preprocessor {
                 return Ok(vec![]);
             }
         }
-        return Ok(vec![newToken]);
+        Ok(vec![newToken])
     }
 
     /// Macro invocation. It will return a vector of generated tokens in case

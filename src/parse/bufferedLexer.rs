@@ -74,7 +74,7 @@ impl BufferedLexer {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn consumeToken(&self, lexpos: &mut StateBufferedLexer) -> bool {
@@ -267,7 +267,7 @@ impl BufferedLexer {
 
         lexpos.currentToken =
             (lexpos.currentToken + 1).clamp(lexpos.minimumToken, lexpos.maximumToken);
-        return true;
+        true
     }
 
     pub fn moveForward(&self, lexpos: &mut StateBufferedLexer, n: usize) -> bool {

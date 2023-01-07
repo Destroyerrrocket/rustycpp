@@ -28,6 +28,7 @@ impl Parser {
      *   module-import-declaration
      *   module-declaration [NOT IMPLEMENTED HERE!]
      */
+    #[allow(clippy::too_many_lines)]
     pub fn parseDeclaration(
         &mut self,
         lexpos: &mut StateBufferedLexer,
@@ -48,19 +49,19 @@ impl Parser {
                 self.errors
                     .push(CompileError::fromPreTo("Extra ')' found.", tok));
                 self.lexer().next(lexpos);
-                return vec![];
+                vec![]
             }
             Token::RBrace => {
                 self.errors
                     .push(CompileError::fromPreTo("Extra '}' found.", tok));
                 self.lexer().next(lexpos);
-                return vec![];
+                vec![]
             }
             Token::RBracket => {
                 self.errors
                     .push(CompileError::fromPreTo("Extra ']' found.", tok));
                 self.lexer().next(lexpos);
-                return vec![];
+                vec![]
             }
             Token::Alignas
             | Token::Break
@@ -103,7 +104,7 @@ impl Parser {
                     tok,
                 ));
                 self.lexer().next(lexpos);
-                return vec![];
+                vec![]
             }
 
             Token::Colon
@@ -153,7 +154,7 @@ impl Parser {
                     tok,
                 ));
                 self.lexer().next(lexpos);
-                return vec![];
+                vec![]
             }
 
             Token::IntegerLiteral(_, _)
@@ -172,7 +173,7 @@ impl Parser {
                     tok,
                 ));
                 self.lexer().next(lexpos);
-                return vec![];
+                vec![]
             }
             Token::Module => {
                 self.errors.push(CompileError::fromPreTo(
@@ -180,7 +181,7 @@ impl Parser {
                     tok,
                 ));
                 self.lexer().next(lexpos);
-                return vec![];
+                vec![]
             }
             /**
              * empty-declaration | attribute-declaration
@@ -390,7 +391,7 @@ impl Parser {
                         );
                         let contents = self.parseNamespaceBody(lexpos);
                         self.actOnEndNamedNamespaceDefinition(contents);
-                        return astNamespace;
+                        astNamespace
                     }
                     Token::Equal => todo!(),
                     _ => {
@@ -398,7 +399,7 @@ impl Parser {
                             "Expected '{' (to introduce a namespace) or '=' (to make a namespace alias) after the namespace name. Instead, we found this.",
                             tok,
                         ));
-                        return vec![];
+                        vec![]
                     }
                 }
             }
@@ -439,7 +440,7 @@ impl Parser {
                 break;
             }
         }
-        return decls;
+        decls
     }
 
     /**
@@ -486,7 +487,7 @@ impl Parser {
             ));
         };
 
-        return result;
+        result
     }
 
     fn parseContentsOf__rustycpp__Decl(

@@ -23,7 +23,7 @@ impl Parser {
         location: SourceRange,
     ) -> Vec<&'static AstDecl> {
         let ast = AstEmptyDecl::new(location, self.alloc().alloc_slice_clone(attr.as_slice()));
-        return vec![self.alloc().alloc(AstDecl::AstEmptyDecl(ast))];
+        vec![self.alloc().alloc(AstDecl::AstEmptyDecl(ast))]
     }
 
     /**
@@ -40,7 +40,7 @@ impl Parser {
             self.alloc().alloc_slice_clone(attr.as_slice()),
             asm,
         );
-        return vec![self.alloc().alloc(AstDecl::AstAsmDecl(astAsm))];
+        vec![self.alloc().alloc(AstDecl::AstAsmDecl(astAsm))]
     }
 
     /**
@@ -67,7 +67,7 @@ impl Parser {
             .addChild(name, Child::Scope(enumScope.clone()));
         self.currentScope = enumScope;
 
-        return vec![astNamespaceDecl];
+        vec![astNamespaceDecl]
     }
 
     /**
@@ -100,6 +100,6 @@ impl Parser {
         // Imediately pop, for now.
         let newCurrent = self.currentScope.borrow().parent.clone().unwrap();
         self.currentScope = newCurrent;
-        return vec![astEnumDecl];
+        vec![astEnumDecl]
     }
 }

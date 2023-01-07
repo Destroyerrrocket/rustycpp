@@ -61,8 +61,9 @@ impl StringRef {
     pub fn from_str(str: &str) -> Self {
         let mut map = STRING_REF_MAP.lock().unwrap();
 
+        #[allow(clippy::option_if_let_else)]
         if let Some(v) = map.map.get(str) {
-            return *v;
+            *v
         } else {
             let ptr_str = map.stringsBump.bump.alloc_str(str);
             let ptr_refStr = map.stringsBump.bump.alloc(StringRefImpl { ptr: ptr_str });

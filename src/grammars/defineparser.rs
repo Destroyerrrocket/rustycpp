@@ -105,21 +105,21 @@ fn ArgMVar(input: In) -> ParseRes {
                     let d = parseMacroDefinition(input)?;
                     if matchesPP!(input, PreTokenDefinePreParse::VariadicOptParenR) {
                         input.pop_front();
-                        return Ok(PreTokenDefine::VariadicOpt(
+                        Ok(PreTokenDefine::VariadicOpt(
                             FileTokPos::new_meta_c((), &e),
                             d.into_iter().collect::<Vec<PreTokenDefine>>(),
-                        ));
+                        ))
                     } else {
-                        return Err(CompileError::fromPreTo(
+                        Err(CompileError::fromPreTo(
                             "Expected a ) at the end of the variadic optional".to_string(),
                             &e,
-                        ));
+                        ))
                     }
                 } else {
-                    return Err(CompileError::fromPreTo(
+                    Err(CompileError::fromPreTo(
                         "Expected a ( at the start of the variadic optional".to_string(),
                         &e,
-                    ));
+                    ))
                 }
             }
             _ => {
@@ -206,13 +206,13 @@ fn MaybeHashHash(input: In) -> ParseRes {
         let hashHash = input.pop_front().unwrap();
         pvoid_drop_until_fail!(In, ReTokWhiteSp)(input);
         let right = MaybeHashHash(input)?;
-        return Ok(PreTokenDefine::HashHash(
+        Ok(PreTokenDefine::HashHash(
             FileTokPos::new_meta_c((), &hashHash),
             vec![argOrTok],
             vec![right],
-        ));
+        ))
     } else {
-        return Ok(argOrTok);
+        Ok(argOrTok)
     }
 }
 

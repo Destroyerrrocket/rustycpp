@@ -27,7 +27,7 @@ impl Parameters {
     /// Parses the config file, and returns the results.
     pub fn new_file(file: &str) -> Result<Self, String> {
         let contents = fs::read_to_string(file).map_err(|x| x.to_string())?;
-        return Self::new().parse(contents);
+        Self::new().parse(contents)
     }
 
     /// Parses the config file.

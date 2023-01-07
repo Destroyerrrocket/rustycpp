@@ -215,6 +215,7 @@ pub enum Token {
 }
 
 impl std::fmt::Display for Token {
+    #[allow(clippy::too_many_lines)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Identifier(s) => write!(f, "{s}"),
@@ -772,7 +773,7 @@ impl Token {
             string = &string[1..string.len() - 1];
         }
         let string = &string[1..string.len() - 1];
-        return Ok(FileTokPos::new_meta_c(
+        Ok(FileTokPos::new_meta_c(
             if ud.is_empty() {
                 Self::StringLiteral(prefix, string.to_owned().to_StringRef())
             } else {
@@ -788,7 +789,7 @@ impl Token {
             let mut vec = VecDeque::new();
             vec.push_back(x);
             vec
-        });
+        })
     }
 
     fn parseHexNumber<T: Clone + std::fmt::Debug>(
@@ -843,7 +844,7 @@ impl Token {
             }
             break;
         }
-        return (string, res, ud);
+        (string, res, ud)
     }
 
     // Supports the ' optional character
@@ -936,7 +937,7 @@ impl Token {
                 return (prefix, FloatSuffix::L);
             }
         }
-        return (string, FloatSuffix::None);
+        (string, FloatSuffix::None)
     }
 
     fn parseHexFloat<T: Clone + std::fmt::Debug>(

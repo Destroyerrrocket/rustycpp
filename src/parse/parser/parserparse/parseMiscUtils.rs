@@ -59,6 +59,6 @@ impl Parser {
         let mut endPos = *lexpos;
         self.lexer().moveBack(&mut endPos, 2);
 
-        return Some(BufferedLexer::makeProtectedRange(&startPos, &endPos));
+        Some(BufferedLexer::makeProtectedRange(&startPos, &endPos))
     }
 }

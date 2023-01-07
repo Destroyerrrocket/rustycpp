@@ -48,36 +48,35 @@ fn generateFileMap(files: &[(&'static str, &'static str)]) -> (CompilerState, u6
             .insert(i as u64 + 1, StateCompileUnit::new());
     }
 
-    return (
+    (
         CompilerState {
             parameters,
             compileFiles: fileMap,
             compileUnits,
         },
         1,
-    );
+    )
 }
 
 fn getToksPreprocessed(files: &[(&'static str, &'static str)]) -> Vec<PreToken> {
     let f = generateFileMap(files);
     let prep = Preprocessor::new(f.clone());
-    return prep
-        .filter_map(|x: Result<FileTokPos<PreToken>, CompileMsg>| {
-            x.map_or_else(
-                |err| {
-                    log::error!("{}", err.to_string(&f.0.compileFiles));
-                    None
-                },
-                Some,
-            )
-        })
-        .map(|x| x.tokPos.tok)
-        .collect::<Vec<PreToken>>();
+    prep.filter_map(|x: Result<FileTokPos<PreToken>, CompileMsg>| {
+        x.map_or_else(
+            |err| {
+                log::error!("{}", err.to_string(&f.0.compileFiles));
+                None
+            },
+            Some,
+        )
+    })
+    .map(|x| x.tokPos.tok)
+    .collect::<Vec<PreToken>>()
 }
 
 fn getErrsPreprocessed(files: &[(&'static str, &'static str)]) -> Vec<CompileMsg> {
     let prep = Preprocessor::new(generateFileMap(files));
-    return prep.filter_map(Result::err).collect::<Vec<CompileMsg>>();
+    prep.filter_map(Result::err).collect::<Vec<CompileMsg>>()
 }
 
 fn getToksPreprocessedNoWs(files: &[(&'static str, &'static str)]) -> Vec<PreToken> {
@@ -92,7 +91,7 @@ fn getToksPreprocessedNoWs(files: &[(&'static str, &'static str)]) -> Vec<PreTok
                 | PreToken::DisableMacro(_)
         )
     });
-    return res;
+    res
 }
 
 fn toksToString(toks: &[PreToken]) -> String {
@@ -101,7 +100,7 @@ fn toksToString(toks: &[PreToken]) -> String {
         res.push_str(s);
         res.push(' ');
     }
-    return res;
+    res
 }
 
 fn toTok(text: &'static str) -> Vec<Token> {

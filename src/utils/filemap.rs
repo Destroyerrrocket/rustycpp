@@ -54,16 +54,16 @@ impl<'a> FileMap {
         let res = Arc::new(CompileFile::new(pathStr.clone(), filecontents));
         self.files
             .insert(path as usize, Either::CompileFile(res.clone()));
-        return res;
+        res
     }
 
     /// Get an already opened file. On error, crash.
     pub fn getOpenedFile(&mut self, path: u64) -> Arc<CompileFile> {
         match self.files.get_mut(path as usize) {
-            Some(Either::CompileFile(v)) => return v.clone(),
+            Some(Either::CompileFile(v)) => v.clone(),
             Some(Either::NotReadFile(file)) => {
                 let fileRef = file.take().unwrap();
-                return self.internalReadFile(path, &fileRef);
+                self.internalReadFile(path, &fileRef)
             }
             _ => panic!("File not found in visited files: {path}"),
         }
@@ -71,20 +71,19 @@ impl<'a> FileMap {
 
     /// Get file. If not present, open it. On error, crash.
     pub fn getAddFile(&'a mut self, path: &str) -> u64 {
-        return self.getPath(path).unwrap();
+        self.getPath(path).unwrap()
     }
 
     /// Get file. If not present, open it. On error, crash.
     pub fn getAddFileRef(&'a mut self, path: &str) -> Arc<CompileFile> {
         let index = &self.getPath(path).unwrap();
+        #[allow(clippy::option_if_let_else)]
         if let Some(file) = self.files.get_mut(*index as usize) {
             match file {
-                Either::CompileFile(file) => {
-                    return file.clone();
-                }
+                Either::CompileFile(file) => file.clone(),
                 Either::NotReadFile(file) => {
                     let fileRef = file.take().unwrap();
-                    return self.internalReadFile(*index, &fileRef);
+                    self.internalReadFile(*index, &fileRef)
                 }
             }
         } else {
@@ -95,12 +94,12 @@ impl<'a> FileMap {
     /// Can it access the file? Does not need to be previously opened.
     pub fn hasFileAccess(&mut self, path: &str) -> bool {
         let absolutePath = self.getPath(path);
-        return absolutePath.is_ok();
+        absolutePath.is_ok()
     }
 
     fn hasFileAccessImpl(&mut self, absolutePath: &str) -> Result<u64, String> {
         if let Some(pos) = self.resolvedPaths.get(absolutePath) {
-            return Ok(*pos);
+            Ok(*pos)
         } else {
             let filename = std::path::Path::new(absolutePath);
             if !filename.extension().map_or(false, |ext| {
@@ -118,7 +117,7 @@ impl<'a> FileMap {
             };
             let pos = self.files.len() as u64;
             self.files.push(Either::NotReadFile(Some(file)));
-            return Ok(pos);
+            Ok(pos)
         }
     }
 
@@ -128,7 +127,7 @@ impl<'a> FileMap {
         for path in 1..self.files.len() {
             paths.push(path as u64);
         }
-        return paths;
+        paths
     }
 
     /// Add a fake test file. Intened for testing.
@@ -169,13 +168,13 @@ impl<'a> FileMap {
     /// Resolve a path. On error, return error.
     fn getPath(&mut self, pathStr: &str) -> Result<u64, String> {
         if let Some(v) = self.resolvedPaths.get(pathStr) {
-            return Ok(*v);
+            Ok(*v)
         } else {
             let canonical = Self::findBestPath(&self.params, pathStr)?;
             if let Some(v) = self.resolvedPaths.get(&canonical) {
                 let v = *v;
                 self.resolvedPaths.insert(pathStr.to_string(), v);
-                return Ok(v);
+                Ok(v)
             } else {
                 let pos = self.hasFileAccessImpl(&canonical)?;
                 self.reverseResolved.insert(pos, canonical.clone());
@@ -183,7 +182,7 @@ impl<'a> FileMap {
                     self.resolvedPaths.insert(canonical, pos);
                 }
                 self.resolvedPaths.insert(pathStr.to_string(), pos);
-                return Ok(pos);
+                Ok(pos)
             }
         }
     }

@@ -76,14 +76,14 @@ impl Lexer {
         match (tok1, tok2) {
             (Token::StringLiteral(enc1, text1), Token::StringLiteral(enc2, text2)) => {
                 let prefix = Self::calcPrefix(enc1, enc2, file, start, end)?;
-                return Ok(FileTokPos::new(
+                Ok(FileTokPos::new(
                     file,
                     TokPos {
                         start,
                         tok: Token::StringLiteral(prefix, text1 + text2),
                         end,
                     },
-                ));
+                ))
             }
             (
                 Token::UdStringLiteral(enc1, text1, ud1),
@@ -113,14 +113,14 @@ impl Lexer {
             (Token::StringLiteral(enc1, text1), Token::UdStringLiteral(enc2, text2, ud))
             | (Token::UdStringLiteral(enc1, text1, ud), Token::StringLiteral(enc2, text2)) => {
                 let prefix = Self::calcPrefix(enc1, enc2, file, start, end)?;
-                return Ok(FileTokPos::new(
+                Ok(FileTokPos::new(
                     file,
                     TokPos {
                         start,
                         tok: Token::UdStringLiteral(prefix, text1 + text2, ud),
                         end,
                     },
-                ));
+                ))
             }
             _ => unreachable!(),
         }
@@ -200,7 +200,7 @@ impl Lexer {
             self.mergeStringLiterals();
         }
 
-        return true;
+        true
     }
 
     /// Returns the errors of this [`Lexer`].

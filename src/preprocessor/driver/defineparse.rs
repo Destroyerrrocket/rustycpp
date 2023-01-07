@@ -111,8 +111,7 @@ impl Preprocessor {
             .rev()
             .collect::<VecDeque<_>>();
 
-        let res = defineparser::parseMacroDefinition(&mut toksPre);
-        return res;
+        defineparser::parseMacroDefinition(&mut toksPre)
     }
 
     /// Generate the definition info of the macro, mainly the name and the
@@ -261,7 +260,7 @@ impl Preprocessor {
 
             res.replacement = rl;
         }
-        return Ok(res);
+        Ok(res)
     }
 
     /// Parse a macro definition and add it to the list of definitions.
@@ -288,7 +287,7 @@ impl Preprocessor {
                 self.definitions.insert(def.id.clone(), def);
             }
         }
-        return Ok(());
+        Ok(())
     }
 
     /// Parse a macro definition and add it to the list of definitions

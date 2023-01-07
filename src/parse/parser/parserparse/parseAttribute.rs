@@ -66,7 +66,7 @@ impl Parser {
                 attributes.push(&*self.alloc().alloc(attr));
             }
         }
-        return attributes;
+        attributes
     }
 
     /**

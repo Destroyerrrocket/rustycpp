@@ -120,37 +120,46 @@ pub struct Scope {
      * For example, the causing declaration of a class scope is the class itself, of a function scope is a function, etc.
      */
     pub causingDecl: Option<&'static AstDecl>,
+
+    // TODO: Can we merge inlinedNamespaces and usingNamespaces into one vector?
+    /**
+     * These are inlined scope (by inline namespace)
+     */
+    pub inlinedNamespaces: Vec<Rc<RefCell<Scope>>>,
+
+    /**
+     * These are using namespace scopes
+     */
+    pub usingNamespaces: Vec<Rc<RefCell<Scope>>>,
 }
 
 impl Scope {
     pub fn new(flags: ScopeKind, causingDecl: &'static AstDecl) -> Rc<RefCell<Self>> {
-        return Rc::new(RefCell::new(Self {
+        Rc::new(RefCell::new(Self {
             flags,
             parent: None,
             childs: HashMap::new(),
             namelessChilds: Vec::new(),
             causingDecl: Some(causingDecl),
-        }));
+            inlinedNamespaces: Vec::new(),
+            usingNamespaces: Vec::new(),
+        }))
     }
 
     pub fn new_unknown_cause(flags: ScopeKind) -> Rc<RefCell<Self>> {
-        return Rc::new(RefCell::new(Self {
+        Rc::new(RefCell::new(Self {
             flags,
             parent: None,
             childs: HashMap::new(),
             namelessChilds: Vec::new(),
             causingDecl: None,
-        }));
+            inlinedNamespaces: Vec::new(),
+            usingNamespaces: Vec::new(),
+        }))
     }
 
     pub fn new_root() -> Rc<RefCell<Self>> {
-        return Rc::new(RefCell::new(Self {
-            flags: ScopeKind::CAN_DECL,
-            parent: None,
-            childs: HashMap::new(),
-            namelessChilds: Vec::new(),
-            causingDecl: None,
-        }));
+        Self::new_unknown_cause(ScopeKind::CAN_DECL)
     }
 }
 

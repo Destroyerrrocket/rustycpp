@@ -70,7 +70,7 @@ impl Parser {
         let tu = self.parseTu();
         let mut lexErr = unsafe { &mut *self.lexer.get() }.errors();
         lexErr.extend(self.errors.clone());
-        return (tu, lexErr);
+        (tu, lexErr)
     }
 
     pub fn printStringTree(ast: AstTu) -> String {

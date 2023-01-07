@@ -76,7 +76,7 @@ impl Parser {
         let attrs = self.parseAttributes(lexpos);
         let res = self.parseDeclaration(lexpos, attrs);
         self.actOnTopLevelDecl(&res);
-        return res;
+        res
     }
 
     /**
@@ -182,7 +182,6 @@ impl Parser {
             modulePartition,
             SourceRange::newDoubleTok(ts, te),
         );
-        return;
     }
 
     /// Parse an optional module-name.
@@ -214,7 +213,7 @@ impl Parser {
             }
             break;
         }
-        return moduleName;
+        moduleName
     }
 
     /// Parse an optional module-partition.
@@ -227,6 +226,6 @@ impl Parser {
             self.lexer().consumeToken(lexpos);
             return Some(self.optParseModuleName(lexpos));
         }
-        return None;
+        None
     }
 }
