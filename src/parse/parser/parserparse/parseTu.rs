@@ -103,10 +103,10 @@ impl Parser {
         let moduleKwd = self.lexer().getConsumeToken(lexpos);
         if let Some(fileTokPosMatchArm!(Token::Module)) = moduleKwd {
         } else {
+            let posErr = self.lexer().getWithOffsetSaturating(lexpos, 0);
             self.errors.push(CompileError::fromPreTo(
                 "Expected \"module\" keyword arround here. This should not have happened, as we already checked for this. Report this bug please!",
-                self.lexer().getWithOffsetSaturating(lexpos, 0),
-            ));
+                posErr));
             return;
         }
         let mut hasMajorError = false;
@@ -114,25 +114,28 @@ impl Parser {
         // Parsing module-name [opt]
         let moduleName = self.optParseModuleName(lexpos);
         if moduleName.ends_with('.') {
+            let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
             self.errors.push(CompileError::fromPreTo(
                 "Module name cannot end with a dot.",
-                self.lexer().getWithOffsetSaturating(lexpos, -1),
+                posErr,
             ));
             hasMajorError = true;
         }
         // Parsing module-partition [opt]
         let modulePartition = self.optParseModulePartition(lexpos);
         if modulePartition.as_ref().is_some_and(|s| s.ends_with('.')) {
+            let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
             self.errors.push(CompileError::fromPreTo(
                 "Module partition cannot end with a dot.",
-                self.lexer().getWithOffsetSaturating(lexpos, -1),
+                posErr,
             ));
             hasMajorError = true;
         }
         if modulePartition.as_ref().is_some_and(String::is_empty) {
+            let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
             self.errors.push(CompileError::fromPreTo(
                 "Module partition cannot be just a colon.",
-                self.lexer().getWithOffsetSaturating(lexpos, -1),
+                posErr,
             ));
             hasMajorError = true;
         }
@@ -153,20 +156,22 @@ impl Parser {
                     .getOpenedFile(st.file);
                 file.getRowColumn(st.tokPos.start).0 != file.getRowColumn(et.tokPos.start).0
             } {
+                let posErr = SourceRange::newDoubleTok(
+                    self.lexer().getWithOffsetSaturating(&startlexpos, 0),
+                    self.lexer().getWithOffsetSaturating(lexpos, 0),
+                );
                 self.errors.push(CompileError::fromSourceRange(
                     "Module declaration must be on a single line.",
-                    &SourceRange::newDoubleTok(
-                        self.lexer().getWithOffsetSaturating(&startlexpos, 0),
-                        self.lexer().getWithOffsetSaturating(lexpos, 0),
-                    ),
+                    &posErr,
                 ));
                 hasMajorError = true;
             }
             self.lexer().consumeToken(lexpos);
         } else {
+            let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
             self.errors.push(CompileError::fromPreTo(
                 "Expected ';' at the end of module declaration.",
-                self.lexer().getWithOffsetSaturating(lexpos, -1),
+                posErr,
             ));
         }
 

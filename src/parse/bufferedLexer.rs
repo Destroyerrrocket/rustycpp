@@ -1,8 +1,9 @@
-use std::cell::UnsafeCell;
-
 use crate::{
     lex::{lexer::Lexer, token::Token},
-    utils::structs::{CompileMsg, FileTokPos},
+    utils::{
+        structs::{CompileMsg, FileTokPos},
+        unsafeallocator::UnsafeAllocator,
+    },
 };
 
 #[derive(Clone, Copy)]
@@ -13,36 +14,40 @@ pub struct StateBufferedLexer {
 }
 
 pub struct BufferedLexer {
-    lexer: UnsafeCell<Lexer>,
-    tokens: UnsafeCell<Vec<FileTokPos<Token>>>,
+    lexer: Lexer,
+    alloc: UnsafeAllocator,
+    tokens: Vec<&'static FileTokPos<Token>>,
 }
 
 impl BufferedLexer {
-    #[allow(clippy::mut_from_ref)]
-    fn tokens(&self) -> &mut Vec<FileTokPos<Token>> {
-        unsafe { &mut *self.tokens.get() }
+    fn lastTokIndex(&mut self) -> usize {
+        self.tokens.len() - 1
     }
 
-    fn lastTokIndex(&self) -> usize {
-        self.tokens().len() - 1
-    }
-
-    fn tryGetNextToken(&self) -> bool {
-        match unsafe { &mut *self.lexer.get() }.next() {
-            Some(token) => self.tokens().push(token),
+    fn tryGetNextToken(&mut self) -> bool {
+        match self.lexer.next() {
+            Some(token) => self.tokens.push(self.alloc.alloc().alloc(token)),
             None => return false,
         }
         true
+    }
+
+    fn internalGetUnchecked(&mut self, index: usize) -> &'static FileTokPos<Token> {
+        self.tokens[index]
+    }
+
+    fn internalGetChecked(&mut self, index: usize) -> Option<&'static FileTokPos<Token>> {
+        self.tokens.get(index).copied()
     }
 }
 
 impl BufferedLexer {
     pub fn new(lexer: Lexer) -> (Self, StateBufferedLexer) {
         let s = Self {
-            lexer: UnsafeCell::new(lexer),
-            tokens: UnsafeCell::new(vec![]),
+            lexer,
+            tokens: vec![],
+            alloc: UnsafeAllocator::new(),
         };
-        s.tryGetNextToken();
         (
             s,
             StateBufferedLexer {
@@ -54,10 +59,10 @@ impl BufferedLexer {
     }
 
     pub fn errors(&mut self) -> Vec<CompileMsg> {
-        unsafe { &mut *self.lexer.get() }.errors()
+        self.lexer.errors()
     }
 
-    pub fn reachedEnd(&self, lexpos: &mut StateBufferedLexer) -> bool {
+    pub fn reachedEnd(&mut self, lexpos: &mut StateBufferedLexer) -> bool {
         if lexpos.maximumToken < lexpos.minimumToken {
             return true;
         }
@@ -66,7 +71,7 @@ impl BufferedLexer {
             return true;
         }
 
-        if lexpos.currentToken >= self.tokens().len() {
+        if lexpos.currentToken >= self.tokens.len() {
             if self.tryGetNextToken() {
                 return false;
             }
@@ -76,7 +81,7 @@ impl BufferedLexer {
         false
     }
 
-    pub fn consumeToken(&self, lexpos: &mut StateBufferedLexer) -> bool {
+    pub fn consumeToken(&mut self, lexpos: &mut StateBufferedLexer) -> bool {
         if !self.reachedEnd(lexpos) {
             lexpos.currentToken += 1;
             return true;
@@ -84,8 +89,10 @@ impl BufferedLexer {
         false
     }
 
-    pub fn consumeTokenIfEq(&self, lexpos: &mut StateBufferedLexer, tok: Token) -> bool {
-        if !self.reachedEnd(lexpos) && self.tokens()[lexpos.currentToken].tokPos.tok == tok {
+    pub fn consumeTokenIfEq(&mut self, lexpos: &mut StateBufferedLexer, tok: Token) -> bool {
+        if !self.reachedEnd(lexpos)
+            && self.internalGetUnchecked(lexpos.currentToken).tokPos.tok == tok
+        {
             lexpos.currentToken += 1;
             return true;
         }
@@ -93,47 +100,59 @@ impl BufferedLexer {
     }
 
     pub fn consumeTokenIf(
-        &self,
+        &mut self,
         lexpos: &mut StateBufferedLexer,
         cond: fn(&Token) -> bool,
     ) -> bool {
-        if !self.reachedEnd(lexpos) && cond(&self.tokens()[lexpos.currentToken].tokPos.tok) {
+        if !self.reachedEnd(lexpos)
+            && cond(&self.internalGetUnchecked(lexpos.currentToken).tokPos.tok)
+        {
             lexpos.currentToken += 1;
             return true;
         }
         false
     }
 
-    pub fn get(&self, lexpos: &mut StateBufferedLexer) -> Option<&FileTokPos<Token>> {
+    pub fn get(&mut self, lexpos: &mut StateBufferedLexer) -> Option<&'static FileTokPos<Token>> {
         if self.reachedEnd(lexpos) {
             return None;
         }
-        self.tokens().get(lexpos.currentToken)
+        self.internalGetChecked(lexpos.currentToken)
     }
 
     pub fn getIfEq(
-        &self,
+        &mut self,
         lexpos: &mut StateBufferedLexer,
         tok: Token,
-    ) -> Option<&FileTokPos<Token>> {
-        if !self.reachedEnd(lexpos) && self.tokens()[lexpos.currentToken].tokPos.tok == tok {
-            return self.tokens().get(lexpos.currentToken);
+    ) -> Option<&'static FileTokPos<Token>> {
+        if !self.reachedEnd(lexpos)
+            && self.internalGetUnchecked(lexpos.currentToken).tokPos.tok == tok
+        {
+            return self.internalGetChecked(lexpos.currentToken);
         }
         None
     }
 
     pub fn getIf(
-        &self,
+        &mut self,
+
         lexpos: &mut StateBufferedLexer,
         cond: fn(&Token) -> bool,
-    ) -> Option<&FileTokPos<Token>> {
-        if !self.reachedEnd(lexpos) && cond(&self.tokens()[lexpos.currentToken].tokPos.tok) {
-            return self.tokens().get(lexpos.currentToken);
+    ) -> Option<&'static FileTokPos<Token>> {
+        if !self.reachedEnd(lexpos)
+            && cond(&self.internalGetUnchecked(lexpos.currentToken).tokPos.tok)
+        {
+            return self.internalGetChecked(lexpos.currentToken);
         }
         None
     }
 
-    pub fn ifEqOffset(&self, lexpos: &mut StateBufferedLexer, tok: Token, offset: isize) -> bool {
+    pub fn ifEqOffset(
+        &mut self,
+        lexpos: &mut StateBufferedLexer,
+        tok: Token,
+        offset: isize,
+    ) -> bool {
         if lexpos.maximumToken < lexpos.minimumToken {
             return false;
         }
@@ -143,11 +162,11 @@ impl BufferedLexer {
                 if pos > lexpos.maximumToken || pos < lexpos.minimumToken {
                     return false;
                 }
-                while pos >= self.tokens().len() && self.tryGetNextToken() {}
-                if pos >= self.tokens().len() {
+                while pos >= self.tokens.len() && self.tryGetNextToken() {}
+                if pos >= self.tokens.len() {
                     return false;
                 }
-                return self.tokens()[pos].tokPos.tok == tok;
+                return self.internalGetUnchecked(pos).tokPos.tok == tok;
             }
             None => false,
         }
@@ -163,59 +182,66 @@ impl BufferedLexer {
         newState
     }
 
-    pub fn getConsumeToken(&self, lexpos: &mut StateBufferedLexer) -> Option<&FileTokPos<Token>> {
+    pub fn getConsumeToken(
+        &mut self,
+        lexpos: &mut StateBufferedLexer,
+    ) -> Option<&'static FileTokPos<Token>> {
         if self.reachedEnd(lexpos) {
             return None;
         }
         lexpos.currentToken += 1;
-        return self.tokens().get(lexpos.currentToken - 1);
+        return self.internalGetChecked(lexpos.currentToken - 1);
     }
 
     pub fn getConsumeTokenIfEq(
-        &self,
+        &mut self,
         lexpos: &mut StateBufferedLexer,
         tok: Token,
-    ) -> Option<&FileTokPos<Token>> {
-        if !self.reachedEnd(lexpos) && self.tokens()[lexpos.currentToken].tokPos.tok == tok {
+    ) -> Option<&'static FileTokPos<Token>> {
+        if !self.reachedEnd(lexpos)
+            && self.internalGetUnchecked(lexpos.currentToken).tokPos.tok == tok
+        {
             lexpos.currentToken += 1;
-            return self.tokens().get(lexpos.currentToken - 1);
+            return self.internalGetChecked(lexpos.currentToken - 1);
         }
         None
     }
 
     pub fn getConsumeTokenIfIdentifier(
-        &self,
+        &mut self,
         lexpos: &mut StateBufferedLexer,
-    ) -> Option<&FileTokPos<Token>> {
+    ) -> Option<&'static FileTokPos<Token>> {
         if !self.reachedEnd(lexpos)
             && matches!(
-                self.tokens()[lexpos.currentToken].tokPos.tok,
+                self.internalGetUnchecked(lexpos.currentToken).tokPos.tok,
                 Token::Identifier(_)
             )
         {
             lexpos.currentToken += 1;
-            return self.tokens().get(lexpos.currentToken - 1);
+            return self.internalGetChecked(lexpos.currentToken - 1);
         }
         None
     }
 
     pub fn getConsumeTokenIf(
-        &self,
+        &mut self,
         lexpos: &mut StateBufferedLexer,
         cond: fn(&Token) -> bool,
-    ) -> Option<&FileTokPos<Token>> {
-        if !self.reachedEnd(lexpos) && cond(&self.tokens()[lexpos.currentToken].tokPos.tok) {
+    ) -> Option<&'static FileTokPos<Token>> {
+        if !self.reachedEnd(lexpos)
+            && cond(&self.internalGetUnchecked(lexpos.currentToken).tokPos.tok)
+        {
             lexpos.currentToken += 1;
-            return self.tokens().get(lexpos.currentToken - 1);
+            return self.internalGetChecked(lexpos.currentToken - 1);
         }
         None
     }
 
     pub fn getWithOffset(
-        &self,
+        &mut self,
         lexpos: &StateBufferedLexer,
         offset: isize,
-    ) -> Option<&FileTokPos<Token>> {
+    ) -> Option<&'static FileTokPos<Token>> {
         if lexpos.maximumToken < lexpos.minimumToken {
             return None;
         }
@@ -225,42 +251,42 @@ impl BufferedLexer {
                 if pos > lexpos.maximumToken || pos < lexpos.minimumToken {
                     return None;
                 }
-                while pos >= self.tokens().len() && self.tryGetNextToken() {}
-                if pos >= self.tokens().len() {
+                while pos >= self.tokens.len() && self.tryGetNextToken() {}
+                if pos >= self.tokens.len() {
                     return None;
                 }
-                return self.tokens().get(pos);
+                return self.internalGetChecked(pos);
             }
             None => None,
         }
     }
 
     pub fn getWithOffsetSaturating(
-        &self,
+        &mut self,
         lexpos: &StateBufferedLexer,
         offset: isize,
-    ) -> &FileTokPos<Token> {
+    ) -> &'static FileTokPos<Token> {
         if lexpos.maximumToken < lexpos.minimumToken {
-            return self.tokens().get(lexpos.minimumToken).unwrap();
+            return self.internalGetChecked(lexpos.minimumToken).unwrap();
         }
 
         match lexpos.currentToken.checked_add_signed(offset) {
             Some(mut pos) => {
                 pos = pos.clamp(lexpos.minimumToken, lexpos.maximumToken);
 
-                while pos >= self.tokens().len() && self.tryGetNextToken() {}
-                if pos >= self.tokens().len() {
-                    return self.tokens().last().unwrap();
+                while pos >= self.tokens.len() && self.tryGetNextToken() {}
+                if pos >= self.tokens.len() {
+                    return self.tokens.last().unwrap();
                 }
-                self.tokens().get(pos).unwrap()
+                self.internalGetChecked(pos).unwrap()
             }
-            None => self.tokens().get(lexpos.minimumToken).unwrap(),
+            None => self.internalGetChecked(lexpos.minimumToken).unwrap(),
         }
     }
 
     // move back lexpos nth positions
     #[allow(clippy::unused_self)]
-    pub fn moveBack(&self, lexpos: &mut StateBufferedLexer, n: usize) {
+    pub fn moveBack(&mut self, lexpos: &mut StateBufferedLexer, n: usize) {
         if lexpos.maximumToken < lexpos.minimumToken {
             return;
         }
@@ -271,7 +297,7 @@ impl BufferedLexer {
             .clamp(lexpos.minimumToken, lexpos.maximumToken);
     }
 
-    pub fn next(&self, lexpos: &mut StateBufferedLexer) -> bool {
+    pub fn next(&mut self, lexpos: &mut StateBufferedLexer) -> bool {
         if lexpos.maximumToken < lexpos.minimumToken {
             return false;
         }
@@ -285,7 +311,7 @@ impl BufferedLexer {
         true
     }
 
-    pub fn moveForward(&self, lexpos: &mut StateBufferedLexer, n: usize) -> bool {
+    pub fn moveForward(&mut self, lexpos: &mut StateBufferedLexer, n: usize) -> bool {
         if lexpos.maximumToken < lexpos.minimumToken {
             return false;
         }
@@ -294,13 +320,13 @@ impl BufferedLexer {
             .currentToken
             .saturating_add(n)
             .clamp(lexpos.minimumToken, lexpos.maximumToken);
-        while lexpos.currentToken > self.tokens().len() && self.tryGetNextToken() {}
-        return lexpos.currentToken <= self.tokens().len(); // Beware to not consume the token of the destination; This way we can alter the lexer correctly if necessary.
+        while lexpos.currentToken > self.tokens.len() && self.tryGetNextToken() {}
+        lexpos.currentToken <= self.tokens.len() // Beware to not consume the token of the destination; This way we can alter the lexer correctly if necessary.
     }
 
     #[allow(clippy::unused_self)]
     pub fn moveStateToOtherState(
-        &self,
+        &mut self,
         lexpos: &mut StateBufferedLexer,
         otherpos: &mut StateBufferedLexer,
     ) -> bool {

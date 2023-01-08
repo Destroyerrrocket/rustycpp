@@ -295,3 +295,22 @@ fn parsesAsmDeclError1() {
     let (_, e, s) = testUnsuccessfulFile!();
     checkErrors(e, &s, &[e!(1), e!(2), w!(3), e!(4), e!(5), e!(6)]);
 }
+
+#[test]
+#[named]
+fn unqualifiedNameResolutionGlobal() {
+    let _ = testSuccessfulFile!();
+}
+
+#[test]
+#[named]
+fn unqualifiedNameResolutionGlobalErr1() {
+    let (_, e, s) = testUnsuccessfulFile!();
+    checkErrors(e, &s, &[e!(13), e!(14), e!(15), e!(16), e!(17)]);
+}
+
+#[test]
+#[named]
+fn unqualifiedNameResolutionNamespace() {
+    let _ = testSuccessfulFile!();
+}

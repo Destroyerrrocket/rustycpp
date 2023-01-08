@@ -36,9 +36,10 @@ impl Parser {
     ) -> Vec<&'static AstDecl> {
         let tok = self.lexer().get(lexpos);
         if tok.is_none() {
+            let posErr = self.lexer().getWithOffsetSaturating(lexpos, 0);
             self.errors.push(CompileError::fromPreTo(
                 "Unexpected end of file. Maybe you forgot a semicolon?",
-                self.lexer().getWithOffsetSaturating(lexpos, 0),
+                posErr,
             ));
             return vec![];
         }
@@ -274,25 +275,27 @@ impl Parser {
         let startedAsm = self.lexer().consumeTokenIfEq(lexpos, Token::Asm);
         assert!(startedAsm);
         if self.lexer().getIfEq(lexpos, Token::LParen).is_none() {
+            let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
             self.errors.push(CompileError::fromPreTo(
                 "Expected '(' after 'asm' keyword.",
-                self.lexer().getWithOffsetSaturating(lexpos, -1),
+                posErr,
             ));
             return vec![];
         }
         let parenPos = *lexpos;
         let Some(mut scoped) = self.parseAlmostBalancedPattern(lexpos) else {
+            let posErr = self.lexer().getWithOffsetSaturating(&parenPos, 0);
             self.errors.push(CompileError::fromPreTo(
                 "Expected a closing parentheses for this '(' while evaluating the 'asm' declaration.",
-                self.lexer().getWithOffsetSaturating(&parenPos, 0),
+                posErr
             ));
             return vec![];
         };
 
         let Some(content) = self.lexer().getConsumeToken(&mut scoped) else {
+            let posErr = self.lexer().getWithOffsetSaturating(&parenPos, 0);
             self.errors.push(CompileError::fromPreTo(
-                "Expected a string literal inside the 'asm' declaration.",
-                self.lexer().getWithOffsetSaturating(&parenPos, 0),
+                "Expected a string literal inside the 'asm' declaration.", posErr
             ));
             return vec![];
         };
@@ -313,22 +316,19 @@ impl Parser {
         }
 
         if self.lexer().getIfEq(lexpos, Token::Semicolon).is_none() {
+            let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
             self.errors.push(CompileError::fromPreTo(
                 "Expected a ';' after the 'asm' declaration.",
-                self.lexer().getWithOffsetSaturating(lexpos, -1),
+                posErr,
             ));
         } else {
             self.lexer().next(lexpos);
         }
-
-        return self.actOnAsmDecl(
-            attr,
-            SourceRange::newDoubleTok(
-                self.lexer().getWithOffsetSaturating(&startlexpos, 0),
-                self.lexer().getWithOffsetSaturating(lexpos, -1),
-            ),
-            content,
+        let posAsm = SourceRange::newDoubleTok(
+            self.lexer().getWithOffsetSaturating(&startlexpos, 0),
+            self.lexer().getWithOffsetSaturating(lexpos, -1),
         );
+        return self.actOnAsmDecl(attr, posAsm, content);
     }
 
     /**
@@ -362,9 +362,10 @@ impl Parser {
 
         if !self.lexer().consumeTokenIfEq(lexpos, Token::Namespace) {
             // We already expected a namespace keyword. Reaching this is a bug.
+            let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
             self.errors.push(CompileError::fromPreTo(
                 "Expected 'namespace' keyword. This is a bug. Report is please.",
-                self.lexer().getWithOffsetSaturating(lexpos, -1),
+                posErr,
             ));
         }
 
@@ -374,9 +375,10 @@ impl Parser {
             Some(fileTokPosMatchArm!(Token::Identifier(nameStr))) => {
                 self.errorAttributes(lexpos);
                 let Some(tok) = self.lexer().get(lexpos) else {
+                    let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
                     self.errors.push(CompileError::fromPreTo(
                         "Expected '{' (to introduce a namespace) or '=' (to make a namespace alias) after the namespace name.",
-                        self.lexer().getWithOffsetSaturating(lexpos, -1),
+                        posErr,
                     ));
                     return vec![];
                 };
@@ -390,7 +392,9 @@ impl Parser {
                             SourceRange::newSingleTok(name.unwrap()),
                         );
                         let contents = self.parseNamespaceBody(lexpos);
-                        self.actOnEndNamedNamespaceDefinition(&contents);
+                        if let Some(astNamespace) = astNamespace.first() {
+                            self.actOnEndNamedNamespaceDefinition(astNamespace, &contents);
+                        }
                         astNamespace
                     }
                     Token::Equal => todo!(),
@@ -414,9 +418,10 @@ impl Parser {
      */
     pub fn parseNamespaceBody(&mut self, lexpos: &mut StateBufferedLexer) -> Vec<&'static AstDecl> {
         if !self.lexer().consumeTokenIfEq(lexpos, Token::LBrace) {
+            let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
             self.errors.push(CompileError::fromPreTo(
                 "Expected '{' to introduce a namespace body. This is a bug. Please report it.",
-                self.lexer().getWithOffsetSaturating(lexpos, -1),
+                posErr,
             ));
             return vec![];
         }
@@ -432,9 +437,10 @@ impl Parser {
                 let newDecls = self.parseDeclaration(lexpos, &attrs);
                 decls.extend(newDecls);
             } else {
+                let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
                 self.errors.push(CompileError::fromPreTo(
                     "Expected '}' to end the namespace body. Maybe insert one here?",
-                    self.lexer().getWithOffsetSaturating(lexpos, -1),
+                    posErr,
                 ));
                 break;
             }
@@ -454,17 +460,18 @@ impl Parser {
             .lexer()
             .getConsumeTokenIfEq(lexpos, Token::__rustycpp__) else
         {
+            let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
             self.errors.push(CompileError::fromPreTo(
                 "Expected '__rustycpp__' keyword. This is a bug. Report is please.",
-                self.lexer().getWithOffsetSaturating(lexpos, -1),
+                posErr
             ));
             return vec![];
         };
 
         let Some(lParen) = self.lexer().getConsumeTokenIfEq(lexpos, Token::LParen) else {
+            let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
             self.errors.push(CompileError::fromPreTo(
-                "Expected '(' after '__rustycpp__' keyword.",
-                self.lexer().getWithOffsetSaturating(lexpos, -1),
+                "Expected '(' after '__rustycpp__' keyword.", posErr
             ));
             return vec![];
         };

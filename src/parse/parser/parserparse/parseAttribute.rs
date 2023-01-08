@@ -199,9 +199,10 @@ impl Parser {
         loop {
             if self.lexer().consumeTokenIfEq(lexpos, Token::RBracket) {
                 if !self.lexer().consumeTokenIfEq(lexpos, Token::RBracket) {
+                    let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
                     self.errors.push(CompileError::fromPreTo(
                         "This attribute is missing a final ']'.",
-                        self.lexer().getWithOffsetSaturating(lexpos, -1),
+                        posErr,
                     ));
                 }
                 break;
@@ -217,9 +218,10 @@ impl Parser {
                 }
             } else if self.lexer().consumeTokenIfEq(lexpos, Token::Comma) {
             } else {
+                let posErr = self.lexer().getWithOffsetSaturating(lexpos, 0);
                 self.errors.push(CompileError::fromPreTo(
                     "This attribute is missing an identifier.",
-                    self.lexer().getWithOffsetSaturating(lexpos, 0),
+                    posErr,
                 ));
                 break;
             }
@@ -266,12 +268,12 @@ impl Parser {
             {
                 let namespaceAttr = nameAttr;
                 let Some(realName) = self.lexer().getConsumeTokenIfIdentifier(lexpos) else {
-                self.errors.push(CompileError::fromSourceRange(
-                    "This attribute prefix is missing an attribute.",
-                    &SourceRange::newDoubleTok(nameAttr, doubleColon),
-                ));
-                return None;
-            };
+                    self.errors.push(CompileError::fromSourceRange(
+                        "This attribute prefix is missing an attribute.",
+                        &SourceRange::newDoubleTok(nameAttr, doubleColon),
+                    ));
+                    return None;
+                };
 
                 if usingNamespace.is_some() {
                     self.errors.push(CompileError::fromSourceRange(
@@ -307,7 +309,7 @@ impl Parser {
         };
 
         let Token::Identifier(name) = nameAttr.tokPos.tok else {
-            unreachable!();
+            unreachable!("{:?}", nameAttr);
         };
 
         let Some(dispatcher) = ast::Attribute::ATTRIBUTE_DISPATCHER.getAtrributeKindInfo(namespace, name) else {

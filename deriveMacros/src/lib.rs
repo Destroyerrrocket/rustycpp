@@ -48,8 +48,7 @@ fn impl_AstChildSlice(_: &Field, fieldName: TokenStream) -> TokenStream {
 
 fn impl_AstChildSliceCell(_: &Field, fieldName: TokenStream) -> TokenStream {
     quote! {
-
-        add_children(unsafe {self.#fieldName.get().as_ref().unwrap()}.iter().map(|x| x.getDebugNode()).collect::<_>())
+        add_children(self.#fieldName.borrow().iter().map(|x| x.getDebugNode()).collect::<_>())
     }
 }
 

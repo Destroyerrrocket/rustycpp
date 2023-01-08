@@ -77,20 +77,46 @@ impl Parser {
 
         let astNamespaceDecl = self.alloc().alloc(AstDecl::AstNamespaceDecl(astNamespace));
 
-        let enumScope = Scope::new(ScopeKind::NAMESPACE | ScopeKind::CAN_DECL, astNamespaceDecl);
-        self.currentScope
-            .addChild(name, Child::Scope(enumScope.clone()));
-        self.currentScope = enumScope;
+        let possibleOriginalDecl = {
+            let currentScope = self.currentScope.borrow();
+            currentScope.childs.get(&name).and_then(|originalDecl| {
+                originalDecl
+                    .iter()
+                    .find(|scope| {
+                        let Child::Scope(scope) = scope else {return false;};
+                        scope.borrow().flags == ScopeKind::NAMESPACE | ScopeKind::CAN_DECL
+                    })
+                    .map(|scope| {
+                        let Child::Scope(scope) = scope else {unreachable!();};
+                        scope.clone()
+                    })
+            })
+        };
 
+        if let Some(originalDecl) = possibleOriginalDecl {
+            let AstDecl::AstNamespaceDecl(causingDecl) = originalDecl.borrow().causingDecl.unwrap() else {unreachable!();};
+            causingDecl.addExtension(astNamespaceDecl);
+            self.currentScope = originalDecl.clone();
+        } else {
+            let enumScope =
+                Scope::new(ScopeKind::NAMESPACE | ScopeKind::CAN_DECL, astNamespaceDecl);
+            self.currentScope
+                .addChild(name, Child::Scope(enumScope.clone()));
+            self.currentScope = enumScope;
+        }
         vec![astNamespaceDecl]
     }
 
     /**
      * named-namespace-definition
      */
-    pub fn actOnEndNamedNamespaceDefinition(&mut self, contents: &[&'static AstDecl]) {
-        let Some(AstDecl::AstNamespaceDecl(namespaceDecl)) =
-            self.currentScope.borrow().causingDecl else {unreachable!();};
+    pub fn actOnEndNamedNamespaceDefinition(
+        &mut self,
+        namespaceDecl: &'static AstDecl,
+        contents: &[&'static AstDecl],
+    ) {
+        let AstDecl::AstNamespaceDecl(namespaceDecl) =
+            namespaceDecl else {unreachable!();};
 
         let contents = self.alloc().alloc_slice_copy(contents);
         namespaceDecl.setContents(contents);

@@ -1,4 +1,4 @@
-use std::cell::{RefCell, UnsafeCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::compiler::TranslationUnit;
@@ -33,7 +33,7 @@ pub enum ModuleImportState {
 }
 
 pub struct Parser {
-    lexer: UnsafeCell<BufferedLexer>,
+    lexer: BufferedLexer,
     lexerStart: StateBufferedLexer,
     filePath: TranslationUnit,
     compilerState: CompilerState,
@@ -53,7 +53,7 @@ impl Parser {
         let (lexer, lexerStart) = BufferedLexer::new(lexer);
         let rootScope = Scope::new_root();
         Self {
-            lexer: UnsafeCell::new(lexer),
+            lexer,
             lexerStart,
             filePath,
             compilerState,
@@ -68,7 +68,7 @@ impl Parser {
 
     pub fn parse(&mut self) -> (AstTu, Vec<CompileMsg>) {
         let tu = self.parseTu();
-        let mut lexErr = unsafe { &mut *self.lexer.get() }.errors();
+        let mut lexErr = self.lexer.errors();
         lexErr.extend(self.errors.clone());
         (tu, lexErr)
     }
@@ -77,9 +77,8 @@ impl Parser {
         ast.getDebugNode().to_string()
     }
 
-    // Super unsafe, we could get invalid references if we ever destroy the parser. Tread carefully.
-    pub fn lexer(&self) -> &'static BufferedLexer {
-        unsafe { &*self.lexer.get() }
+    pub fn lexer(&mut self) -> &mut BufferedLexer {
+        &mut self.lexer
     }
 
     pub fn alloc(&self) -> &'static bumpalo::Bump {

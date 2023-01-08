@@ -79,6 +79,6 @@ impl Parser {
                 currVisitingScope = newCurr;
             };
         }
-        todo!("No more namespace resolution rules implemented.");
+        todo!("No more unqualified name resolution rules implemented.");
     }
 }

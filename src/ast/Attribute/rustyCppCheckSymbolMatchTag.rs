@@ -48,7 +48,7 @@ impl CXXAttribute for AstRustyCppCheckSymbolMatchTag {
         let decls = parser.unqualifiedNameLookup(name);
         if decls.is_empty() {
             if self.numberOrFound.tokPos.tok != Token::BoolLiteral(false) {
-                parser.addError(CompileError::fromPreTo(format!("While trying to resolve name {name} we did not found nothing, but we were expecting something"), &self.numberOrFound));
+                parser.addError(CompileError::fromPreTo(format!("While trying to resolve name {name} we found nothing, but we were expecting something"), &self.numberOrFound));
             }
             return;
         }
