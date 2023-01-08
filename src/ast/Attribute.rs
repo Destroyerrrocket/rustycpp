@@ -4,11 +4,18 @@ use deriveMacros::CommonAst;
 use enum_dispatch::enum_dispatch;
 use lazy_static::lazy_static;
 
-use crate::utils::structs::SourceRange;
+use crate::{
+    lex::token::Token,
+    utils::structs::{FileTokPos, SourceRange},
+};
 use crate::{parse::bufferedLexer::StateBufferedLexer, utils::stringref::StringRef};
 
 pub mod rustyCppUnused;
 use rustyCppUnused::AstRustyCppUnused;
+pub mod rustyCppTagDecl;
+use rustyCppTagDecl::AstRustyCppTagDecl;
+pub mod rustyCppCheckSymbolMatchTag;
+use rustyCppCheckSymbolMatchTag::AstRustyCppCheckSymbolMatchTag;
 
 #[derive(Clone, Copy)]
 pub enum Kind {
@@ -28,7 +35,7 @@ impl ToString for Kind {
 #[derive(Clone, Copy)]
 pub struct AstAttribute {
     /// CXX11, alignas, etc.
-    kind: Kind,
+    pub kind: Kind,
     /// The range of the attribute in the source code. Includes the brackets/alignas/etc.
     pub sourceRange: SourceRange,
 }
@@ -61,9 +68,10 @@ impl AstAttribute {
 pub struct AtrributeKindInfo {
     pub namespace: Option<StringRef>,
     pub name: StringRef,
+    pub requiresParameters: bool,
     pub parser: fn(
         &mut crate::parse::parser::Parser,
-        StringRef,
+        &FileTokPos<Token>,
         Option<StateBufferedLexer>,
     ) -> Option<AstCXXAttribute>,
 }
@@ -89,14 +97,9 @@ pub trait CXXAttributeKindInfo {
 }
 
 #[enum_dispatch]
-pub trait CXXAttribute<T: CXXAttributeKindInfo = Self> {}
-/*
-#[allow(clippy::enum_variant_names)]
-#[derive(CommonAst)]
-#[enum_dispatch(CXXAttribute)]
-pub enum AstCXXAttribute {
-    AstRustyCppUnused,
-}*/
+pub trait CXXAttribute {
+    fn actOnAttributeDecl(&self, _parser: &mut crate::parse::parser::Parser) {}
+}
 
 macro_rules! register_attributes {
     ($($o:ident),*) => {
@@ -132,5 +135,7 @@ macro_rules! register_attributes {
 }
 
 register_attributes! {
-    AstRustyCppUnused
+    AstRustyCppUnused,
+    AstRustyCppTagDecl,
+    AstRustyCppCheckSymbolMatchTag
 }

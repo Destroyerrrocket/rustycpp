@@ -19,6 +19,7 @@ impl CXXAttributeKindInfo for AstRustyCppUnused {
         AtrributeKindInfo {
             name: "unused".to_StringRef(),
             namespace: Some("rustycpp".to_StringRef()),
+            requiresParameters: false,
             parser: crate::parse::parser::Parser::parseRustyCppUnused,
         }
     }

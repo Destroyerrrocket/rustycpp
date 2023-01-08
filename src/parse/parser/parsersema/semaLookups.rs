@@ -16,7 +16,7 @@ impl Parser {
      * I think I'd prefer for now to return all the names that match, and apply
      * name hiding later.
      */
-    fn unqualifiedNameLookup(&self, name: StringRef) -> Vec<&'static AstDecl> {
+    pub fn unqualifiedNameLookup(&self, name: StringRef) -> Vec<&'static AstDecl> {
         /*
         Rules 1 to 3 are not accually rules, but comments on how to apply the rules.
         Rule 1: Apply the rules in order, and for each rule follow the statements in order.

@@ -448,7 +448,7 @@ impl Parser {
     fn parseCustom__rustycpp__Decl(
         &mut self,
         lexpos: &mut StateBufferedLexer,
-        _attr: &[&'static AstAttribute],
+        attr: &Vec<&'static AstAttribute>,
     ) -> Vec<&'static AstDecl> {
         let Some(rustyCpp) = self
             .lexer()
@@ -469,7 +469,7 @@ impl Parser {
             return vec![];
         };
 
-        let result = self.parseContentsOf__rustycpp__Decl(lexpos, rustyCpp);
+        let result = self.parseContentsOf__rustycpp__Decl(lexpos, rustyCpp, attr);
 
         while let Some(fileTokPosMatchArm!(tok)) = self.lexer().get(lexpos) {
             if matches!(tok, Token::RParen) {
@@ -492,6 +492,7 @@ impl Parser {
         &mut self,
         lexpos: &mut StateBufferedLexer,
         rustyCpp: &FileTokPos<Token>,
+        attr: &Vec<&'static AstAttribute>,
     ) -> Vec<&'static AstDecl> {
         let Some(enumTok) = self.lexer().getConsumeTokenIfEq(lexpos, Token::Enum) else {
             self.errors.push(CompileError::fromPreTo(
@@ -512,6 +513,6 @@ impl Parser {
         let location = SourceRange::newDoubleTok(enumTok, nameTok);
         let fileTokPosMatchArm!(Token::Identifier(name)) = nameTok else {unreachable!()};
 
-        return self.actOnRustyCppEnumDefinition(*name, location);
+        return self.actOnRustyCppEnumDefinition(*name, location, attr);
     }
 }

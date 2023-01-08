@@ -8,6 +8,7 @@ use crate::{
 #[derive(CommonAst, DeclAst)]
 pub struct AstEmptyDecl {
     base: BaseDecl,
+    #[DeclAttributes]
     #[AstChildSlice]
     attrs: &'static [&'static AstAttribute],
 }

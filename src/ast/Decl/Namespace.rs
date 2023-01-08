@@ -18,6 +18,7 @@ pub struct AstNamespaceDecl {
     #[AstToString]
     isInline: bool,
     nextExtension: UnsafeCell<Option<&'static AstNamespaceDecl>>,
+    #[DeclAttributes]
     #[AstChildSlice]
     attrs: &'static [&'static AstAttribute],
     #[AstChildSliceCell]

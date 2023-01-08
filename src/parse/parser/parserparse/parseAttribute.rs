@@ -12,6 +12,8 @@ use crate::{
 use super::super::Parser;
 use super::parseMiscUtils::ParseMacroMatched;
 
+mod rustycppchecksymbolmatchtag;
+mod rustycpptagdecl;
 mod rustycppunused;
 
 impl Parser {
@@ -317,6 +319,13 @@ impl Parser {
             ));
             return None;
         };
-        (dispatcher.parser)(self, name, parens)
+        if dispatcher.requiresParameters && parens.is_none() {
+            self.errors.push(CompileError::fromPreTo(
+                "This attribute requires parameters",
+                nameAttr,
+            ));
+            return None;
+        }
+        (dispatcher.parser)(self, nameAttr, parens)
     }
 }

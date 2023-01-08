@@ -3,7 +3,7 @@ use deriveMacros::CommonAst;
 use enum_dispatch::enum_dispatch;
 
 use crate::ast::{
-    common::CommonAst,
+    Attribute::AstAttribute,
     Decl::{
         Asm::AstAsmDecl, Empty::AstEmptyDecl, Enum::AstCustomRustyCppEnum,
         Namespace::AstNamespaceDecl,
@@ -39,8 +39,9 @@ impl BaseDecl {
 }
 
 #[enum_dispatch]
-pub trait DeclAst<T: CommonAst = Self> {
+pub trait DeclAst {
     fn getBaseDecl(&self) -> &BaseDecl;
+    fn getAttributes(&self) -> Option<&'static [&'static AstAttribute]>;
 }
 
 #[allow(clippy::enum_variant_names)]

@@ -85,4 +85,8 @@ impl Parser {
     pub fn alloc(&self) -> &'static bumpalo::Bump {
         self.alloc.alloc()
     }
+
+    pub fn addError(&mut self, msg: CompileMsg) {
+        self.errors.push(msg);
+    }
 }

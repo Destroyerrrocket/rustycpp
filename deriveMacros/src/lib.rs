@@ -126,13 +126,37 @@ fn impl_DeclAst(ast: &DeriveInput) -> TokenStream {
                         .named
                         .iter()
                         .find(|field| field.ty.to_token_stream().to_string() == "BaseDecl");
+                    let attrs = fields.named.iter().find(|field| {
+                        field
+                            .attrs
+                            .iter()
+                            .find(|at| at.path.is_ident(stringify!(DeclAttributes)))
+                            .is_some()
+                    });
                     if let Some(field) = field {
                         let field = field.ident.to_token_stream();
+
+                        let attrFuncImpl = if let Some(attrs) = attrs {
+                            let attrs = attrs.ident.to_token_stream();
+                            quote! {
+                                fn getAttributes(&self) -> Option<&'static [&'static crate::ast::Attribute::AstAttribute]> {
+                                    return Some(&self.#attrs);
+                                }
+                            }
+                        } else {
+                            quote! {
+                                fn getAttributes(&self) -> Option<&'static [&'static crate::ast::Attribute::AstAttribute]> {
+                                    return None;
+                                }
+                            }
+                        };
+
                         quote! {
                             impl #generics crate::ast::Decl::DeclAst for #name {
                                 fn getBaseDecl(&self) -> &crate::ast::Decl::BaseDecl {
                                     return &self.#field;
                                 }
+                                #attrFuncImpl
                             }
                         }
                     } else {
@@ -166,7 +190,7 @@ pub fn CommonAst_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStre
     finalResult!(release impl_CommonAst(&ast))
 }
 
-#[proc_macro_derive(DeclAst, attributes())]
+#[proc_macro_derive(DeclAst, attributes(DeclAttributes))]
 pub fn DeclAst_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Construct a representation of Rust code as a syntax tree
     // that we can manipulate

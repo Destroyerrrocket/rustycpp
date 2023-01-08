@@ -1,13 +1,16 @@
 use crate::{
     ast::{
-        Attribute::AstAttribute,
+        Attribute::{self, AstAttribute, CXXAttribute},
         Decl::{
             Asm::AstAsmDecl, AstDecl, Empty::AstEmptyDecl, Enum::AstCustomRustyCppEnum,
             Namespace::AstNamespaceDecl,
         },
     },
     sema::scope::{Child, RefCellScope, Scope, ScopeKind},
-    utils::{stringref::StringRef, structs::SourceRange},
+    utils::{
+        stringref::StringRef,
+        structs::{CompileError, CompileMsgImpl, SourceRange},
+    },
 };
 
 use super::super::Parser;
@@ -21,7 +24,20 @@ impl Parser {
         attr: &Vec<&'static AstAttribute>,
         location: SourceRange,
     ) -> Vec<&'static AstDecl> {
-        let ast = AstEmptyDecl::new(location, self.alloc().alloc_slice_clone(attr.as_slice()));
+        for a in attr {
+            if let Attribute::Kind::Cxx(attrmembers) = a.kind {
+                for attrmember in attrmembers {
+                    (*attrmember).actOnAttributeDecl(self);
+                }
+            } else {
+                self.errors.push(CompileError::fromSourceRange(
+                    "Only Cxx11 attributes are allowed here.",
+                    &a.sourceRange,
+                ));
+                continue;
+            }
+        }
+        let ast = AstEmptyDecl::new(location, self.alloc().alloc_slice_copy(attr.as_slice()));
         vec![self.alloc().alloc(AstDecl::AstEmptyDecl(ast))]
     }
 
@@ -36,7 +52,7 @@ impl Parser {
     ) -> Vec<&'static AstDecl> {
         let astAsm = AstAsmDecl::new(
             location,
-            self.alloc().alloc_slice_clone(attr.as_slice()),
+            self.alloc().alloc_slice_copy(attr.as_slice()),
             asm,
         );
         vec![self.alloc().alloc(AstDecl::AstAsmDecl(astAsm))]
@@ -54,7 +70,7 @@ impl Parser {
     ) -> Vec<&'static AstDecl> {
         let astNamespace = AstNamespaceDecl::new(
             locationName,
-            self.alloc().alloc_slice_clone(attr.as_slice()),
+            self.alloc().alloc_slice_copy(attr.as_slice()),
             name,
             isInline,
         );
@@ -87,8 +103,10 @@ impl Parser {
         &mut self,
         name: StringRef,
         location: SourceRange,
+        attr: &Vec<&'static AstAttribute>,
     ) -> Vec<&'static AstDecl> {
-        let astEnum = AstCustomRustyCppEnum::new(location, name);
+        let attrs = self.alloc().alloc_slice_copy(attr.as_slice());
+        let astEnum = AstCustomRustyCppEnum::new(location, name, attrs);
         let astEnumDecl = self.alloc().alloc(AstDecl::AstCustomRustyCppEnum(astEnum));
 
         let enumScope = Scope::new(ScopeKind::ENUM | ScopeKind::CAN_DECL, astEnumDecl);
