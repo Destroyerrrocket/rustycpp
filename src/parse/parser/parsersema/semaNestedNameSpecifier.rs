@@ -7,7 +7,11 @@ use crate::{
 use super::super::Parser;
 
 impl Parser {
-    fn resolveNestedNameSpecifier(&mut self, nestedNameSpecifier: &[AstNestedNameSpecifier]) {
+    fn resolveNestedNameSpecifier(
+        &mut self,
+        nestedNameSpecifier: &[AstNestedNameSpecifier],
+        reportNormalErrors: bool,
+    ) {
         if nestedNameSpecifier.len() > 1 {
             let mut currentResolvedScope = &nestedNameSpecifier[0];
             let mut remainingNameSpecifier = &nestedNameSpecifier[1..];
@@ -15,6 +19,9 @@ impl Parser {
             loop {
                 let currentUnresolved = &remainingNameSpecifier[0];
                 let currentResolvedScopeScope = currentResolvedScope.scope.borrow();
+                if currentResolvedScopeScope.is_none() {
+                    return; // Previous resolution failed...
+                }
                 let currentResolvedScopeScope = currentResolvedScopeScope.as_ref().unwrap();
                 let candidates = Self::qualifiedNameLookup(
                     currentUnresolved.getName(),
@@ -35,13 +42,13 @@ impl Parser {
                         "Ambiguous name, compiler bug, please report.",
                         &currentUnresolved.sourceRange,
                     ));
-                    currentUnresolved.setScope(currentResolvedScopeScope.clone());
                 } else if candidates.is_empty() {
-                    self.errors.push(CompileError::fromSourceRange(
-                        "The name could not be resolved to a type, enum or namespace.",
-                        &currentUnresolved.sourceRange,
-                    ));
-                    currentUnresolved.setScope(currentResolvedScopeScope.clone());
+                    if reportNormalErrors {
+                        self.errors.push(CompileError::fromSourceRange(
+                            "The name could not be resolved to a type, enum or namespace.",
+                            &currentUnresolved.sourceRange,
+                        ));
+                    }
                 } else {
                     match &candidates[0] {
                         Child::Decl(_) => unreachable!(),
@@ -61,9 +68,10 @@ impl Parser {
     pub fn actOnNestedNameSpecifier(
         &mut self,
         nestedNameSpecifier: &[AstNestedNameSpecifier],
+        reportNormalErrors: bool,
     ) -> &'static [AstNestedNameSpecifier] {
         // We need to perform qualified name resolution
-        self.resolveNestedNameSpecifier(nestedNameSpecifier);
+        self.resolveNestedNameSpecifier(nestedNameSpecifier, reportNormalErrors);
         self.alloc().alloc_slice_clone(nestedNameSpecifier)
     }
 }

@@ -314,3 +314,9 @@ fn unqualifiedNameResolutionGlobalErr1() {
 fn unqualifiedNameResolutionNamespace() {
     let _ = testSuccessfulFile!();
 }
+
+#[test]
+#[named]
+fn qualifiedNameResolution() {
+    let _ = testSuccessfulFile!();
+}

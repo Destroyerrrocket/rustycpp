@@ -33,7 +33,8 @@ impl Parser {
             ));
         }
 
-        let (qualifiedNameSpecifier, matchedQualified) = self.optParseNestedNameSpecifier(lexpos);
+        let (qualifiedNameSpecifier, matchedQualified) =
+            self.optParseNestedNameSpecifierNoErrReport(lexpos);
 
         let Some(name) = self
             .lexer()

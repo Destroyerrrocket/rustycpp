@@ -60,14 +60,17 @@ impl CXXAttribute for AstRustyCppCheckSymbolMatchTag {
             unimplemented!()
         };
 
-        let decls = if let Some(qualified) = self.qualifiedNameSpecifier {
-            Parser::qualifiedNameLookup(
-                name,
-                qualified.last().unwrap().scope.borrow().as_ref().unwrap(),
-            )
-        } else {
-            parser.unqualifiedNameLookup(name)
-        };
+        let decls = self.qualifiedNameSpecifier.map_or_else(
+            || parser.unqualifiedNameLookup(name),
+            |qualified| {
+                let qualifScope = qualified.last().unwrap().scope.borrow();
+                if qualifScope.is_none() {
+                    vec![]
+                } else {
+                    Parser::qualifiedNameLookup(name, qualifScope.as_ref().unwrap())
+                }
+            },
+        );
         if decls.is_empty() {
             if self.numberOrFound.tokPos.tok != Token::BoolLiteral(false) {
                 parser.addError(CompileError::fromPreTo(format!("While trying to resolve name {name} we found nothing, but we were expecting something"), &self.numberOrFound));

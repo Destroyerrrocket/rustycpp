@@ -24,6 +24,21 @@ impl Parser {
         &mut self,
         lexpos: &mut StateBufferedLexer,
     ) -> (&'static [AstNestedNameSpecifier], ParseMatched) {
+        self.optParseNestedNameSpecifierImpl(lexpos, true)
+    }
+
+    pub fn optParseNestedNameSpecifierNoErrReport(
+        &mut self,
+        lexpos: &mut StateBufferedLexer,
+    ) -> (&'static [AstNestedNameSpecifier], ParseMatched) {
+        self.optParseNestedNameSpecifierImpl(lexpos, false)
+    }
+
+    pub fn optParseNestedNameSpecifierImpl(
+        &mut self,
+        lexpos: &mut StateBufferedLexer,
+        reportNormalErrors: bool,
+    ) -> (&'static [AstNestedNameSpecifier], ParseMatched) {
         let startingTok = self.lexer().get(lexpos);
         let mut resVec;
         match startingTok {
@@ -51,41 +66,33 @@ impl Parser {
                             .intersects(ScopeKind::ENUM | ScopeKind::CLASS | ScopeKind::NAMESPACE),
                     }
                 });
-
+                self.lexer().moveForward(lexpos, 2);
                 if res.is_empty() {
-                    self.errors.push(CompileError::fromPreTo(
-                        "This identifier could not be resolved to a type or namespace.",
-                        startingTok.unwrap(),
-                    ));
-                    // Our recovery strategy will be to use the global namespace. With a bit of luck, this will allow us to continue parsing.
+                    if reportNormalErrors {
+                        self.errors.push(CompileError::fromPreTo(
+                            "This identifier could not be resolved to a type or namespace.",
+                            startingTok.unwrap(),
+                        ));
+                    }
 
-                    return (
-                        self.alloc()
-                            .alloc_slice_clone(&[AstNestedNameSpecifier::new_scoped(
-                                NestedNameSpecifier::Kind::Global,
-                                SourceRange::newSingleTok(startingTok.unwrap()),
-                                self.rootScope.clone(),
-                            )]),
-                        ParseMatched::Matched,
-                    );
-                }
-                if res.len() > 1 {
+                    // Our recovery strategy will be to leave the scope empty, indicating a failure. We could be accidentally compiling very weird stuff otherwise...
+                    // That said, we'll allow to parse any other (name::)* elements
+                    resVec = vec![AstNestedNameSpecifier::new(
+                        NestedNameSpecifier::Kind::Identifier(*ident),
+                        SourceRange::newSingleTok(startingTok.unwrap()),
+                    )];
+                } else if res.len() > 1 {
                     self.errors.push(CompileError::fromPreTo(
                         "Somehow we resolved to multiple names for this identifier during the parsing of a nested name specifier. This is a bug. Please report it.",
                         startingTok.unwrap(),
                     ));
-                    return (
-                        self.alloc()
-                            .alloc_slice_clone(&[AstNestedNameSpecifier::new_scoped(
-                                NestedNameSpecifier::Kind::Global,
-                                SourceRange::newSingleTok(startingTok.unwrap()),
-                                self.rootScope.clone(),
-                            )]),
-                        ParseMatched::Matched,
-                    );
-                }
-
-                if res[0]
+                    // Our recovery strategy will be to leave the scope empty, indicating a failure. We could be accidentally compiling very weird stuff otherwise...
+                    // That said, we'll allow to parse any other (name::)* elements
+                    resVec = vec![AstNestedNameSpecifier::new(
+                        NestedNameSpecifier::Kind::Identifier(*ident),
+                        SourceRange::newSingleTok(startingTok.unwrap()),
+                    )];
+                } else if res[0]
                     .getScope()
                     .unwrap()
                     .borrow()
@@ -115,7 +122,7 @@ impl Parser {
         {}
 
         (
-            self.actOnNestedNameSpecifier(&resVec),
+            self.actOnNestedNameSpecifier(&resVec, reportNormalErrors),
             ParseMatched::Matched,
         )
     }
