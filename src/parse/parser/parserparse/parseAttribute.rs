@@ -1,7 +1,10 @@
-use crate::ast::Attribute::{AstAttribute, AstCXXAttribute};
 use crate::utils::structs::TokPos;
 use crate::utils::structs::{CompileNote, FileTokPos};
 use crate::{ast, utils::stringref::StringRef};
+use crate::{
+    ast::Attribute::{AstAttribute, AstCXXAttribute},
+    parse::parser::parserparse::ParseMatched,
+};
 use crate::{
     fileTokPosMatchArm,
     lex::token::Token,
@@ -10,7 +13,6 @@ use crate::{
 };
 
 use super::super::Parser;
-use super::parseMiscUtils::ParseMacroMatched;
 
 mod rustycppchecksymbolmatchtag;
 mod rustycpptagdecl;
@@ -28,7 +30,7 @@ impl Parser {
      *  alignas ( ignore-balanced )
      */
     pub fn ignoreAttributes(&mut self, lexpos: &mut StateBufferedLexer) {
-        while let (_, ParseMacroMatched::Matched) = self.optParseAttributeSpecifier(lexpos, true) {}
+        while let (_, ParseMatched::Matched) = self.optParseAttributeSpecifier(lexpos, true) {}
     }
 
     /**
@@ -42,9 +44,7 @@ impl Parser {
      *  alignas ( ignore-balanced )
      */
     pub fn errorAttributes(&mut self, lexpos: &mut StateBufferedLexer) {
-        while let (attr, ParseMacroMatched::Matched) =
-            self.optParseAttributeSpecifier(lexpos, false)
-        {
+        while let (attr, ParseMatched::Matched) = self.optParseAttributeSpecifier(lexpos, false) {
             if let Some(attr) = attr {
                 self.actWrongAttributeLocation(&[&attr]);
             }
@@ -66,9 +66,7 @@ impl Parser {
         lexpos: &mut StateBufferedLexer,
     ) -> Vec<&'static AstAttribute> {
         let mut attributes = vec![];
-        while let (attr, ParseMacroMatched::Matched) =
-            self.optParseAttributeSpecifier(lexpos, false)
-        {
+        while let (attr, ParseMatched::Matched) = self.optParseAttributeSpecifier(lexpos, false) {
             if let Some(attr) = attr {
                 attributes.push(&*self.alloc().alloc(attr));
             }
@@ -88,7 +86,7 @@ impl Parser {
         &mut self,
         lexpos: &mut StateBufferedLexer,
         ignore: bool,
-    ) -> (Option<AstAttribute>, ParseMacroMatched) {
+    ) -> (Option<AstAttribute>, ParseMatched) {
         let start = self.lexer().get(lexpos);
         match start {
             Some(fileTokPosMatchArm!(Token::LBracket)) => {
@@ -97,7 +95,7 @@ impl Parser {
                     // We know that we have a CXX11 attribute
                     return (
                         self.parseCXX11Attribute(lexpos, ignore),
-                        ParseMacroMatched::Matched,
+                        ParseMatched::Matched,
                     );
                 } // Ignore otherwise
             }
@@ -108,14 +106,14 @@ impl Parser {
                         "This alignas attribute is missing the '( type or constant expression )'.",
                         start.unwrap(),
                     ));
-                    return (None, ParseMacroMatched::Matched);
+                    return (None, ParseMatched::Matched);
                 };
                 let Some(_) = self.parseAlmostBalancedPattern(lexpos) else {
                     self.errors.push(CompileError::fromPreTo(
                         "Couldn't find matching ')' for the start of this alignas attribute.",
                         startSecondParen,
                     ));
-                    return (None, ParseMacroMatched::Matched);
+                    return (None, ParseMatched::Matched);
                 };
                 let endParen = self.lexer().getWithOffsetSaturating(lexpos, -1); // Saturating not needed in theory, but just in case
                 return (
@@ -123,12 +121,12 @@ impl Parser {
                         ast::Attribute::Kind::AlignAs,
                         SourceRange::newDoubleTok(start.unwrap(), endParen),
                     )),
-                    ParseMacroMatched::Matched,
+                    ParseMatched::Matched,
                 );
             }
             _ => (),
         }
-        (None, ParseMacroMatched::NotMatched)
+        (None, ParseMatched::NotMatched)
     }
 
     /**

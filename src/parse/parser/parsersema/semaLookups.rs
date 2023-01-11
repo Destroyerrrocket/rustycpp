@@ -1,7 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    ast::Decl::AstDecl,
     sema::scope::{Child, Scope, ScopeKind},
     utils::stringref::StringRef,
 };
@@ -10,13 +9,24 @@ use super::super::Parser;
 
 impl Parser {
     /**
+     * Get all unqualified name results, no condition
+     */
+    pub fn unqualifiedNameLookup(&self, name: StringRef) -> Vec<Child> {
+        self.unqualifiedNameLookupWithCond(name, |_| true)
+    }
+
+    /**
      * Implemented according to the C++ Standard 6.5.2
      *
      * While I'm aware of the rules in 6.4.10 regarding name higing,
      * I think I'd prefer for now to return all the names that match, and apply
      * name hiding later.
      */
-    pub fn unqualifiedNameLookup(&self, name: StringRef) -> Vec<&'static AstDecl> {
+    pub fn unqualifiedNameLookupWithCond(
+        &self,
+        name: StringRef,
+        cond: fn(&Child) -> bool,
+    ) -> Vec<Child> {
         /*
         Rules 1 to 3 are not accually rules, but comments on how to apply the rules.
         Rule 1: Apply the rules in order, and for each rule follow the statements in order.
@@ -24,53 +34,34 @@ impl Parser {
         Rule 3: If you're looking up an unqualified name for a function call, use the rules in 6.5.3. 6.5.2 does not apply.
         */
         let scope = self.currentScope.borrow();
-
-        let getChilds = |scope: &Rc<RefCell<Scope>>| {
-            scope
-                .borrow()
-                .childs
-                .get(&name)
-                .unwrap_or(&Vec::new())
-                .iter()
-                .map(|x| match x {
-                    Child::Decl(decl) => decl,
-                    Child::Scope(scope) => scope.borrow().causingDecl.unwrap(),
-                })
-                .collect::<Vec<_>>()
-        };
-
-        let getChildsAndAliased = |scope: &Rc<RefCell<Scope>>| {
-            let mut result = Vec::new();
-            result.extend(getChilds(scope));
-            result.extend(scope.borrow().inlinedNamespaces.iter().flat_map(getChilds));
-            result.extend(scope.borrow().usingNamespaces.iter().flat_map(getChilds));
-            result
-        };
-
-        // Global scope, applying rule 4. Just look at this scope and all its aliased/using namespaces.
-        if scope.parent.is_none() {
-            return getChildsAndAliased(&self.currentScope);
-        }
-
         /*
-         * Rule 5: Inside a namespace. Look at the current scope and all its
+         * Rule 4 (basically the same) / Rule 5: Inside a namespace. Look at the current scope and all its
          * aliased/using namespaces, if not found, look at the parent scope,
          * recursively.
          */
         if scope.flags & ScopeKind::NAMESPACE == ScopeKind::NAMESPACE {
-            let mut currVisitingScope = self.currentScope.clone();
+            let mut currVisitingScope =
+                unsafe { self.currentScope.try_borrow_unguarded() }.unwrap();
             return loop {
-                let result = getChildsAndAliased(&currVisitingScope);
-                if !result.is_empty() {
-                    break result;
+                let mut result =
+                    Self::getChildsAndAliased(name, currVisitingScope, cond).peekable();
+                if result.peek().is_some() {
+                    break result.cloned().collect::<Vec<_>>();
                 }
-                if currVisitingScope.borrow().parent.is_none() {
+
+                if currVisitingScope.parent.is_none() {
                     break vec![];
                 }
-                let newCurr = currVisitingScope.borrow().parent.as_ref().unwrap().clone();
+                let newCurr = unsafe {
+                    currVisitingScope
+                        .parent
+                        .as_ref()
+                        .unwrap()
+                        .try_borrow_unguarded()
+                }
+                .unwrap();
                 debug_assert!(
                     {
-                        let newCurr = newCurr.borrow();
                         newCurr.flags & ScopeKind::NAMESPACE == ScopeKind::NAMESPACE
                             || newCurr.parent.is_none()
                     },
@@ -80,5 +71,105 @@ impl Parser {
             };
         }
         todo!("No more unqualified name resolution rules implemented.");
+    }
+
+    fn getChilds(
+        scope: &Scope,
+        name: StringRef,
+        cond: fn(&Child) -> bool,
+    ) -> impl Iterator<Item = &Child> {
+        scope
+            .childs
+            .get(&name)
+            .into_iter()
+            .flatten()
+            .filter(move |x| cond(x))
+    }
+    fn getChildsAndAliased<'scope>(
+        name: StringRef,
+        scope: &'scope Scope,
+        cond: fn(&Child) -> bool,
+    ) -> Box<dyn Iterator<Item = &'scope Child> + 'scope> {
+        return Box::new(
+            Self::getChilds(scope, name, cond)
+                .chain(scope.inlinedNamespaces.iter().flat_map(move |x| {
+                    Self::getChildsAndAliased(
+                        name,
+                        unsafe { x.try_borrow_unguarded() }.unwrap(),
+                        cond,
+                    )
+                }))
+                .chain(scope.inlinedNamespaces.iter().flat_map(move |x| {
+                    Self::getChildsAndAliased(
+                        name,
+                        unsafe { x.try_borrow_unguarded() }.unwrap(),
+                        cond,
+                    )
+                })),
+        );
+    }
+
+    fn getChildsAndOnlyInlined<'scope>(
+        name: StringRef,
+        scope: &'scope Scope,
+        cond: fn(&Child) -> bool,
+    ) -> Box<dyn Iterator<Item = &'scope Child> + 'scope> {
+        Box::new(
+            Self::getChilds(scope, name, cond).chain(scope.inlinedNamespaces.iter().flat_map(
+                move |x| {
+                    Self::getChildsAndOnlyInlined(
+                        name,
+                        unsafe { x.try_borrow_unguarded() }.unwrap(),
+                        cond,
+                    )
+                },
+            )),
+        )
+    }
+
+    #[allow(clippy::needless_lifetimes)]
+    fn getAllUsingNamespaceInlined<'scope>(
+        scope: &'scope Scope,
+    ) -> impl Iterator<Item = Rc<RefCell<Scope>>> + 'scope {
+        scope
+            .usingNamespaces
+            .iter()
+            .cloned()
+            .chain(scope.inlinedNamespaces.iter().flat_map(|inlined| {
+                unsafe { inlined.try_borrow_unguarded() }
+                    .unwrap()
+                    .usingNamespaces
+                    .iter()
+                    .cloned()
+            }))
+    }
+
+    fn qualifiedNameLookupOnNamespace<'scope>(
+        name: StringRef,
+        scope: &'scope Scope,
+    ) -> Box<dyn Iterator<Item = &'scope Child> + 'scope> {
+        // Rule 2: Check namespace scope and all the inlined namespaces
+        let mut result = Self::getChildsAndOnlyInlined(name, scope, |_: &Child| true).peekable();
+        if result.peek().is_some() {
+            return Box::new(result);
+        }
+        // Rule 3: If nothing found, check the using namespaces in the same way, and make a union of them.
+        Box::new(
+            Self::getAllUsingNamespaceInlined(scope).flat_map(move |x| {
+                Self::qualifiedNameLookupOnNamespace(name, unsafe { &*x.as_ptr() })
+            }),
+        )
+    }
+
+    pub fn qualifiedNameLookup(name: StringRef, scope: &Rc<RefCell<Scope>>) -> Vec<Child> {
+        // Namespace qualified?
+        let scope = scope.borrow();
+        if scope.flags.contains(ScopeKind::NAMESPACE) {
+            return Self::qualifiedNameLookupOnNamespace(name, &scope)
+                .cloned()
+                .collect::<Vec<_>>();
+        }
+
+        todo!("Qualified name lookup not implemented for this scope.")
     }
 }

@@ -26,7 +26,14 @@ impl Parser {
                 return None;
             };
 
-        self.lexer().consumeTokenIfEq(lexpos, Token::Comma);
+        if !self.lexer().consumeTokenIfEq(lexpos, Token::Comma) {
+            self.errors.push(CompileError::fromPreTo(
+                "missing comma after first parameter",
+                name,
+            ));
+        }
+
+        let (qualifiedNameSpecifier, matchedQualified) = self.optParseNestedNameSpecifier(lexpos);
 
         let Some(name) = self
             .lexer()
@@ -40,7 +47,15 @@ impl Parser {
 
         Some(
             ast::Attribute::AstCXXAttribute::AstRustyCppCheckSymbolMatchTag(
-                AstRustyCppCheckSymbolMatchTag::new(*number, *name),
+                if matchedQualified.matched() {
+                    AstRustyCppCheckSymbolMatchTag::new_qualified(
+                        *number,
+                        *name,
+                        qualifiedNameSpecifier,
+                    )
+                } else {
+                    AstRustyCppCheckSymbolMatchTag::new_unqualified(*number, *name)
+                },
             ),
         )
     }

@@ -5,13 +5,6 @@ use crate::{
 
 use super::super::Parser;
 
-pub enum ParseMacroMatched {
-    /// The macro was matched, and the tokens were consumed. Might return None (or equivalent) in error cases.
-    Matched,
-    /// The macro was not matched, and the token was not consumed.
-    NotMatched,
-}
-
 impl Parser {
     /** Balances a pattern starting with either a '(', '{' or '[' (otherwise, UB), and ending with the corresponding closing character.
      * It returns a range containing the contents inside the pattern, without the outer characters (aka, "(hello)" returns "hello")

@@ -1,5 +1,6 @@
 use crate::{
-    ast::{Attribute::AstAttribute, Decl::DeclAst},
+    ast::{Attribute::AstAttribute, Decl::DeclAst, NestedNameSpecifier::AstNestedNameSpecifier},
+    parse::parser::Parser,
     utils::structs::CompileNote,
 };
 use deriveMacros::CommonAst;
@@ -16,13 +17,27 @@ use crate::{
 #[derive(Clone, Copy, CommonAst)]
 pub struct AstRustyCppCheckSymbolMatchTag {
     pub numberOrFound: FileTokPos<Token>,
+    pub qualifiedNameSpecifier: Option<&'static [AstNestedNameSpecifier]>,
     pub name: FileTokPos<Token>,
 }
 
 impl AstRustyCppCheckSymbolMatchTag {
-    pub fn new(numberOrFound: FileTokPos<Token>, name: FileTokPos<Token>) -> Self {
+    pub fn new_unqualified(numberOrFound: FileTokPos<Token>, name: FileTokPos<Token>) -> Self {
         Self {
             numberOrFound,
+            qualifiedNameSpecifier: None,
+            name,
+        }
+    }
+
+    pub fn new_qualified(
+        numberOrFound: FileTokPos<Token>,
+        name: FileTokPos<Token>,
+        qualified: &'static [AstNestedNameSpecifier],
+    ) -> Self {
+        Self {
+            numberOrFound,
+            qualifiedNameSpecifier: Some(qualified),
             name,
         }
     }
@@ -45,7 +60,14 @@ impl CXXAttribute for AstRustyCppCheckSymbolMatchTag {
             unimplemented!()
         };
 
-        let decls = parser.unqualifiedNameLookup(name);
+        let decls = if let Some(qualified) = self.qualifiedNameSpecifier {
+            Parser::qualifiedNameLookup(
+                name,
+                qualified.last().unwrap().scope.borrow().as_ref().unwrap(),
+            )
+        } else {
+            parser.unqualifiedNameLookup(name)
+        };
         if decls.is_empty() {
             if self.numberOrFound.tokPos.tok != Token::BoolLiteral(false) {
                 parser.addError(CompileError::fromPreTo(format!("While trying to resolve name {name} we found nothing, but we were expecting something"), &self.numberOrFound));
@@ -71,7 +93,7 @@ impl CXXAttribute for AstRustyCppCheckSymbolMatchTag {
             unreachable!();
         };
 
-        let found = decls[0].getAttributes().and_then(|attrs| {
+        let found = decls[0].getDecl().getAttributes().and_then(|attrs| {
             attrs.iter().find_map(|attr: &&AstAttribute| {
                 let crate::ast::Attribute::Kind::Cxx(attrmembers) = attr.kind else {
                     return None;
@@ -95,7 +117,7 @@ impl CXXAttribute for AstRustyCppCheckSymbolMatchTag {
                 ));
                 parser.addError(CompileNote::fromSourceRange(
                     "Found decl is this one",
-                    &decls[0].getBaseDecl().sourceRange,
+                    &decls[0].getDecl().getBaseDecl().sourceRange,
                 ));
             }
         } else {
@@ -105,7 +127,7 @@ impl CXXAttribute for AstRustyCppCheckSymbolMatchTag {
             ));
             parser.addError(CompileNote::fromSourceRange(
                 "Found decl is this one",
-                &decls[0].getBaseDecl().sourceRange,
+                &decls[0].getDecl().getBaseDecl().sourceRange,
             ));
         }
     }

@@ -80,6 +80,7 @@ pub struct ScopeKind : u32 {
 }
 }
 
+#[derive(Clone)]
 pub enum Child {
     /**
      * This is a child that is a declaration and can't have further children, like a variable.
@@ -89,6 +90,22 @@ pub enum Child {
      * This is a child that can have further children, like a function, class, or namespace.
      */
     Scope(Rc<RefCell<Scope>>),
+}
+
+impl Child {
+    pub fn getScope(&self) -> Option<Rc<RefCell<Scope>>> {
+        match self {
+            Self::Decl(_) => None,
+            Self::Scope(scope) => Some(scope.clone()),
+        }
+    }
+
+    pub fn getDecl(&self) -> &'static AstDecl {
+        match self {
+            Self::Decl(res) => res,
+            Self::Scope(scope) => scope.borrow().causingDecl.unwrap(),
+        }
+    }
 }
 
 pub struct Scope {
@@ -121,7 +138,8 @@ pub struct Scope {
      */
     pub causingDecl: Option<&'static AstDecl>,
 
-    // TODO: Can we merge inlinedNamespaces and usingNamespaces into one vector?
+    // RESOLVED: Can we merge inlinedNamespaces and usingNamespaces into one vector?
+    // No. Qualified name lookup in namespaces need to be able to distinguish between inlined and using namespaces.
     /**
      * These are inlined scope (by inline namespace)
      */
@@ -159,7 +177,7 @@ impl Scope {
     }
 
     pub fn new_root() -> Rc<RefCell<Self>> {
-        Self::new_unknown_cause(ScopeKind::CAN_DECL)
+        Self::new_unknown_cause(ScopeKind::CAN_DECL | ScopeKind::NAMESPACE)
     }
 }
 
