@@ -185,6 +185,7 @@ impl Scope {
 pub trait RefCellScope {
     fn addNamelessChild(&self, child: Child);
     fn addChild(&self, name: StringRef, child: Child);
+    fn addInlinedChild(&self, name: StringRef, child: Rc<RefCell<Scope>>);
 }
 
 impl RefCellScope for Rc<RefCell<Scope>> {
@@ -207,6 +208,19 @@ impl RefCellScope for Rc<RefCell<Scope>> {
             children.push(child);
         } else {
             this.childs.insert(name, vec![child]);
+        }
+    }
+
+    fn addInlinedChild(&self, name: StringRef, child: Rc<RefCell<Scope>>) {
+        let mut this = self.borrow_mut();
+        assert!(child.borrow().parent.is_none());
+        child.borrow_mut().parent = Some(self.clone());
+        this.inlinedNamespaces.push(child.clone());
+
+        if let Some(children) = this.childs.get_mut(&name) {
+            children.push(Child::Scope(child));
+        } else {
+            this.childs.insert(name, vec![Child::Scope(child)]);
         }
     }
 }

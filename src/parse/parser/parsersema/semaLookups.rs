@@ -109,6 +109,9 @@ impl Parser {
         );
     }
 
+    /**
+     * It's important that we first return the child candidates. Namespace lookup for extension depends on it
+     */
     fn getChildsAndOnlyInlined<'scope>(
         name: StringRef,
         scope: &'scope Scope,
@@ -171,5 +174,27 @@ impl Parser {
         }
 
         todo!("Qualified name lookup not implemented for this scope.")
+    }
+
+    /** 9.8.2.1 namespace.def.general
+     * If the identifier, when looked up (6.5.2), (note: This is the unqualified lookup, but is ineficient for what comes next)
+     * refers to a namespace-name (but not a namespace-alias) that was introduced in the namespace in
+     * which the named-namespace-definition appears or that was introduced in a member of the inline namespace
+     * set of that namespace, the namespace-definition extends the previously-declared namespace. Otherwise, the
+     * identifier is introduced as a namespace-name into the declarative region in which the named-namespace-definition
+     * appears
+     */
+    pub fn namespaceExtendableLookup(&self, name: StringRef) -> Option<Rc<RefCell<Scope>>> {
+        let currentScope = self.currentScope.borrow();
+        let candidate = Self::getChildsAndOnlyInlined(name, &currentScope, |scope: &Child| {
+            let Child::Scope(scope) = scope else {return false;};
+            scope.borrow().flags == ScopeKind::NAMESPACE | ScopeKind::CAN_DECL
+        })
+        .map(|scope| {
+            let Child::Scope(scope) = scope else {unreachable!();};
+            scope.clone()
+        })
+        .next();
+        return candidate;
     }
 }

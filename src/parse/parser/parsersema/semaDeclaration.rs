@@ -73,35 +73,33 @@ impl Parser {
             self.alloc().alloc_slice_copy(attr.as_slice()),
             name,
             isInline,
+            self.currentScope.clone(),
         );
 
         let astNamespaceDecl = self.alloc().alloc(AstDecl::AstNamespaceDecl(astNamespace));
 
-        let possibleOriginalDecl = {
-            let currentScope = self.currentScope.borrow();
-            currentScope.childs.get(&name).and_then(|originalDecl| {
-                originalDecl
-                    .iter()
-                    .find(|scope| {
-                        let Child::Scope(scope) = scope else {return false;};
-                        scope.borrow().flags == ScopeKind::NAMESPACE | ScopeKind::CAN_DECL
-                    })
-                    .map(|scope| {
-                        let Child::Scope(scope) = scope else {unreachable!();};
-                        scope.clone()
-                    })
-            })
-        };
+        let possibleOriginalDecl = self.namespaceExtendableLookup(name);
 
         if let Some(originalDecl) = possibleOriginalDecl {
             let AstDecl::AstNamespaceDecl(causingDecl) = originalDecl.borrow().causingDecl.unwrap() else {unreachable!();};
+            if isInline && !causingDecl.isInline() {
+                self.errors.push(CompileError::fromSourceRange(
+                    "Namespace redefinition with \"inline\", while original did not have it.",
+                    &locationName,
+                ));
+            }
             causingDecl.addExtension(astNamespaceDecl);
             self.currentScope = originalDecl.clone();
         } else {
             let enumScope =
                 Scope::new(ScopeKind::NAMESPACE | ScopeKind::CAN_DECL, astNamespaceDecl);
-            self.currentScope
-                .addChild(name, Child::Scope(enumScope.clone()));
+
+            if isInline {
+                self.currentScope.addInlinedChild(name, enumScope.clone());
+            } else {
+                self.currentScope
+                    .addChild(name, Child::Scope(enumScope.clone()));
+            }
             self.currentScope = enumScope;
         }
         vec![astNamespaceDecl]
