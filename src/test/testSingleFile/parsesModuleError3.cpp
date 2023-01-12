@@ -1,3 +1,3 @@
-module
+module;
 export module foo.foo:bar.;
 

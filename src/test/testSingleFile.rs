@@ -138,21 +138,21 @@ fn parsesModule() {
 #[named]
 fn parsesModuleError1() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, &s, &[e!(1), e!(2)]);
+    checkErrors(e, &s, &[e!(2)]);
 }
 
 #[test]
 #[named]
 fn parsesModuleError2() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, &s, &[e!(1), e!(2)]);
+    checkErrors(e, &s, &[e!(2)]);
 }
 
 #[test]
 #[named]
 fn parsesModuleError3() {
     let (_, e, s) = testUnsuccessfulFile!();
-    checkErrors(e, &s, &[e!(1), e!(2)]);
+    checkErrors(e, &s, &[e!(2)]);
 }
 
 #[test]

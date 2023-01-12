@@ -1,4 +1,2 @@
 export
-module
-abc
-;
+module abc;

@@ -4,13 +4,13 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use crate::fileTokPosMatches;
 use crate::grammars::defineast::DefineAst;
 use crate::preprocessor::prelexer::PreLexer;
 use crate::preprocessor::pretoken::PreToken;
 use crate::utils::compilerstate::CompilerState;
 use crate::utils::structs::TokPos;
 use crate::utils::structs::{CompileError, CompileMsg, CompileMsgImpl, FileTokPos};
+use crate::{fileTokPosMatchArm, fileTokPosMatches};
 
 use multiset::HashMultiSet;
 
@@ -72,7 +72,7 @@ impl Preprocessor {
             ));
         }
 
-        if let Some(newPath) = Self::checkForInclude(tokensInclude.clone()) {
+        if let Some(newPath) = Self::checkForInclude(&tokensInclude) {
             path = newPath;
         }
 
@@ -81,7 +81,7 @@ impl Preprocessor {
         let toks =
             Self::expandASequenceOfTokens(compilerState, paramLexer, definitions, disabledMacros)?;
 
-        if let Some(newPath) = Self::checkForInclude(toks.clone()) {
+        if let Some(newPath) = Self::checkForInclude(&toks) {
             path = newPath;
         } else {
             for s in toks.into_iter().map(|t| t.tokPos.tok.to_str().to_owned()) {
@@ -93,34 +93,52 @@ impl Preprocessor {
     }
 
     /// Is the current tokens a valid include path token? Re-lexes them if necessary
-    fn checkForInclude(mut toks: VecDeque<FileTokPos<PreToken>>) -> Option<String> {
+    pub fn checkForInclude(toks: &VecDeque<FileTokPos<PreToken>>) -> Option<String> {
         let mut res = String::new();
 
-        while toks.front().is_some_and(|x| {
-            fileTokPosMatches!(
-                x,
-                PreToken::Whitespace(_)
-                    | PreToken::Newline
-                    | PreToken::ValidNop
-                    | PreToken::EnableMacro(_)
-                    | PreToken::DisableMacro(_)
-            )
-        }) {
-            toks.pop_front();
-        }
+        let mut iter = toks
+            .iter()
+            .skip_while(|x| {
+                fileTokPosMatches!(
+                    x,
+                    PreToken::Whitespace(_)
+                        | PreToken::Newline
+                        | PreToken::ValidNop
+                        | PreToken::EnableMacro(_)
+                        | PreToken::DisableMacro(_)
+                )
+            })
+            .peekable();
 
-        for s in toks.iter().map(|x| x.tokPos.tok.to_str().to_owned()) {
-            res.push_str(&s);
-        }
-        let mut lexer = PreLexer::new(res);
-        lexer.expectHeader();
-        if let Some(PreToken::HeaderName(pathWithSurroundingChars)) = lexer.next().map(|x| x.tok) {
+        let nextTok = iter.peek()?;
+
+        if let fileTokPosMatchArm!(PreToken::HeaderName(pathWithSurroundingChars)) = nextTok {
             let mut chars = pathWithSurroundingChars.chars();
             chars.next();
             chars.next_back();
-            Some(chars.as_str().to_owned())
-        } else {
-            None
+            return Some(chars.as_str().to_owned());
+        } else if {
+            fileTokPosMatches!(
+                nextTok,
+                PreToken::StringLiteral(_)
+                    | PreToken::OperatorPunctuator("<" | "<=" | "<<" | "<<=")
+                    | PreToken::UdStringLiteral(_)
+            )
+        } {
+            for s in iter.map(|x| x.tokPos.tok.to_str().to_owned()) {
+                res.push_str(&s);
+            }
+            let mut lexer = PreLexer::new(res);
+            lexer.expectHeader();
+            if let Some(PreToken::HeaderName(pathWithSurroundingChars)) =
+                lexer.next().map(|x| x.tok)
+            {
+                let mut chars = pathWithSurroundingChars.chars();
+                chars.next();
+                chars.next_back();
+                return Some(chars.as_str().to_owned());
+            }
         }
+        return None;
     }
 }

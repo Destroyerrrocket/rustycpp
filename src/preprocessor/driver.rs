@@ -190,21 +190,28 @@ impl Preprocessor {
     /// If applicable, generate a module token
     fn moduleDirective(&mut self, module: FileTokPos<PreToken>) -> VecDeque<FileTokPos<PreToken>> {
         let mut toks = self.reachNl();
-
-        let tokVal = toks
+        let isDirective = toks
             .iter()
-            .find(|x| !fileTokPosMatches!(x, PreToken::Whitespace(_)));
+            .rev()
+            .nth(1)
+            .is_some_and(|t| fileTokPosMatches!(t, PreToken::OperatorPunctuator(";")));
 
-        if let Some(moduleTok) = tokVal {
-            if module.file == self.tu
-                && fileTokPosMatches!(
-                    module,
-                    PreToken::OperatorPunctuator(":" | ";") | PreToken::Ident(_)
-                )
-            {
-                toks.push_front(FileTokPos::new_meta_c(PreToken::Module, moduleTok));
-                return toks;
+        if module.file == self.tu && isDirective {
+            let mut paramLexer = MultiLexer::new_def(self.multilexer.fileMapping());
+            paramLexer.pushTokensDec(toks);
+            let expandedTokens = Self::expandASequenceOfTokens(
+                &self.compilerState,
+                paramLexer,
+                &self.definitions,
+                &self.disabledMacros,
+            );
+            if let Err(err) = expandedTokens {
+                self.errors.push_back(err);
+                return VecDeque::new();
             }
+            let mut expandedTokens = expandedTokens.unwrap();
+            expandedTokens.push_front(FileTokPos::new_meta_c(PreToken::Module, &module));
+            return expandedTokens;
         }
 
         self.atStartLine = false;
@@ -217,54 +224,67 @@ impl Preprocessor {
     /// If applicable, generate a import token
     fn importDirective(&mut self, import: FileTokPos<PreToken>) -> VecDeque<FileTokPos<PreToken>> {
         let mut toks = self.reachNl();
-        let tokVal = toks
+        let isDirective = toks
             .iter()
-            .find(|x| !fileTokPosMatches!(x, PreToken::Whitespace(_)));
+            .rev()
+            .nth(1)
+            .is_some_and(|t| fileTokPosMatches!(t, PreToken::OperatorPunctuator(";")));
 
-        if let Some(moduleTok) = tokVal {
-            if import.file == self.tu {
-                if fileTokPosMatches!(
-                    moduleTok,
-                    PreToken::OperatorPunctuator(":" | ";") | PreToken::Ident(_)
-                ) {
-                    toks.push_front(FileTokPos::new_meta_c(PreToken::Import, &import));
-                    return toks;
-                } else if let PreToken::HeaderName(ref header) = moduleTok.tokPos.tok {
-                    let (tu, fileHeader) = {
-                        let mut compileFiles = self.compilerState.compileFiles.lock().unwrap();
-                        let tu = compileFiles.getAddFile(&header[1..header.len() - 1]);
-                        let fileHeader = compileFiles.getOpenedFile(tu);
-                        (tu, fileHeader)
-                    };
-                    let otherDefinitions = self
-                        .compilerState
-                        .compileUnits
-                        .lock()
-                        .unwrap()
-                        .get(&tu)
+        if import.file == self.tu && isDirective {
+            let mut paramLexer = MultiLexer::new_def(self.multilexer.fileMapping());
+            paramLexer.pushTokensDec(toks);
+            let expandedTokens = Self::expandASequenceOfTokens(
+                &self.compilerState,
+                paramLexer,
+                &self.definitions,
+                &self.disabledMacros,
+            );
+            if let Err(err) = expandedTokens {
+                self.errors.push_back(err);
+                return VecDeque::new();
+            }
+            let mut expandedTokens = expandedTokens.unwrap();
+
+            if let Some(includePath) = Self::checkForInclude(&expandedTokens) {
+                let (tu, fileHeader) = {
+                    let mut compileFiles = self.compilerState.compileFiles.lock().unwrap();
+                    let tu = compileFiles.getAddFile(&includePath);
+                    let fileHeader = compileFiles.getOpenedFile(tu);
+                    (tu, fileHeader)
+                };
+
+                let otherDefinitions = {
+                    let compileUnits = self.compilerState.compileUnits.lock().unwrap();
+                    let importableHeader = compileUnits.get(&tu);
+
+                    if importableHeader.is_none() {
+                        self.errors.push_back(
+                        CompileError::fromPreTo(format!("You must define in your project configuration that you explicitly want to import the header file at path: {includePath}"), &import)
+                    );
+                        return VecDeque::new();
+                    }
+
+                    importableHeader
                         .unwrap()
                         .macroDefintionsAtTheEndOfTheFile
-                        .clone();
-                    self.definitions.extend(otherDefinitions);
+                        .clone()
+                };
+                self.definitions.extend(otherDefinitions);
 
-                    // Remove the header token
-                    let mut startingWhitespace = VecDeque::new();
-                    while let Some(x) = toks.pop_front() {
-                        if x.tokPos.tok != PreToken::Newline {
-                            break;
-                        }
-                        startingWhitespace.push_back(x);
-                    }
-                    // Insert whitespace back, and a new special token for the later stages
-                    toks.extend(startingWhitespace);
-                    toks.push_front(FileTokPos::new_meta_c(
-                        PreToken::ImportableHeaderName(fileHeader.path().clone()),
-                        &import,
-                    ));
-                    toks.push_front(FileTokPos::new_meta_c(PreToken::Import, &import));
-                    return toks;
-                }
+                // Remove the header path
+                let pathTok = expandedTokens.pop_front().unwrap();
+                // Insert a new special token for the later stages
+                expandedTokens.push_front(FileTokPos::new_meta_c(
+                    PreToken::ImportableHeaderName(fileHeader.path().clone()),
+                    &pathTok,
+                ));
+                expandedTokens.push_front(FileTokPos::new_meta_c(PreToken::Import, &import));
+                return expandedTokens;
+            } else {
+                expandedTokens.push_front(FileTokPos::new_meta_c(PreToken::Import, &import));
             }
+
+            return expandedTokens;
         }
 
         self.atStartLine = false;
@@ -536,16 +556,28 @@ impl Preprocessor {
 
                             // Module directives
                             PreToken::Ident(ref import) if import == "import" => {
+                                if self.definitions.contains_key("module") {
+                                    self.atStartLine = false;
+                                    continue;
+                                }
                                 let tokies = self.importDirective(newToken);
                                 self.generated.extend(tokies);
                                 break;
                             }
                             PreToken::Ident(ref module) if module == "module" => {
+                                if self.definitions.contains_key("module") {
+                                    self.atStartLine = false;
+                                    continue;
+                                }
                                 let tokies = self.moduleDirective(newToken);
                                 self.generated.extend(tokies);
                                 break;
                             }
                             PreToken::Keyword("export") => {
+                                if self.definitions.contains_key("export") {
+                                    self.atStartLine = false;
+                                    continue;
+                                }
                                 let tokies = self.exportDirective(newToken);
                                 self.generated.extend(tokies);
                                 break;
