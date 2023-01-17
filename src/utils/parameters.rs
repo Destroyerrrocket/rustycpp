@@ -3,7 +3,7 @@ use std::fs;
 
 use json::{parse, JsonValue};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// The parsed config file.
 pub struct Parameters {
     /// The path to the input files.
@@ -14,6 +14,7 @@ pub struct Parameters {
     pub includeDirs: Vec<String>,
     /// System Include paths.
     pub includeSystemDirs: Vec<String>,
+    pub threadNum: Option<usize>,
 }
 
 impl Parameters {
@@ -24,6 +25,7 @@ impl Parameters {
             includeDirs: Vec::new(),
             includeSystemDirs: Vec::new(),
             moduleHeaderUnits: Vec::new(),
+            threadNum: None,
         }
     }
 
@@ -52,6 +54,16 @@ impl Parameters {
                     "moduleHeaderUnits" => {
                         self.moduleHeaderUnits =
                             Self::parseStringArray(value, "includeSystemDirs")?;
+                    }
+                    "threadNum" => {
+                        if let JsonValue::Number(num) = value {
+                            self.threadNum =
+                                Some(num.as_fixed_point_u64(0).unwrap().try_into().unwrap());
+                        } else {
+                            return Err(
+                                "Invalid JSON Paramater: threadNum must be a number".to_string()
+                            );
+                        }
                     }
                     _ => {}
                 }

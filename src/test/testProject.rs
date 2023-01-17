@@ -21,9 +21,11 @@ macro_rules! testProject {
 
 macro_rules! testSuccessfulProject {
     () => {{
-        let (asts, errors, compilerState) = testProject!();
-        assertErrors(&errors, &compilerState);
-        (asts, compilerState)
+        testProject!()
+            .into_iter()
+            .inspect(|(_, errors, compilerState)| assertErrors(&errors, &compilerState))
+            .map(|(asts, _, compilerState)| (asts, compilerState))
+            .collect::<Vec<_>>()
     }};
 }
 
@@ -36,7 +38,7 @@ macro_rules! testUnsuccessfulProject {
 fn testProject(
     funcName: &str,
     file: &str,
-) -> (HashMap<String, AstTu>, Vec<CompileMsg>, CompilerState) {
+) -> Vec<(HashMap<String, AstTu>, Vec<CompileMsg>, CompilerState)> {
     let dirTest = std::path::Path::new(file)
         .canonicalize()
         .unwrap()
@@ -53,15 +55,27 @@ fn testProject(
     parameters
         .includeDirs
         .push(dirTest.to_str().unwrap().to_string());
-    let mut tmpRes = (HashMap::new(), Vec::new());
-    let crashed = Compiler::new(parameters).parsed_tree_test(&mut tmpRes);
-    let (ast, errors) = tmpRes;
+    let compute = move |parameters| {
+        let mut tmpRes = (HashMap::new(), Vec::new());
+        let crashed = Compiler::new(parameters).parsed_tree_test(&mut tmpRes);
+        let (ast, errors) = tmpRes;
 
-    if let Err((compilerState, errors)) = crashed.clone() {
-        assertErrors(&errors, &compilerState);
-        unreachable!();
-    }
-    (ast, errors, crashed.unwrap())
+        if let Err((compilerState, errors)) = crashed.clone() {
+            assertErrors(&errors, &compilerState);
+            unimplemented!();
+        }
+        (ast, errors, crashed.unwrap())
+    };
+    let mut res = vec![compute(parameters.clone())];
+    parameters.threadNum = Some(8);
+    res.push(compute(parameters.clone()));
+    parameters.threadNum = Some(4);
+    res.push(compute(parameters.clone()));
+    parameters.threadNum = Some(2);
+    res.push(compute(parameters.clone()));
+    parameters.threadNum = Some(1);
+    res.push(compute(parameters));
+    return res;
 }
 
 fn assertErrors(errors: &[CompileMsg], state: &CompilerState) {
@@ -134,6 +148,9 @@ fn simpleModule() {
 #[test]
 #[named]
 fn headerModuleErr1() {
-    let (_, e, s) = testUnsuccessfulProject!();
-    checkErrors(e, &s, &[e!(1, "foo.hpp", true), e!(1, "bar.hpp", true)]);
+    testUnsuccessfulProject!()
+        .into_iter()
+        .for_each(|(_, e, s)| {
+            checkErrors(e, &s, &[e!(1, "foo.hpp", true), e!(1, "bar.hpp", true)]);
+        });
 }

@@ -59,6 +59,7 @@ impl Compiler {
         for tu in translationUnits.iter().chain(moduleHeaderUnits.iter()) {
             compileUnits.insert(*tu, StateCompileUnit::new());
         }
+        let threadNum = parameters.threadNum;
         Self {
             compilerState: CompilerState {
                 parameters,
@@ -68,11 +69,11 @@ impl Compiler {
                 moduleHeaderUnitsFiles: Arc::new(moduleHeaderUnits),
                 foundErrors: Arc::new(AtomicBool::new(false)),
             },
-            pool: ThreadPool::new(
+            pool: ThreadPool::new(threadNum.unwrap_or_else(|| {
                 thread::available_parallelism()
                     .unwrap_or(NonZeroUsize::new(1).unwrap())
-                    .get(),
-            ),
+                    .get()
+            })),
         }
     }
 

@@ -11,7 +11,8 @@
     new_uninit,
     map_try_insert,
     map_many_mut,
-    get_mut_unchecked
+    get_mut_unchecked,
+    core_intrinsics
 )]
 #![warn(
     missing_docs,

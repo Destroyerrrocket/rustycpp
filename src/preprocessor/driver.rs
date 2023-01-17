@@ -13,6 +13,7 @@ use crate::{
 use std::{
     collections::{HashMap, VecDeque},
     sync::{atomic::Ordering, Arc},
+    time::Instant,
 };
 
 use crate::{
@@ -252,11 +253,11 @@ impl Preprocessor {
 
     /// We know there is a dependency loop, so we need to find it.
     /// Returns the paths of the headers in the loop.
-    fn getDependencyLoop(&self) -> Vec<String> {
+    fn getDependencyLoop(&self) -> (Vec<String>, bool) {
         let mut loopVec = Vec::new();
         let startLoop = self.tu;
         let mut current = self.tu;
-        loop {
+        let loopFound = loop {
             let filePath = self
                 .compilerState
                 .compileFiles
@@ -274,14 +275,14 @@ impl Preprocessor {
                 .blockedByImportHeader
                 .load(Ordering::Relaxed);
             if nextTu == 0 {
-                break;
+                break false;
             } else if nextTu == startLoop {
                 loopVec.push(loopVec.first().unwrap().clone());
-                break;
+                break true;
             }
             current = nextTu;
-        }
-        loopVec
+        };
+        (loopVec, loopFound)
     }
 
     fn importHeaderDirectiveGetDefinitions(
@@ -370,7 +371,7 @@ impl Preprocessor {
                 self.errors.push_back(CompileError::fromPreTo(
                     format!(
                         "There is a loop in the import graph of the module header files: {}",
-                        self.getDependencyLoop().join(" -> ")
+                        self.getDependencyLoop().0.join(" -> ")
                     ),
                     import,
                 ));
@@ -382,16 +383,50 @@ impl Preprocessor {
                     .store(0, Ordering::Relaxed);
                 return None;
             }
+            self.compilerState
+                .compileUnits
+                .get(&self.tu)
+                .unwrap()
+                .blockedByImportHeader
+                .store(tu, Ordering::Relaxed);
             // There is no other task, we'll block for the header to finish and then return the definitions.
+            let mut start = Instant::now();
             while importableHeader.finishedStage.load(Ordering::Relaxed) != StageCompileUnit::Lexer
             {
                 // Wait for the header to finish. Hot loop, it shouldn't take that long.
                 std::thread::yield_now();
+                if start.elapsed().as_millis() > 5 {
+                    let looping = self.getDependencyLoop();
+                    // This can happen if we have a very small loop that allows other threads to get eahead...
+                    if looping.1 {
+                        self.errors.push_back(CompileError::fromPreTo(
+                            format!(
+                            "There is a loop in the import graph of the module header files: {}",
+                            looping.0.join(" -> ")
+                        ),
+                            import,
+                        ));
+
+                        break;
+                    }
+                    start = Instant::now();
+                }
             }
+            self.compilerState
+                .compileUnits
+                .get(&self.tu)
+                .unwrap()
+                .blockedByImportHeader
+                .store(0, Ordering::Relaxed);
+
             self.moduleHeaderAtomicLexingList
                 .as_ref()
                 .unwrap()
                 .markThreadUnlocked();
+
+            if importableHeader.finishedStage.load(Ordering::Relaxed) != StageCompileUnit::Lexer {
+                return None;
+            }
         }
         return Some(
             importableHeader
