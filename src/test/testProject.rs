@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use ::function_name::named;
 use test_log::test;
@@ -72,22 +72,29 @@ fn assertErrors(errors: &[CompileMsg], state: &CompilerState) {
 fn checkErrors(
     mut errors: Vec<CompileMsg>,
     state: &CompilerState,
-    expectedErrors: &[(usize, CompileMsgKind)],
+    expectedErrors: &[(usize, String, bool, CompileMsgKind)],
 ) {
     errors.iter().for_each(|e| e.print(&state.compileFiles));
 
-    for (expectedLocation, expectedErrorType) in expectedErrors {
+    for (expectedLocation, path, optional, expectedErrorType) in expectedErrors {
         let mut compileFiles = state.compileFiles.lock().unwrap();
         let pos = errors.iter().position(|e| {
             let (file, at, _) = e.loc();
             at.is_some_and(|at| {
-                compileFiles.getOpenedFile(file).getRowColumn(at).0 == *expectedLocation
+                let fileArc = compileFiles.getOpenedFile(file);
+                fileArc.getRowColumn(at).0 == *expectedLocation
+                    && Path::new(fileArc.path()).file_name().unwrap()
+                        == Path::new(path).file_name().unwrap()
             }) && e.severity() == *expectedErrorType
         });
         if let Some(pos) = pos {
             errors.remove(pos);
             continue;
         }
+        if *optional {
+            continue;
+        }
+
         panic!("Expected error not found");
     }
 
@@ -100,8 +107,33 @@ fn checkErrors(
     );
 }
 
+macro_rules! e {
+    ($n:literal, $path:literal, true) => {
+        ($n, $path.to_string(), true, CompileMsgKind::Error)
+    };
+    ($n:literal, $path:literal) => {
+        ($n, $path.to_string(), false, CompileMsgKind::Error)
+    };
+}
+
+macro_rules! w {
+    ($n:literal, $path:literal, true) => {
+        ($n, $path.to_string(), true, CompileMsgKind::Warning)
+    };
+    ($n:literal, $path:literal) => {
+        ($n, $path.to_string(), false, CompileMsgKind::Warning)
+    };
+}
+
 #[test]
 #[named]
 fn simpleModule() {
     let _ = testSuccessfulProject!();
+}
+
+#[test]
+#[named]
+fn headerModuleErr1() {
+    let (_, e, s) = testUnsuccessfulProject!();
+    checkErrors(e, &s, &[e!(1, "foo.hpp", true), e!(1, "bar.hpp", true)]);
 }

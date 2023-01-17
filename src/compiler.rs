@@ -77,36 +77,6 @@ impl Compiler {
     }
 
     fn genDependencyTreeAndAggregateErrors(&mut self) -> Result<ModuleTree, Vec<CompileMsg>> {
-        let treeResult = generateDependencyTree(&self.compilerState);
-        if let Err(mut err) = treeResult {
-            if self.compilerState.foundErrors.load(Ordering::Relaxed) {
-                for tu in self.compilerState.moduleHeaderUnitsFiles.iter() {
-                    err.extend(
-                        self.compilerState
-                            .compileUnits
-                            .get(tu)
-                            .unwrap()
-                            .errors
-                            .lock()
-                            .unwrap()
-                            .drain(..),
-                    );
-                }
-                for tu in self.compilerState.translationUnitsFiles.iter() {
-                    err.extend(
-                        self.compilerState
-                            .compileUnits
-                            .get(tu)
-                            .unwrap()
-                            .errors
-                            .lock()
-                            .unwrap()
-                            .drain(..),
-                    );
-                }
-            }
-            return Err(err);
-        }
         if self.compilerState.foundErrors.load(Ordering::Relaxed) {
             let mut err = Vec::new();
             for tu in self.compilerState.moduleHeaderUnitsFiles.iter() {
@@ -135,7 +105,7 @@ impl Compiler {
             }
             return Err(err);
         }
-        Ok(treeResult.unwrap())
+        generateDependencyTree(&self.compilerState)
     }
 
     // TODO: we are repeating the same function with a minnor difference (new_module_header vs new) in anoying different contexts... Can we mix them? I don't like repeating code...
@@ -372,9 +342,13 @@ impl Compiler {
         &mut self,
         result: &mut (HashMap<String, AstTu>, Vec<CompileMsg>),
     ) -> Result<CompilerState, (CompilerState, Vec<CompileMsg>)> {
-        let tree = self
-            .lexAllCompileModule()
-            .map_err(|err| (self.compilerState.clone(), err))?;
+        let tree = match self.lexAllCompileModule() {
+            Ok(tree) => tree,
+            Err(err) => {
+                result.1.extend(err);
+                return Ok(self.compilerState.clone());
+            }
+        };
 
         let dependencyIterator = Arc::new(DependencyIterator::new(&tree, 0));
         let resultLoc = Arc::new(Mutex::new((HashMap::new(), vec![])));
