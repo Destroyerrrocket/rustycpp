@@ -195,6 +195,6 @@ impl Parser {
             scope.clone()
         })
         .next();
-        return candidate;
+        candidate
     }
 }

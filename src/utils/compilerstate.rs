@@ -1,6 +1,9 @@
 //! State of the compiler
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::{collections::HashMap, sync::atomic::AtomicBool};
+use std::{
+    collections::HashSet,
+    sync::{Arc, Mutex},
+};
 
 use crate::compiler::TranslationUnit;
 
@@ -15,6 +18,11 @@ pub struct CompilerState {
     pub parameters: Arc<Parameters>,
     /// The files opened by the compiler
     pub compileFiles: Arc<Mutex<FileMap>>,
+    /// The translation units that are being compiled
+    pub translationUnitsFiles: Arc<HashSet<u64>>,
+    /// The translation units that are being compiled (These are module headers)
+    pub moduleHeaderUnitsFiles: Arc<HashSet<u64>>,
     /// State of the compilation units
-    pub compileUnits: Arc<Mutex<HashMap<TranslationUnit, StateCompileUnit>>>,
+    pub compileUnits: Arc<HashMap<TranslationUnit, StateCompileUnit>>,
+    pub foundErrors: Arc<AtomicBool>,
 }

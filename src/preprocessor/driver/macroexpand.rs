@@ -595,10 +595,10 @@ impl Preprocessor {
                 &closeParen,
             ));
         }
-        return Err(CompileError::fromPreTo(
+        Err(CompileError::fromPreTo(
             format!("Expected at most {max} parameters. found {len}"),
             &closeParen,
-        ));
+        ))
     }
 
     /// Internal function to expand a macro invocation. See `Preprocessor::macroExpand` for more information.

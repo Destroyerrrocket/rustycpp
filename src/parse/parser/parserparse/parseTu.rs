@@ -22,10 +22,16 @@ impl Parser {
     pub fn parseTu(&mut self) -> AstTu {
         let mut totalDeclarations = Vec::new();
         let mut lexpos = self.lexerStart;
-        while !self.lexer().reachedEnd(&mut lexpos) {
-            let declarations = self.parseTopLevelDecl(&mut lexpos);
-            totalDeclarations.extend(declarations);
+        if !self.lexer().reachedEndOrEmpty(&mut lexpos) {
+            loop {
+                let declarations = self.parseTopLevelDecl(&mut lexpos);
+                totalDeclarations.extend(declarations);
+                if self.lexer().reachedEnd(&mut lexpos) {
+                    break;
+                }
+            }
         }
+
         return AstTu::new(self.alloc.clone(), totalDeclarations.as_slice());
     }
 

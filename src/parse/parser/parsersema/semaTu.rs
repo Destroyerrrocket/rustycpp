@@ -67,11 +67,11 @@ impl Parser {
                 let initialModuleDecl = self
                     .compilerState
                     .compileUnits
-                    .lock()
-                    .unwrap()
                     .get(&self.filePath)
                     .unwrap()
                     .moduleKind
+                    .lock()
+                    .unwrap()
                     .module
                     .0;
                 #[rustfmt::skip]

@@ -8,6 +8,8 @@ use json::{parse, JsonValue};
 pub struct Parameters {
     /// The path to the input files.
     pub translationUnits: Vec<String>,
+    /// System Include paths.
+    pub moduleHeaderUnits: Vec<String>,
     /// Include paths.
     pub includeDirs: Vec<String>,
     /// System Include paths.
@@ -21,6 +23,7 @@ impl Parameters {
             translationUnits: Vec::new(),
             includeDirs: Vec::new(),
             includeSystemDirs: Vec::new(),
+            moduleHeaderUnits: Vec::new(),
         }
     }
 
@@ -40,10 +43,15 @@ impl Parameters {
                         self.translationUnits = Self::parseStringArray(value, "translationUnits")?;
                     }
                     "includeDirs" => {
-                        self.translationUnits = Self::parseStringArray(value, "includeDirs")?;
+                        self.includeDirs = Self::parseStringArray(value, "includeDirs")?;
                     }
                     "includeSystemDirs" => {
-                        self.translationUnits = Self::parseStringArray(value, "includeSystemDirs")?;
+                        self.includeSystemDirs =
+                            Self::parseStringArray(value, "includeSystemDirs")?;
+                    }
+                    "moduleHeaderUnits" => {
+                        self.moduleHeaderUnits =
+                            Self::parseStringArray(value, "includeSystemDirs")?;
                     }
                     _ => {}
                 }

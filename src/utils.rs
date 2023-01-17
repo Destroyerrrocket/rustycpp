@@ -6,6 +6,7 @@ pub mod structs;
 pub mod compilerstate;
 pub mod debugnode;
 pub mod filemap;
+pub mod moduleHeaderAtomicLexingList;
 pub mod nomlike;
 pub mod parameters;
 pub mod statecompileunit;

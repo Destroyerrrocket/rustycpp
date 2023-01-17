@@ -5,9 +5,15 @@
 use crate::{
     compiler::TranslationUnit,
     fileTokPosMatchArm,
-    utils::{compilerstate::CompilerState, structs::TokPos},
+    utils::{
+        compilerstate::CompilerState, moduleHeaderAtomicLexingList::ModuleHeaderAtomicLexingList,
+        statecompileunit::StageCompileUnit, structs::TokPos,
+    },
 };
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::{atomic::Ordering, Arc},
+};
 
 use crate::{
     fileTokPosMatches,
@@ -73,6 +79,8 @@ pub struct Preprocessor {
     atStartLine: bool,
     /// The preprocessor is at the end of the file. None already sent to next stage.
     alreadyEmittedEnd: bool,
+    /// If we are parsing a module header, this is the ditributor of tasks so we can parse another file.
+    moduleHeaderAtomicLexingList: Option<Arc<ModuleHeaderAtomicLexingList>>,
 }
 
 impl Preprocessor {
@@ -89,6 +97,27 @@ impl Preprocessor {
             disabledMacros: HashMultiSet::new(),
             atStartLine: true,
             alreadyEmittedEnd: false,
+            moduleHeaderAtomicLexingList: None,
+        }
+        .initCustomMacros()
+    }
+
+    pub fn new_module_header(
+        data: (CompilerState, TranslationUnit),
+        moduleHeaderAtomicLexingList: Arc<ModuleHeaderAtomicLexingList>,
+    ) -> Self {
+        Self {
+            tu: data.1,
+            compilerState: data.0.clone(),
+            multilexer: MultiLexer::new((data.0.compileFiles, data.1)),
+            generated: VecDeque::new(),
+            errors: VecDeque::new(),
+            scope: vec![],
+            definitions: HashMap::new(),
+            disabledMacros: HashMultiSet::new(),
+            atStartLine: true,
+            alreadyEmittedEnd: false,
+            moduleHeaderAtomicLexingList: Some(moduleHeaderAtomicLexingList),
         }
         .initCustomMacros()
     }
@@ -221,6 +250,158 @@ impl Preprocessor {
         VecDeque::new()
     }
 
+    /// We know there is a dependency loop, so we need to find it.
+    /// Returns the paths of the headers in the loop.
+    fn getDependencyLoop(&self) -> Vec<String> {
+        let mut loopVec = Vec::new();
+        let startLoop = self.tu;
+        let mut current = self.tu;
+        loop {
+            let filePath = self
+                .compilerState
+                .compileFiles
+                .lock()
+                .unwrap()
+                .getOpenedFile(current)
+                .path()
+                .clone();
+            loopVec.push(filePath);
+            let nextTu = self
+                .compilerState
+                .compileUnits
+                .get(&current)
+                .unwrap()
+                .blockedByImportHeader
+                .load(Ordering::Relaxed);
+            if nextTu == 0 {
+                break;
+            } else if nextTu == startLoop {
+                loopVec.push(loopVec.first().unwrap().clone());
+                break;
+            }
+            current = nextTu;
+        }
+        loopVec
+    }
+
+    fn importHeaderDirectiveGetDefinitions(
+        &mut self,
+        tu: TranslationUnit,
+        includePath: &str,
+        import: &FileTokPos<PreToken>,
+    ) -> Option<HashMap<String, DefineAst>> {
+        if !self.compilerState.moduleHeaderUnitsFiles.contains(&tu) {
+            self.errors.push_back(
+            CompileError::fromPreTo(format!("You must define in your project configuration that you explicitly want to import the header file at path: {includePath}"), import)
+        );
+            return None;
+        }
+
+        /*
+        Time to decide what to do with the header, depending on the stage.
+        - If we are preprocessing a normal tu, we just need to block for the header to finish (it may still be running)
+        and then just return the definitions.
+
+        - If we are preprocessing a header, we need to check if the included header is being preprocessed by another thread.
+        If it is, DON'T block, will try to then get another task of preprocessing a header.
+          - If there is another task, we'll start that task, marking this header as blocked by import of this other header.
+          - If there is no other task, we'll block for the header to finish and then return the definitions.
+            - If the number of blocked preprocessors equals the number of threads, we need to bail out; To do so, we'll
+            have to report an error explaining that there is a loop somewhere in the import graph.
+        */
+        let importableHeader = self.compilerState.compileUnits.get(&tu).unwrap();
+
+        let normalTu = self.moduleHeaderAtomicLexingList.is_none(); // Normal TU don't have a list of headers to lex
+        if normalTu {
+            while importableHeader.finishedStage.load(Ordering::Relaxed) != StageCompileUnit::Lexer
+            {
+                // Wait for the header to finish. Hot loop, it shouldn't take that long.
+                std::thread::yield_now();
+            }
+            return Some(
+                importableHeader
+                    .macroDefintionsAtTheEndOfTheFile
+                    .lock()
+                    .unwrap()
+                    .clone(),
+            );
+        }
+        // We are in a header file, we need to check if the header is being preprocessed by another thread.
+        if importableHeader.finishedStage.load(Ordering::Relaxed) == StageCompileUnit::Lexer {
+            // It is done! return directly
+            return Some(
+                importableHeader
+                    .macroDefintionsAtTheEndOfTheFile
+                    .lock()
+                    .unwrap()
+                    .clone(),
+            );
+        }
+        // It is not done, we need to see if there is another task available.
+        if let Some(task) = self.moduleHeaderAtomicLexingList.as_ref().unwrap().pop() {
+            // There is another task, we'll start that task, marking this header as blocked by import of this other header.
+            self.compilerState
+                .compileUnits
+                .get(&self.tu)
+                .unwrap()
+                .blockedByImportHeader
+                .store(tu, Ordering::Relaxed);
+            task();
+            self.compilerState
+                .compileUnits
+                .get(&self.tu)
+                .unwrap()
+                .blockedByImportHeader
+                .store(0, Ordering::Relaxed);
+        } else {
+            if self
+                .moduleHeaderAtomicLexingList
+                .as_ref()
+                .unwrap()
+                .markThreadLocked()
+            {
+                self.compilerState
+                    .compileUnits
+                    .get(&self.tu)
+                    .unwrap()
+                    .blockedByImportHeader
+                    .store(tu, Ordering::Relaxed);
+                // We are the last thread, we need to bail out; To do so, we'll have to report an error explaining that there is a loop somewhere in the import graph.
+                self.errors.push_back(CompileError::fromPreTo(
+                    format!(
+                        "There is a loop in the import graph of the module header files: {}",
+                        self.getDependencyLoop().join(" -> ")
+                    ),
+                    import,
+                ));
+                self.compilerState
+                    .compileUnits
+                    .get(&self.tu)
+                    .unwrap()
+                    .blockedByImportHeader
+                    .store(0, Ordering::Relaxed);
+                return None;
+            }
+            // There is no other task, we'll block for the header to finish and then return the definitions.
+            while importableHeader.finishedStage.load(Ordering::Relaxed) != StageCompileUnit::Lexer
+            {
+                // Wait for the header to finish. Hot loop, it shouldn't take that long.
+                std::thread::yield_now();
+            }
+            self.moduleHeaderAtomicLexingList
+                .as_ref()
+                .unwrap()
+                .markThreadUnlocked();
+        }
+        return Some(
+            importableHeader
+                .macroDefintionsAtTheEndOfTheFile
+                .lock()
+                .unwrap()
+                .clone(),
+        );
+    }
+
     /// If applicable, generate a import token
     fn importDirective(&mut self, import: FileTokPos<PreToken>) -> VecDeque<FileTokPos<PreToken>> {
         let mut toks = self.reachNl();
@@ -229,8 +410,8 @@ impl Preprocessor {
             .rev()
             .nth(1)
             .is_some_and(|t| fileTokPosMatches!(t, PreToken::OperatorPunctuator(";")));
-
-        if import.file == self.tu && isDirective {
+        if self.moduleHeaderAtomicLexingList.is_none() /*module headers can't have explicit import directives*/ && import.file == self.tu && isDirective
+        {
             let mut paramLexer = MultiLexer::new_def(self.multilexer.fileMapping());
             paramLexer.pushTokensDec(toks);
             let expandedTokens = Self::expandASequenceOfTokens(
@@ -246,44 +427,27 @@ impl Preprocessor {
             let mut expandedTokens = expandedTokens.unwrap();
 
             if let Some(includePath) = Self::checkForInclude(&expandedTokens) {
-                let (tu, fileHeader) = {
+                let tu = {
                     let mut compileFiles = self.compilerState.compileFiles.lock().unwrap();
-                    let tu = compileFiles.getAddFile(&includePath);
-                    let fileHeader = compileFiles.getOpenedFile(tu);
-                    (tu, fileHeader)
+                    compileFiles.getAddFile(&includePath)
                 };
 
-                let otherDefinitions = {
-                    let compileUnits = self.compilerState.compileUnits.lock().unwrap();
-                    let importableHeader = compileUnits.get(&tu);
-
-                    if importableHeader.is_none() {
-                        self.errors.push_back(
-                        CompileError::fromPreTo(format!("You must define in your project configuration that you explicitly want to import the header file at path: {includePath}"), &import)
-                    );
-                        return VecDeque::new();
-                    }
-
-                    importableHeader
-                        .unwrap()
-                        .macroDefintionsAtTheEndOfTheFile
-                        .clone()
-                };
-                self.definitions.extend(otherDefinitions);
+                let otherDefinitions =
+                    self.importHeaderDirectiveGetDefinitions(tu, &includePath, &import);
+                if otherDefinitions.is_none() {
+                    return VecDeque::new();
+                }
+                self.definitions.extend(otherDefinitions.unwrap());
 
                 // Remove the header path
                 let pathTok = expandedTokens.pop_front().unwrap();
                 // Insert a new special token for the later stages
                 expandedTokens.push_front(FileTokPos::new_meta_c(
-                    PreToken::ImportableHeaderName(fileHeader.path().clone()),
+                    PreToken::ImportableHeaderName(tu),
                     &pathTok,
                 ));
-                expandedTokens.push_front(FileTokPos::new_meta_c(PreToken::Import, &import));
-                return expandedTokens;
-            } else {
-                expandedTokens.push_front(FileTokPos::new_meta_c(PreToken::Import, &import));
             }
-
+            expandedTokens.push_front(FileTokPos::new_meta_c(PreToken::Import, &import));
             return expandedTokens;
         }
 
@@ -372,7 +536,32 @@ impl Preprocessor {
                     self.multilexer.expectHeader();
                     match self.consumeMacroInclude(&operation) {
                         Ok(path) => {
-                            if let Err(err) = self.includeFile(&operation, &path) {
+                            let tuModuleHeader = {
+                                let mut compileFiles =
+                                    self.compilerState.compileFiles.lock().unwrap();
+                                compileFiles
+                                    .getPath(&path)
+                                    .ok()
+                                    .and_then(|path| {
+                                        self.compilerState.moduleHeaderUnitsFiles.get(&path)
+                                    })
+                                    .copied()
+                            };
+                            if let Some(tu) = tuModuleHeader {
+                                let otherDefinitions =
+                                    self.importHeaderDirectiveGetDefinitions(tu, &path, &operation);
+                                if let Some(otherDefinitions) = otherDefinitions {
+                                    self.definitions.extend(otherDefinitions);
+                                }
+                                self.generated.push_back(FileTokPos::new_meta_c(
+                                    PreToken::Import,
+                                    &operation,
+                                ));
+                                self.generated.push_back(FileTokPos::new_meta_c(
+                                    PreToken::ImportableHeaderName(tu),
+                                    &operation,
+                                ));
+                            } else if let Err(err) = self.includeFile(&operation, &path) {
                                 self.errors.push_back(err);
                             }
                         }
@@ -689,11 +878,11 @@ impl Iterator for Preprocessor {
                         if !self.alreadyEmittedEnd {
                             self.compilerState
                                 .compileUnits
-                                .lock()
-                                .unwrap()
-                                .get_mut(&self.tu)
+                                .get(&self.tu)
                                 .unwrap()
                                 .macroDefintionsAtTheEndOfTheFile
+                                .lock()
+                                .unwrap()
                                 .extend(self.definitions.clone());
                             self.alreadyEmittedEnd = true;
                         }

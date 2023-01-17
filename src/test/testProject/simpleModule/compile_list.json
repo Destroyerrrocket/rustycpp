@@ -1,0 +1,9 @@
+{
+"includeDirs": [],
+"includeSystemDirs": [],
+"translationUnits": [
+	"main.cpp",
+	"bar.cpp"
+],
+"moduleHeaderUnits": []
+}

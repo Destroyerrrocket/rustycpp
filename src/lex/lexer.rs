@@ -1,9 +1,9 @@
 //! Transforms `PreToken`s into `Token`s.
 use std::collections::VecDeque;
 
-use crate::fileTokPosMatches;
 use crate::preprocessor::Preprocessor;
 use crate::utils::structs::{CompileError, CompileMsg, CompileMsgImpl, FileTokPos, TokPos};
+use crate::{fileTokPosMatchArm, fileTokPosMatches};
 
 use super::token::{EncodingPrefix, Token};
 
@@ -17,6 +17,10 @@ pub struct Lexer {
     errors: Vec<CompileMsg>,
 
     greaterInLastToken: bool,
+    /// indices of module tokens (import/module)
+    moduleDirectives: Vec<usize>,
+    /// current index
+    currIndex: usize,
 }
 
 impl Lexer {
@@ -27,6 +31,8 @@ impl Lexer {
             lastTokens: VecDeque::new(),
             errors: vec![],
             greaterInLastToken: false,
+            moduleDirectives: vec![],
+            currIndex: 0,
         }
     }
 
@@ -90,7 +96,7 @@ impl Lexer {
                 Token::UdStringLiteral(enc2, text2, ud2),
             ) => {
                 let prefix = Self::calcPrefix(enc1, enc2, file, start, end)?;
-                return if ud1 == ud2 {
+                if ud1 == ud2 {
                     Ok(FileTokPos::new(
                         file,
                         TokPos {
@@ -108,7 +114,7 @@ impl Lexer {
                         start,
                         Some(end),
                     ))
-                };
+                }
             }
             (Token::StringLiteral(enc1, text1), Token::UdStringLiteral(enc2, text2, ud))
             | (Token::UdStringLiteral(enc1, text1, ud), Token::StringLiteral(enc2, text2)) => {
@@ -207,6 +213,10 @@ impl Lexer {
     pub fn errors(&mut self) -> Vec<CompileMsg> {
         self.errors.drain(..).collect()
     }
+
+    pub fn moduleDirectives(&mut self) -> Vec<usize> {
+        self.moduleDirectives.drain(..).collect()
+    }
 }
 
 impl Iterator for Lexer {
@@ -214,6 +224,12 @@ impl Iterator for Lexer {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.generateNextToken() {
+            if let Some(fileTokPosMatchArm!(Token::Import | Token::Module)) =
+                self.lastTokens.front()
+            {
+                self.moduleDirectives.push(self.currIndex);
+            }
+            self.currIndex += 1;
             self.lastTokens.pop_front()
         } else {
             None

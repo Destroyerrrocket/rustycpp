@@ -4,6 +4,6 @@ mod dependency_annotate;
 mod dependency_dfs;
 mod dependency_interpreter;
 pub mod dependency_iterator;
-mod dependency_parser;
+pub mod dependency_parser;
 pub mod generate;
 pub mod structs;

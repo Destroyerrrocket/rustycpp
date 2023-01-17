@@ -139,6 +139,6 @@ impl Preprocessor {
                 return Some(chars.as_str().to_owned());
             }
         }
-        return None;
+        None
     }
 }

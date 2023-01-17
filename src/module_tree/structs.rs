@@ -44,7 +44,7 @@ pub enum ModuleOperator {
     /// an import <module> directive.
     Import(String),
     /// an import <header> directive.
-    ImportHeader(String),
+    ImportHeader(u64),
     /// an export module <module> directive.
     ExportModule(String),
     /// a module <module> directive.

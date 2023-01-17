@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
@@ -30,23 +30,23 @@ fn generateFileMap(files: &[(&'static str, &'static str)]) -> (CompilerState, u6
 
     let parameters = Arc::new(params);
     let fileMap = Arc::new(Mutex::new(FileMap::new(parameters.clone())));
-    let compileUnits = Arc::new(Mutex::new(HashMap::new()));
+    let mut compileUnits = HashMap::new();
     for (i, (filePath, fileContents)) in files.iter().enumerate() {
         fileMap
             .lock()
             .unwrap()
             .addTestFile((*filePath).to_string(), fileContents);
-        compileUnits
-            .lock()
-            .unwrap()
-            .insert(i as u64 + 1, StateCompileUnit::new());
+        compileUnits.insert(i as u64 + 1, StateCompileUnit::new());
     }
 
     (
         CompilerState {
             parameters,
             compileFiles: fileMap,
-            compileUnits,
+            compileUnits: Arc::new(compileUnits),
+            translationUnitsFiles: Arc::new((1..2).collect::<HashSet<_>>()),
+            moduleHeaderUnitsFiles: Arc::new(HashSet::new()),
+            foundErrors: Arc::default(),
         },
         1,
     )

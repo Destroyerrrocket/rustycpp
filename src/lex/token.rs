@@ -7,9 +7,9 @@
 
 use std::collections::VecDeque;
 
-use crate::preprocessor::pretoken::PreToken;
 use crate::utils::stringref::{StringRef, ToStringRef};
 use crate::utils::structs::{CompileError, CompileMsg, CompileMsgImpl, FileTokPos, TokPos};
+use crate::{compiler::TranslationUnit, preprocessor::pretoken::PreToken};
 use lazy_regex::regex_captures;
 use logos::Logos;
 
@@ -199,7 +199,7 @@ pub enum Token {
     StrippedGreaterEqual,
     // Module conditional token
     Import,
-    ImportableHeaderName(StringRef),
+    ImportableHeaderName(TranslationUnit),
     Module,
     // Literals
     IntegerLiteral(i128, IntegerSuffix),
@@ -403,7 +403,7 @@ impl Token {
             PreToken::Module => Ok({let mut vec = VecDeque::new(); vec.push_back(FileTokPos::new_meta_c(Self::Module, &preTok)); vec}),
             PreToken::Import => Ok({let mut vec = VecDeque::new(); vec.push_back(FileTokPos::new_meta_c(Self::Import, &preTok)); vec}),
             PreToken::ImportableHeaderName(text) => Ok({let mut vec = VecDeque::new(); vec.push_back(FileTokPos::new(preTok.file, TokPos {
-                tok: Self::ImportableHeaderName(text.to_StringRef()),
+                tok: Self::ImportableHeaderName(text),
                 start: preTok.tokPos.start,
                 end: preTok.tokPos.end,
             })); vec}),

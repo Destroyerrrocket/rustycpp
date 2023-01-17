@@ -5,6 +5,8 @@
 
 use logos::Logos;
 
+use crate::compiler::TranslationUnit;
+
 #[derive(PartialEq, Eq, Debug, Logos)]
 /// The actual token generator. This efficiently tests out all regexes at the
 /// same time and grabs the largest one.
@@ -241,7 +243,7 @@ pub enum PreToken {
     EnableMacro(String),
     Module,
     Import,
-    ImportableHeaderName(String),
+    ImportableHeaderName(TranslationUnit),
     ValidNop,
 }
 
@@ -445,8 +447,7 @@ impl PreToken {
             | Self::UdStringLiteral(string)
             | Self::RawStringLiteral(string)
             | Self::CharLiteral(string)
-            | Self::UdCharLiteral(string)
-            | Self::ImportableHeaderName(string) => string.as_str(),
+            | Self::UdCharLiteral(string) => string.as_str(),
             Self::Whitespace(string) => string.as_str(),
             Self::PreprocessingOperator(op) => op.as_str(),
             Self::OperatorPunctuator(string) | Self::Keyword(string) => string,
@@ -454,6 +455,7 @@ impl PreToken {
             Self::DisableMacro(_) | Self::EnableMacro(_) | Self::ValidNop => "",
             Self::Import => "import",
             Self::Module => "module",
+            Self::ImportableHeaderName(_) => "<TranslationId. Can't print back>",
         };
     }
     pub const fn isWhitespace(&self) -> bool {

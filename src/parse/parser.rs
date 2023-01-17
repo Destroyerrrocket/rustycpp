@@ -1,14 +1,16 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::compiler::TranslationUnit;
-use crate::lex::lexer::Lexer;
-use crate::utils::compilerstate::CompilerState;
-use crate::utils::structs::CompileMsg;
-use crate::utils::unsafeallocator::UnsafeAllocator;
 use crate::{
     ast::{common::CommonAst, Tu::AstTu},
+    compiler::TranslationUnit,
+    lex::token::Token,
     sema::scope::Scope,
+    utils::{
+        compilerstate::CompilerState,
+        structs::{CompileMsg, FileTokPos},
+        unsafeallocator::UnsafeAllocator,
+    },
 };
 
 use super::bufferedLexer::{BufferedLexer, StateBufferedLexer};
@@ -49,8 +51,12 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new(lexer: Lexer, filePath: TranslationUnit, compilerState: CompilerState) -> Self {
-        let (lexer, lexerStart) = BufferedLexer::new(lexer);
+    pub fn new(
+        tokens: Vec<FileTokPos<Token>>,
+        filePath: TranslationUnit,
+        compilerState: CompilerState,
+    ) -> Self {
+        let (lexer, lexerStart) = BufferedLexer::new(tokens);
         let rootScope = Scope::new_root();
         Self {
             lexer,
@@ -68,9 +74,7 @@ impl Parser {
 
     pub fn parse(&mut self) -> (AstTu, Vec<CompileMsg>) {
         let tu = self.parseTu();
-        let mut lexErr = self.lexer.errors();
-        lexErr.extend(self.errors.clone());
-        (tu, lexErr)
+        (tu, self.errors.clone())
     }
 
     pub fn printStringTree(ast: &AstTu) -> String {

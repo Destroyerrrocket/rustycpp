@@ -257,7 +257,20 @@ impl Parser {
             Token::LParen => todo!(),
             Token::DoubleColon => todo!(),
             Token::Less => todo!(),
-            Token::Import => todo!(),
+            Token::Import => {
+                // TODO: Stub until we can accually import stuff
+                self.lexer().next(lexpos);
+                loop {
+                    if self.lexer().getIfEq(lexpos, Token::Semicolon).is_some() {
+                        return self.actOnEmptyDecl(attr, SourceRange::newSingleTok(tok));
+                    } else if !self.lexer().consumeToken(lexpos) {
+                        let pos = self.lexer().getWithOffsetSaturating(lexpos, 0);
+                        self.errors
+                            .push(CompileError::fromPreTo("Expected ';'", pos));
+                        return vec![];
+                    }
+                }
+            }
             Token::ImportableHeaderName(_) => todo!(),
             Token::__rustycpp__ => self.parseCustom__rustycpp__Decl(lexpos, attr),
         }

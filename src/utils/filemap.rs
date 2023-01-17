@@ -52,8 +52,7 @@ impl<'a> FileMap {
         }
 
         let res = Arc::new(CompileFile::new(pathStr.clone(), &filecontents));
-        self.files
-            .insert(path as usize, Either::CompileFile(res.clone()));
+        *self.files.get_mut(path as usize).unwrap() = Either::CompileFile(res.clone());
         res
     }
 
@@ -160,13 +159,13 @@ impl<'a> FileMap {
                     return Ok(resultingPath);
                 }
             }
-            return Err(format!("Could not find file: {pathStr}"));
+            Err(format!("Could not find file: {pathStr}"))
         })();
         res.map(|path| path.canonicalize().unwrap().to_str().unwrap().to_string())
     }
 
     /// Resolve a path. On error, return error.
-    fn getPath(&mut self, pathStr: &str) -> Result<u64, String> {
+    pub fn getPath(&mut self, pathStr: &str) -> Result<u64, String> {
         if let Some(v) = self.resolvedPaths.get(pathStr) {
             Ok(*v)
         } else {
