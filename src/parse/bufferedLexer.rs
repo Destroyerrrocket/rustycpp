@@ -58,14 +58,7 @@ impl BufferedLexer {
 
     #[allow(clippy::unused_self)]
     pub fn reachedEnd(&mut self, lexpos: &mut StateBufferedLexer) -> bool {
-        if lexpos.maximumToken < lexpos.minimumToken {
-            return true;
-        }
-
-        if lexpos.currentToken > lexpos.maximumToken {
-            return true;
-        }
-        false
+        lexpos.maximumToken < lexpos.minimumToken || lexpos.currentToken > lexpos.maximumToken
     }
 
     pub fn consumeToken(&mut self, lexpos: &mut StateBufferedLexer) -> bool {
@@ -147,9 +140,6 @@ impl BufferedLexer {
         match lexpos.currentToken.checked_add_signed(offset) {
             Some(pos) => {
                 if pos > lexpos.maximumToken || pos < lexpos.minimumToken {
-                    return false;
-                }
-                if pos >= self.tokens.get_mut().len() {
                     return false;
                 }
                 return self.internalGetUnchecked(pos).tokPos.tok == tok;
@@ -237,9 +227,6 @@ impl BufferedLexer {
                 if pos > lexpos.maximumToken || pos < lexpos.minimumToken {
                     return None;
                 }
-                if pos >= self.tokens.get_mut().len() {
-                    return None;
-                }
                 return self.internalGetChecked(pos);
             }
             None => None,
@@ -257,12 +244,8 @@ impl BufferedLexer {
 
         match lexpos.currentToken.checked_add_signed(offset) {
             Some(mut pos) => {
-                pos = pos.clamp(lexpos.minimumToken, lexpos.maximumToken + 1);
+                pos = pos.clamp(lexpos.minimumToken, lexpos.maximumToken);
 
-                let len = self.tokens.get_mut().len();
-                if pos >= len {
-                    return self.internalGetUnchecked(len - 1);
-                }
                 self.internalGetChecked(pos).unwrap()
             }
             None => self.internalGetChecked(lexpos.minimumToken).unwrap(),
@@ -306,21 +289,5 @@ impl BufferedLexer {
             .saturating_add(n)
             .clamp(lexpos.minimumToken, lexpos.maximumToken + 1);
         lexpos.currentToken <= self.tokens.get_mut().len() // Beware to not consume the token of the destination; This way we can alter the lexer correctly if necessary.
-    }
-
-    #[allow(clippy::unused_self)]
-    pub fn moveStateToOtherState(
-        &mut self,
-        lexpos: &mut StateBufferedLexer,
-        otherpos: &mut StateBufferedLexer,
-    ) -> bool {
-        // We know that the states are valid, so we just check for ranges
-        if otherpos.currentToken > lexpos.maximumToken
-            || otherpos.currentToken < lexpos.minimumToken
-        {
-            return false;
-        }
-        lexpos.currentToken = otherpos.currentToken;
-        true
     }
 }
