@@ -15,7 +15,7 @@ impl Parser {
     pub fn parseCustom__rustycpp__Decl(
         &mut self,
         lexpos: &mut StateBufferedLexer,
-        attr: &Vec<&'static AstAttribute>,
+        attr: &[&'static AstAttribute],
     ) -> Vec<&'static AstDecl> {
         let Some(rustyCpp) = self
             .lexer()
@@ -60,7 +60,7 @@ impl Parser {
         &mut self,
         lexpos: &mut StateBufferedLexer,
         rustyCpp: &FileTokPos<Token>,
-        attr: &Vec<&'static AstAttribute>,
+        attr: &[&'static AstAttribute],
     ) -> Vec<&'static AstDecl> {
         let Some(enumTok) = self.lexer().getConsumeTokenIfEq(lexpos, Token::Enum) else {
             self.errors.push(CompileError::fromPreTo(

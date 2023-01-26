@@ -15,7 +15,7 @@ impl Parser {
     pub fn parseAsmDeclaration(
         &mut self,
         lexpos: &mut StateBufferedLexer,
-        attr: &Vec<&'static AstAttribute>,
+        attr: &[&'static AstAttribute],
     ) -> Vec<&'static AstDecl> {
         let startlexpos = *lexpos;
         let startedAsm = self.lexer().consumeTokenIfEq(lexpos, Token::Asm);

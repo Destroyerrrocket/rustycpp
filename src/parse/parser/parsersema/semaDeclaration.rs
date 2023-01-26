@@ -1,10 +1,13 @@
+use std::{cell::RefCell, rc::Rc};
+
 use crate::{
     ast::{
         Attribute::{self, AstAttribute, CXXAttribute},
         Decl::{
             Asm::AstAsmDecl, AstDecl, Empty::AstEmptyDecl, Enum::AstCustomRustyCppEnum,
-            Namespace::AstNamespaceDecl,
+            Namespace::AstNamespaceDecl, UsingNamespace::AstUsingNamespaceDecl,
         },
+        NestedNameSpecifier::AstNestedNameSpecifier,
     },
     sema::scope::{Child, RefCellScope, Scope, ScopeKind},
     utils::{
@@ -21,7 +24,7 @@ impl Parser {
      */
     pub fn actOnEmptyDecl(
         &mut self,
-        attr: &Vec<&'static AstAttribute>,
+        attr: &[&'static AstAttribute],
         location: SourceRange,
     ) -> Vec<&'static AstDecl> {
         for a in attr {
@@ -37,7 +40,7 @@ impl Parser {
                 continue;
             }
         }
-        let ast = AstEmptyDecl::new(location, self.alloc().alloc_slice_copy(attr.as_slice()));
+        let ast = AstEmptyDecl::new(location, self.alloc().alloc_slice_copy(attr));
         vec![self.alloc().alloc(AstDecl::AstEmptyDecl(ast))]
     }
 
@@ -46,15 +49,11 @@ impl Parser {
      */
     pub fn actOnAsmDecl(
         &mut self,
-        attr: &Vec<&'static AstAttribute>,
+        attr: &[&'static AstAttribute],
         location: SourceRange,
         asm: StringRef,
     ) -> Vec<&'static AstDecl> {
-        let astAsm = AstAsmDecl::new(
-            location,
-            self.alloc().alloc_slice_copy(attr.as_slice()),
-            asm,
-        );
+        let astAsm = AstAsmDecl::new(location, self.alloc().alloc_slice_copy(attr), asm);
         vec![self.alloc().alloc(AstDecl::AstAsmDecl(astAsm))]
     }
 
@@ -64,13 +63,13 @@ impl Parser {
     pub fn actOnStartNamedNamespaceDefinition(
         &mut self,
         isInline: bool,
-        attr: &Vec<&'static AstAttribute>,
+        attr: &[&'static AstAttribute],
         name: StringRef,
         locationName: SourceRange,
     ) -> Vec<&'static AstDecl> {
         let astNamespace = AstNamespaceDecl::new(
             locationName,
-            self.alloc().alloc_slice_copy(attr.as_slice()),
+            self.alloc().alloc_slice_copy(attr),
             name,
             isInline,
             self.currentScope.clone(),
@@ -127,9 +126,9 @@ impl Parser {
         &mut self,
         name: StringRef,
         location: SourceRange,
-        attr: &Vec<&'static AstAttribute>,
+        attr: &[&'static AstAttribute],
     ) -> Vec<&'static AstDecl> {
-        let attrs = self.alloc().alloc_slice_copy(attr.as_slice());
+        let attrs = self.alloc().alloc_slice_copy(attr);
         let astEnum = AstCustomRustyCppEnum::new(location, name, attrs);
         let astEnumDecl = self.alloc().alloc(AstDecl::AstCustomRustyCppEnum(astEnum));
 
@@ -142,5 +141,50 @@ impl Parser {
         let newCurrent = self.currentScope.borrow().parent.clone().unwrap();
         self.currentScope = newCurrent;
         vec![astEnumDecl]
+    }
+
+    pub fn actOnUsingNamespaceDefinition(
+        &mut self,
+        name: StringRef,
+        location: SourceRange,
+        attr: &[&'static AstAttribute],
+        nestedNameSpecifier: &'static [AstNestedNameSpecifier],
+        scope: Option<&Rc<RefCell<Scope>>>,
+    ) -> Vec<&'static AstDecl> {
+        let onlyNamespacesFunc = |child: &Child| match child {
+            Child::Decl(_) => false,
+            Child::Scope(scope) => scope.borrow().flags.contains(ScopeKind::NAMESPACE),
+        };
+
+        let result = if let Some(scope) = scope {
+            let result = Self::qualifiedNameLookupWithCond(name, scope, onlyNamespacesFunc);
+            let Some(Child::Scope(result)) = result.first() else {
+                    self.errors.push(CompileError::fromSourceRange(
+                    "We were unable to resolve this name. Something may be wrong with the nested name specifier",
+                    &location,
+                    ));
+                    return vec![];
+                };
+            result.clone()
+        } else {
+            let Some(Child::Scope(result)) = self.unqualifiedNameLookupWithCond(name, onlyNamespacesFunc).first().cloned() else {
+                    self.errors.push(CompileError::fromSourceRange(
+                        "We were unable to resolve this name",
+                        &location,
+                    ));
+                    return vec![];
+                };
+            result
+        };
+        self.currentScope.addUsingNamespace(result);
+        let attr = self.alloc().alloc_slice_copy(attr);
+        vec![self
+            .alloc()
+            .alloc(AstDecl::AstUsingNamespaceDecl(AstUsingNamespaceDecl::new(
+                location,
+                name,
+                attr,
+                nestedNameSpecifier,
+            )))]
     }
 }

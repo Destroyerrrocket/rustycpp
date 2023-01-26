@@ -186,6 +186,7 @@ pub trait RefCellScope {
     fn addNamelessChild(&self, child: Child);
     fn addChild(&self, name: StringRef, child: Child);
     fn addInlinedChild(&self, name: StringRef, child: Rc<RefCell<Scope>>);
+    fn addUsingNamespace(&self, child: Rc<RefCell<Scope>>);
 }
 
 impl RefCellScope for Rc<RefCell<Scope>> {
@@ -222,5 +223,10 @@ impl RefCellScope for Rc<RefCell<Scope>> {
         } else {
             this.childs.insert(name, vec![Child::Scope(child)]);
         }
+    }
+
+    fn addUsingNamespace(&self, child: Rc<RefCell<Scope>>) {
+        let mut this = self.borrow_mut();
+        this.usingNamespaces.push(child);
     }
 }

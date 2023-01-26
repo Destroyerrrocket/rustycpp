@@ -57,14 +57,10 @@ fn testProject(
         .push(dirTest.to_str().unwrap().to_string());
     let compute = move |parameters| {
         let mut tmpRes = (HashMap::new(), Vec::new());
-        let crashed = Compiler::new(parameters).parsed_tree_test(&mut tmpRes);
+        let stateCompiler = Compiler::new(parameters).parsed_tree_test(&mut tmpRes);
         let (ast, errors) = tmpRes;
 
-        if let Err((compilerState, errors)) = crashed.clone() {
-            assertErrors(&errors, &compilerState);
-            unimplemented!();
-        }
-        (ast, errors, crashed.unwrap())
+        (ast, errors, stateCompiler)
     };
     let mut res = vec![compute(parameters.clone())];
     parameters.threadNum = Some(8);
@@ -75,7 +71,7 @@ fn testProject(
     res.push(compute(parameters.clone()));
     parameters.threadNum = Some(1);
     res.push(compute(parameters));
-    return res;
+    res
 }
 
 fn assertErrors(errors: &[CompileMsg], state: &CompilerState) {
@@ -130,6 +126,7 @@ macro_rules! e {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! w {
     ($n:literal, $path:literal, true) => {
         ($n, $path.to_string(), true, CompileMsgKind::Warning)

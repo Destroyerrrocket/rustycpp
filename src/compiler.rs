@@ -342,12 +342,12 @@ impl Compiler {
     pub fn parsed_tree_test(
         &mut self,
         result: &mut (HashMap<String, AstTu>, Vec<CompileMsg>),
-    ) -> Result<CompilerState, (CompilerState, Vec<CompileMsg>)> {
+    ) -> CompilerState {
         let tree = match self.lexAllCompileModule() {
             Ok(tree) => tree,
             Err(err) => {
                 result.1.extend(err);
-                return Ok(self.compilerState.clone());
+                return self.compilerState.clone();
             }
         };
 
@@ -396,7 +396,7 @@ impl Compiler {
         let res = resultLoc.lock().unwrap().clone();
         result.0 = res.0;
         result.1 = res.1;
-        Ok(self.compilerState.clone())
+        self.compilerState.clone()
     }
 
     /// Attempts to compile everything, until the last thing implemented.

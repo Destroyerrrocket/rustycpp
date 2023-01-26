@@ -34,7 +34,7 @@ impl Parser {
         self.optParseNestedNameSpecifierImpl(lexpos, false)
     }
 
-    pub fn optParseNestedNameSpecifierImpl(
+    fn optParseNestedNameSpecifierImpl(
         &mut self,
         lexpos: &mut StateBufferedLexer,
         reportNormalErrors: bool,
@@ -133,7 +133,7 @@ impl Parser {
      *  nested-name-specifier identifier :: [CHILD]
      *  nested-name-specifier template [opt] simple-template-id :: [CHILD] [TODO: UNIMPLEMENTED]
      */
-    pub fn parseChildNestedNameSpecifier(
+    fn parseChildNestedNameSpecifier(
         &mut self,
         lexpos: &mut StateBufferedLexer,
         result: &mut Vec<AstNestedNameSpecifier>,

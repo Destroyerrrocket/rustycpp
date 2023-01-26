@@ -6,7 +6,7 @@ use crate::ast::{
     Attribute::AstAttribute,
     Decl::{
         Asm::AstAsmDecl, Empty::AstEmptyDecl, Enum::AstCustomRustyCppEnum,
-        Namespace::AstNamespaceDecl,
+        Namespace::AstNamespaceDecl, UsingNamespace::AstUsingNamespaceDecl,
     },
 };
 use crate::utils::structs::SourceRange;
@@ -15,6 +15,7 @@ pub mod Asm;
 pub mod Empty;
 pub mod Enum;
 pub mod Namespace;
+pub mod UsingNamespace;
 
 bitflags! {
     pub struct MyFlags: u8 {
@@ -52,4 +53,5 @@ pub enum AstDecl {
     AstAsmDecl,
     AstNamespaceDecl,
     AstCustomRustyCppEnum,
+    AstUsingNamespaceDecl,
 }

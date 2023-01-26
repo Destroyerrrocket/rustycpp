@@ -8,6 +8,7 @@ use crate::{
 mod parseAsmDeclaration;
 mod parseCustomRustycppDeclaration;
 mod parseNamespaceDeclaration;
+mod parseUsingNamespaceDeclaration;
 
 use super::super::Parser;
 
@@ -33,7 +34,7 @@ impl Parser {
     pub fn parseDeclaration(
         &mut self,
         lexpos: &mut StateBufferedLexer,
-        attr: &Vec<&'static AstAttribute>,
+        attr: &[&'static AstAttribute],
     ) -> Vec<&'static AstDecl> {
         let tok = self.lexer().get(lexpos);
         if tok.is_none() {
@@ -247,7 +248,13 @@ impl Parser {
             Token::Typename => todo!(),
             Token::Union => todo!(),
             Token::Unsigned => todo!(),
-            Token::Using => todo!(),
+            Token::Using => {
+                if self.lexer().ifEqOffset(lexpos, Token::Namespace, 1) {
+                    self.parseUsingNamespaceDeclaration(lexpos, attr)
+                } else {
+                    todo!()
+                }
+            }
             Token::Virtual => todo!(),
             Token::Void => todo!(),
             Token::Volatile => todo!(),
@@ -271,7 +278,7 @@ impl Parser {
                     }
                 }
             }
-            Token::ImportableHeaderName(_) => todo!(),
+            Token::ImportableHeaderName(_) => unreachable!(),
             Token::__rustycpp__ => self.parseCustom__rustycpp__Decl(lexpos, attr),
         }
     }

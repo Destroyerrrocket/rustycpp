@@ -52,14 +52,10 @@ fn testSingleFile(
     let mut params = Parameters::new();
     params.translationUnits.push(fileTest);
     let mut tmpRes = (HashMap::new(), Vec::new());
-    let crashed = Compiler::new(params).parsed_tree_test(&mut tmpRes);
+    let stateCompiler = Compiler::new(params).parsed_tree_test(&mut tmpRes);
     let (ast, errors) = tmpRes;
 
-    if let Err((compilerState, errors)) = crashed.clone() {
-        assertErrors(&errors, &compilerState);
-        unreachable!();
-    }
-    (ast, errors, crashed.unwrap())
+    (ast, errors, stateCompiler)
 }
 
 fn assertErrors(errors: &[CompileMsg], state: &CompilerState) {

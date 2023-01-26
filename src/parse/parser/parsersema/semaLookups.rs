@@ -150,30 +150,37 @@ impl Parser {
     fn qualifiedNameLookupOnNamespace<'scope>(
         name: StringRef,
         scope: &'scope Scope,
+        cond: fn(&Child) -> bool,
     ) -> Box<dyn Iterator<Item = &'scope Child> + 'scope> {
         // Rule 2: Check namespace scope and all the inlined namespaces
-        let mut result = Self::getChildsAndOnlyInlined(name, scope, |_: &Child| true).peekable();
+        let mut result = Self::getChildsAndOnlyInlined(name, scope, cond).peekable();
         if result.peek().is_some() {
             return Box::new(result);
         }
         // Rule 3: If nothing found, check the using namespaces in the same way, and make a union of them.
-        Box::new(
-            Self::getAllUsingNamespaceInlined(scope).flat_map(move |x| {
-                Self::qualifiedNameLookupOnNamespace(name, unsafe { &*x.as_ptr() })
-            }),
-        )
+        Box::new(Self::getAllUsingNamespaceInlined(scope).flat_map(move |x| {
+            Self::qualifiedNameLookupOnNamespace(name, unsafe { &*x.as_ptr() }, cond)
+        }))
     }
 
-    pub fn qualifiedNameLookup(name: StringRef, scope: &Rc<RefCell<Scope>>) -> Vec<Child> {
+    pub fn qualifiedNameLookupWithCond(
+        name: StringRef,
+        scope: &Rc<RefCell<Scope>>,
+        cond: fn(&Child) -> bool,
+    ) -> Vec<Child> {
         // Namespace qualified?
         let scope = scope.borrow();
         if scope.flags.contains(ScopeKind::NAMESPACE) {
-            return Self::qualifiedNameLookupOnNamespace(name, &scope)
+            return Self::qualifiedNameLookupOnNamespace(name, &scope, cond)
                 .cloned()
                 .collect::<Vec<_>>();
         }
 
         todo!("Qualified name lookup not implemented for this scope.")
+    }
+
+    pub fn qualifiedNameLookup(name: StringRef, scope: &Rc<RefCell<Scope>>) -> Vec<Child> {
+        Self::qualifiedNameLookupWithCond(name, scope, |_: &Child| true)
     }
 
     /** 9.8.2.1 namespace.def.general
