@@ -316,3 +316,16 @@ fn unqualifiedNameResolutionNamespace() {
 fn qualifiedNameResolution() {
     let _ = testSuccessfulFile!();
 }
+
+#[test]
+#[named]
+fn parsesUsingNamespaceDirective() {
+    let _ = testSuccessfulFile!();
+}
+
+#[test]
+#[named]
+fn parsesUsingNamespaceDirectiveError1() {
+    let (_, e, s) = testUnsuccessfulFile!();
+    checkErrors(e, &s, &[e!(4), e!(5), e!(6), e!(7)]);
+}

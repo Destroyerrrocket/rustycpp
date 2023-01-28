@@ -99,7 +99,7 @@ impl Parser {
                         cond,
                     )
                 }))
-                .chain(scope.inlinedNamespaces.iter().flat_map(move |x| {
+                .chain(scope.usingNamespaces.iter().flat_map(move |x| {
                     Self::getChildsAndAliased(
                         name,
                         unsafe { x.try_borrow_unguarded() }.unwrap(),
