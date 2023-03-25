@@ -81,6 +81,7 @@ impl MultiLexer {
         let mut fileMapping = self.fileMapping.lock().unwrap();
         let compFile = fileMapping.getAddFile(path);
         let lexer = PreLexer::new(fileMapping.getOpenedFile(compFile).content().to_string());
+        drop(fileMapping);
         self.files.push(FileLexer { compFile, lexer });
     }
 

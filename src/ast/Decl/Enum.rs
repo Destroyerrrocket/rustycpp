@@ -2,6 +2,7 @@ use deriveMacros::{CommonAst, DeclAst};
 
 use crate::{
     ast::{Attribute::AstAttribute, Decl::BaseDecl},
+    sema::scope::ScopeRef,
     utils::{stringref::StringRef, structs::SourceRange},
 };
 
@@ -18,11 +19,12 @@ pub struct AstCustomRustyCppEnum {
 impl AstCustomRustyCppEnum {
     pub fn new(
         sourceRange: SourceRange,
+        scope: ScopeRef,
         name: StringRef,
         attrs: &'static [&'static AstAttribute],
     ) -> Self {
         Self {
-            base: BaseDecl::new(sourceRange),
+            base: BaseDecl::new(sourceRange, scope),
             name,
             attrs,
         }

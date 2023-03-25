@@ -24,18 +24,17 @@ impl Preprocessor {
         definedToken: &FileTokPos<PreToken>,
     ) -> Result<String, CompileMsg> {
         let mut name = String::new();
-        // Skip whitespace. Push back the meta tokens. When we get the first open paren, wait.
-        let mut metaToks = vec![];
+        // Skip whitespace. When we get the first open paren, wait.
         let openParenTok: FileTokPos<PreToken> = loop {
             if let Some(tok) = lexer.next() {
                 match tok.tokPos.tok {
-                    PreToken::Whitespace(_) => {}
+                    PreToken::ValidNop
+                    | PreToken::EnableMacro(_)
+                    | PreToken::DisableMacro(_)
+                    | PreToken::Whitespace(_) => {}
                     PreToken::Ident(id) => {
                         // Shortcut! :D
                         return Ok(id);
-                    }
-                    PreToken::ValidNop | PreToken::EnableMacro(_) | PreToken::DisableMacro(_) => {
-                        metaToks.push(tok);
                     }
                     PreToken::Newline => {
                         lexer.pushToken(tok.clone());

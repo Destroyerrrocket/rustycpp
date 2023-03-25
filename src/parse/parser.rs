@@ -1,11 +1,10 @@
-use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::{
     ast::{common::CommonAst, Tu::AstTu},
     compiler::TranslationUnit,
     lex::token::Token,
-    sema::scope::Scope,
+    sema::scope::{Scope, ScopeRef},
     utils::{
         compilerstate::CompilerState,
         structs::{CompileMsg, FileTokPos},
@@ -42,8 +41,8 @@ pub struct Parser {
 
     moduleImportState: ModuleImportState,
 
-    rootScope: Rc<RefCell<Scope>>,
-    currentScope: Rc<RefCell<Scope>>,
+    rootScope: ScopeRef,
+    currentScope: ScopeRef,
 
     errors: Vec<CompileMsg>,
 

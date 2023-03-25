@@ -143,6 +143,7 @@ impl DependencyIterator {
         let toSend = d.rootsReady.pop().unwrap().0;
         d.rootsSentButNotDone
             .insert(toSend.module.1, toSend.clone());
+        drop(d);
         Some(toSend.module.1)
     }
 }

@@ -87,7 +87,11 @@ fn dfsLoops(tree: &mut ModuleTree) -> Result<(), Vec<CompileMsg>> {
         }
     }
 
-    Ok(())
+    if err.is_empty() {
+        Ok(())
+    } else {
+        Err(err)
+    }
 }
 
 /// Generates the module tree of the modules, and checks for loops.

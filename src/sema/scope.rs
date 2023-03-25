@@ -89,11 +89,11 @@ pub enum Child {
     /**
      * This is a child that can have further children, like a function, class, or namespace.
      */
-    Scope(Rc<RefCell<Scope>>),
+    Scope(ScopeRef),
 }
 
 impl Child {
-    pub fn getScope(&self) -> Option<Rc<RefCell<Scope>>> {
+    pub fn getScope(&self) -> Option<ScopeRef> {
         match self {
             Self::Decl(_) => None,
             Self::Scope(scope) => Some(scope.clone()),
@@ -117,7 +117,7 @@ pub struct Scope {
      * This is the parent of this scope.
      * Only the root scope has no parent.
      */
-    pub parent: Option<Rc<RefCell<Scope>>>,
+    pub parent: Option<ScopeRef>,
     /**
      * This is a map of all the children in this scope.
      * The key is the name of the child, and the value is a vector of all the children with that name.
@@ -143,22 +143,22 @@ pub struct Scope {
     /**
      * These are inlined scope (by inline namespace)
      */
-    pub inlinedNamespaces: Vec<Rc<RefCell<Scope>>>,
+    pub inlinedNamespaces: Vec<ScopeRef>,
 
     /**
      * These are using namespace scopes
      */
-    pub usingNamespaces: Vec<Rc<RefCell<Scope>>>,
+    pub usingNamespaces: Vec<ScopeRef>,
 }
 
 impl Scope {
-    pub fn new(flags: ScopeKind, causingDecl: &'static AstDecl) -> Rc<RefCell<Self>> {
+    pub fn new(flags: ScopeKind) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(Self {
             flags,
             parent: None,
             childs: HashMap::new(),
             namelessChilds: Vec::new(),
-            causingDecl: Some(causingDecl),
+            causingDecl: None,
             inlinedNamespaces: Vec::new(),
             usingNamespaces: Vec::new(),
         }))
@@ -183,13 +183,22 @@ impl Scope {
 
 #[allow(clippy::module_name_repetitions)]
 pub trait RefCellScope {
+    fn setCausingDecl(&self, decl: &'static AstDecl);
     fn addNamelessChild(&self, child: Child);
     fn addChild(&self, name: StringRef, child: Child);
-    fn addInlinedChild(&self, name: StringRef, child: Rc<RefCell<Scope>>);
-    fn addUsingNamespace(&self, child: Rc<RefCell<Scope>>);
+    fn addInlinedChild(&self, name: StringRef, child: ScopeRef);
+    fn addUsingNamespace(&self, child: ScopeRef);
 }
 
-impl RefCellScope for Rc<RefCell<Scope>> {
+#[allow(clippy::module_name_repetitions)]
+pub type ScopeRef = Rc<RefCell<Scope>>;
+
+impl RefCellScope for ScopeRef {
+    fn setCausingDecl(&self, decl: &'static AstDecl) {
+        assert!(self.borrow().causingDecl.is_none());
+        self.borrow_mut().causingDecl = Some(decl);
+    }
+
     fn addNamelessChild(&self, child: Child) {
         if let Child::Scope(scope) = &child {
             assert!(scope.borrow().parent.is_none());
@@ -212,7 +221,7 @@ impl RefCellScope for Rc<RefCell<Scope>> {
         }
     }
 
-    fn addInlinedChild(&self, name: StringRef, child: Rc<RefCell<Scope>>) {
+    fn addInlinedChild(&self, name: StringRef, child: ScopeRef) {
         let mut this = self.borrow_mut();
         assert!(child.borrow().parent.is_none());
         child.borrow_mut().parent = Some(self.clone());
@@ -225,7 +234,7 @@ impl RefCellScope for Rc<RefCell<Scope>> {
         }
     }
 
-    fn addUsingNamespace(&self, child: Rc<RefCell<Scope>>) {
+    fn addUsingNamespace(&self, child: ScopeRef) {
         let mut this = self.borrow_mut();
         this.usingNamespaces.push(child);
     }

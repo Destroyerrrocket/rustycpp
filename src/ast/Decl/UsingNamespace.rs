@@ -2,6 +2,7 @@ use deriveMacros::{CommonAst, DeclAst};
 
 use crate::{
     ast::{Attribute::AstAttribute, Decl::BaseDecl, NestedNameSpecifier::AstNestedNameSpecifier},
+    sema::scope::ScopeRef,
     utils::{stringref::StringRef, structs::SourceRange},
 };
 
@@ -14,21 +15,22 @@ pub struct AstUsingNamespaceDecl {
     #[AstChildSlice]
     attrs: &'static [&'static AstAttribute],
     #[AstChildSlice]
-    scope: &'static [AstNestedNameSpecifier],
+    nestedNameSpecifier: &'static [AstNestedNameSpecifier],
 }
 
 impl AstUsingNamespaceDecl {
     pub fn new(
         sourceRange: SourceRange,
+        scope: ScopeRef,
         name: StringRef,
         attrs: &'static [&'static AstAttribute],
-        scope: &'static [AstNestedNameSpecifier],
+        nestedNameSpecifier: &'static [AstNestedNameSpecifier],
     ) -> Self {
         Self {
-            base: BaseDecl::new(sourceRange),
+            base: BaseDecl::new(sourceRange, scope),
             name,
             attrs,
-            scope,
+            nestedNameSpecifier,
         }
     }
 }

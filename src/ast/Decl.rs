@@ -2,14 +2,17 @@ use bitflags::bitflags;
 use deriveMacros::CommonAst;
 use enum_dispatch::enum_dispatch;
 
-use crate::ast::{
-    Attribute::AstAttribute,
-    Decl::{
-        Asm::AstAsmDecl, Empty::AstEmptyDecl, Enum::AstCustomRustyCppEnum,
-        Namespace::AstNamespaceDecl, UsingNamespace::AstUsingNamespaceDecl,
-    },
-};
 use crate::utils::structs::SourceRange;
+use crate::{
+    ast::{
+        Attribute::AstAttribute,
+        Decl::{
+            Asm::AstAsmDecl, Empty::AstEmptyDecl, Enum::AstCustomRustyCppEnum,
+            Namespace::AstNamespaceDecl, UsingNamespace::AstUsingNamespaceDecl,
+        },
+    },
+    sema::scope::ScopeRef,
+};
 
 pub mod Asm;
 pub mod Empty;
@@ -27,13 +30,15 @@ bitflags! {
 
 pub struct BaseDecl {
     pub sourceRange: SourceRange,
+    pub scope: ScopeRef,
     pub flags: MyFlags,
 }
 
 impl BaseDecl {
-    pub fn new(sourceRange: SourceRange) -> Self {
+    pub fn new(sourceRange: SourceRange, scope: ScopeRef) -> Self {
         Self {
             sourceRange,
+            scope,
             flags: MyFlags::empty(),
         }
     }

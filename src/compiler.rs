@@ -383,6 +383,8 @@ impl Compiler {
                         ast,
                     );
                     res.1.extend(errors);
+                    drop(parser);
+
                     dependencyIterator.markDone(tu, 1);
                     compileUnit
                         .finishedStage

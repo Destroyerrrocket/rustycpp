@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use crate::{
     ast::{
         Attribute::{self, AstAttribute, CXXAttribute},
@@ -9,7 +7,7 @@ use crate::{
         },
         NestedNameSpecifier::AstNestedNameSpecifier,
     },
-    sema::scope::{Child, RefCellScope, Scope, ScopeKind},
+    sema::scope::{Child, RefCellScope, Scope, ScopeKind, ScopeRef},
     utils::{
         stringref::StringRef,
         structs::{CompileError, CompileMsgImpl, SourceRange},
@@ -40,7 +38,11 @@ impl Parser {
                 continue;
             }
         }
-        let ast = AstEmptyDecl::new(location, self.alloc().alloc_slice_copy(attr));
+        let ast = AstEmptyDecl::new(
+            location,
+            self.currentScope.clone(),
+            self.alloc().alloc_slice_copy(attr),
+        );
         vec![self.alloc().alloc(AstDecl::AstEmptyDecl(ast))]
     }
 
@@ -53,7 +55,12 @@ impl Parser {
         location: SourceRange,
         asm: StringRef,
     ) -> Vec<&'static AstDecl> {
-        let astAsm = AstAsmDecl::new(location, self.alloc().alloc_slice_copy(attr), asm);
+        let astAsm = AstAsmDecl::new(
+            location,
+            self.currentScope.clone(),
+            self.alloc().alloc_slice_copy(attr),
+            asm,
+        );
         vec![self.alloc().alloc(AstDecl::AstAsmDecl(astAsm))]
     }
 
@@ -67,16 +74,20 @@ impl Parser {
         name: StringRef,
         locationName: SourceRange,
     ) -> Vec<&'static AstDecl> {
-        let astNamespace = AstNamespaceDecl::new(
-            locationName,
-            self.alloc().alloc_slice_copy(attr),
-            name,
-            isInline,
-            self.currentScope.clone(),
-        );
+        let createNamespace = |parser: &mut Self, scope: ScopeRef| {
+            let astNamespace = AstNamespaceDecl::new(
+                locationName,
+                scope,
+                parser.alloc().alloc_slice_copy(attr),
+                name,
+                isInline,
+                parser.currentScope.clone(),
+            );
 
-        let astNamespaceDecl = self.alloc().alloc(AstDecl::AstNamespaceDecl(astNamespace));
-
+            return parser
+                .alloc()
+                .alloc(AstDecl::AstNamespaceDecl(astNamespace));
+        };
         let possibleOriginalDecl = self.namespaceExtendableLookup(name);
 
         if let Some(originalDecl) = possibleOriginalDecl {
@@ -87,20 +98,22 @@ impl Parser {
                     &locationName,
                 ));
             }
+            let astNamespaceDecl = createNamespace(self, originalDecl.clone());
             causingDecl.addExtension(astNamespaceDecl);
             self.currentScope = originalDecl.clone();
-        } else {
-            let enumScope =
-                Scope::new(ScopeKind::NAMESPACE | ScopeKind::CAN_DECL, astNamespaceDecl);
-
-            if isInline {
-                self.currentScope.addInlinedChild(name, enumScope.clone());
-            } else {
-                self.currentScope
-                    .addChild(name, Child::Scope(enumScope.clone()));
-            }
-            self.currentScope = enumScope;
+            return vec![astNamespaceDecl];
         }
+        let enumScope = Scope::new(ScopeKind::NAMESPACE | ScopeKind::CAN_DECL);
+        let astNamespaceDecl = createNamespace(self, enumScope.clone());
+        enumScope.setCausingDecl(astNamespaceDecl);
+
+        if isInline {
+            self.currentScope.addInlinedChild(name, enumScope.clone());
+        } else {
+            self.currentScope
+                .addChild(name, Child::Scope(enumScope.clone()));
+        }
+        self.currentScope = enumScope;
         vec![astNamespaceDecl]
     }
 
@@ -129,10 +142,13 @@ impl Parser {
         attr: &[&'static AstAttribute],
     ) -> Vec<&'static AstDecl> {
         let attrs = self.alloc().alloc_slice_copy(attr);
-        let astEnum = AstCustomRustyCppEnum::new(location, name, attrs);
-        let astEnumDecl = self.alloc().alloc(AstDecl::AstCustomRustyCppEnum(astEnum));
 
-        let enumScope = Scope::new(ScopeKind::ENUM | ScopeKind::CAN_DECL, astEnumDecl);
+        let enumScope = Scope::new(ScopeKind::ENUM | ScopeKind::CAN_DECL);
+
+        let astEnum = AstCustomRustyCppEnum::new(location, enumScope.clone(), name, attrs);
+        let astEnumDecl = self.alloc().alloc(AstDecl::AstCustomRustyCppEnum(astEnum));
+        enumScope.setCausingDecl(astEnumDecl);
+
         self.currentScope
             .addChild(name, Child::Scope(enumScope.clone()));
         self.currentScope = enumScope;
@@ -149,7 +165,7 @@ impl Parser {
         location: SourceRange,
         attr: &[&'static AstAttribute],
         nestedNameSpecifier: &'static [AstNestedNameSpecifier],
-        scope: Option<&Rc<RefCell<Scope>>>,
+        scope: Option<&ScopeRef>,
     ) -> Vec<&'static AstDecl> {
         let onlyNamespacesFunc = |child: &Child| match child {
             Child::Decl(_) => false,
@@ -176,12 +192,13 @@ impl Parser {
                 };
             result
         };
-        self.currentScope.addUsingNamespace(result);
+        self.currentScope.addUsingNamespace(result.clone());
         let attr = self.alloc().alloc_slice_copy(attr);
         vec![self
             .alloc()
             .alloc(AstDecl::AstUsingNamespaceDecl(AstUsingNamespaceDecl::new(
                 location,
+                result,
                 name,
                 attr,
                 nestedNameSpecifier,

@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell};
 
 use deriveMacros::{CommonAst, DeclAst};
 
@@ -7,7 +7,7 @@ use crate::{
         Attribute::AstAttribute,
         Decl::{AstDecl, BaseDecl},
     },
-    sema::scope::Scope,
+    sema::scope::{ ScopeRef},
     utils::{stringref::StringRef, structs::SourceRange},
 };
 
@@ -37,19 +37,20 @@ pub struct AstNamespaceDecl {
      * despite the fact that this namespace semantically has the "Special"
      * namespace as its parent.
      */
-    parentScope: Rc<RefCell<Scope>>,
+    parentScope: ScopeRef,
 }
 
 impl AstNamespaceDecl {
     pub fn new(
         sourceRange: SourceRange,
+        myScope: ScopeRef,
         attrs: &'static [&'static AstAttribute],
         name: StringRef,
         isInline: bool,
-        parentScope: Rc<RefCell<Scope>>,
+        parentScope: ScopeRef,
     ) -> Self {
         Self {
-            base: BaseDecl::new(sourceRange),
+            base: BaseDecl::new(sourceRange, myScope),
             name,
             isInline,
             nextExtension: RefCell::new(None),
@@ -81,7 +82,11 @@ impl AstNamespaceDecl {
         self.isInline
     }
 
-    pub fn parentScope(&self) -> &Rc<RefCell<Scope>> {
+    pub fn parentScope(&self) -> &ScopeRef {
         &self.parentScope
+    }
+
+    pub fn scope(&self) -> &ScopeRef {
+        &self.base.scope
     }
 }

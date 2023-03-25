@@ -1,7 +1,5 @@
-use std::{cell::RefCell, rc::Rc};
-
 use crate::{
-    sema::scope::{Child, Scope, ScopeKind},
+    sema::scope::{Child, Scope, ScopeKind, ScopeRef},
     utils::stringref::StringRef,
 };
 
@@ -133,7 +131,7 @@ impl Parser {
     #[allow(clippy::needless_lifetimes)]
     fn getAllUsingNamespaceInlined<'scope>(
         scope: &'scope Scope,
-    ) -> impl Iterator<Item = Rc<RefCell<Scope>>> + 'scope {
+    ) -> impl Iterator<Item = ScopeRef> + 'scope {
         scope
             .usingNamespaces
             .iter()
@@ -165,7 +163,7 @@ impl Parser {
 
     pub fn qualifiedNameLookupWithCond(
         name: StringRef,
-        scope: &Rc<RefCell<Scope>>,
+        scope: &ScopeRef,
         cond: fn(&Child) -> bool,
     ) -> Vec<Child> {
         // Namespace qualified?
@@ -179,7 +177,7 @@ impl Parser {
         todo!("Qualified name lookup not implemented for this scope.")
     }
 
-    pub fn qualifiedNameLookup(name: StringRef, scope: &Rc<RefCell<Scope>>) -> Vec<Child> {
+    pub fn qualifiedNameLookup(name: StringRef, scope: &ScopeRef) -> Vec<Child> {
         Self::qualifiedNameLookupWithCond(name, scope, |_: &Child| true)
     }
 
@@ -191,7 +189,7 @@ impl Parser {
      * identifier is introduced as a namespace-name into the declarative region in which the named-namespace-definition
      * appears
      */
-    pub fn namespaceExtendableLookup(&self, name: StringRef) -> Option<Rc<RefCell<Scope>>> {
+    pub fn namespaceExtendableLookup(&self, name: StringRef) -> Option<ScopeRef> {
         let currentScope = self.currentScope.borrow();
         let candidate = Self::getChildsAndOnlyInlined(name, &currentScope, |scope: &Child| {
             let Child::Scope(scope) = scope else {return false;};

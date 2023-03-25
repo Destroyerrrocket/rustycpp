@@ -1,9 +1,9 @@
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
 
 use deriveMacros::CommonAst;
 
 use crate::{
-    sema::scope::Scope,
+    sema::scope::ScopeRef,
     utils::{stringref::StringRef, structs::SourceRange},
 };
 
@@ -43,7 +43,7 @@ pub struct AstNestedNameSpecifier {
     /// The range of the nestedNameSpecifier. Does not include the ::
     pub sourceRange: SourceRange,
     /// Evaluated scope of the nestedNameSpecifier.
-    pub scope: RefCell<Option<Rc<RefCell<Scope>>>>,
+    pub scope: RefCell<Option<ScopeRef>>,
 }
 
 impl AstNestedNameSpecifier {
@@ -54,7 +54,7 @@ impl AstNestedNameSpecifier {
             scope: RefCell::new(None),
         }
     }
-    pub fn new_scoped(kind: Kind, sourceRange: SourceRange, scope: Rc<RefCell<Scope>>) -> Self {
+    pub fn new_scoped(kind: Kind, sourceRange: SourceRange, scope: ScopeRef) -> Self {
         Self {
             kind,
             sourceRange,
@@ -69,7 +69,7 @@ impl AstNestedNameSpecifier {
         }
     }
 
-    pub fn setScope(&self, scope: Rc<RefCell<Scope>>) {
+    pub fn setScope(&self, scope: ScopeRef) {
         self.scope.borrow_mut().replace(scope);
     }
 }

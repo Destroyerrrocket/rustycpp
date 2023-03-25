@@ -2,6 +2,7 @@ use deriveMacros::{CommonAst, DeclAst};
 
 use crate::{
     ast::{Attribute::AstAttribute, Decl::BaseDecl},
+    sema::scope::ScopeRef,
     utils::structs::SourceRange,
 };
 
@@ -14,9 +15,13 @@ pub struct AstEmptyDecl {
 }
 
 impl AstEmptyDecl {
-    pub fn new(sourceRange: SourceRange, attrs: &'static [&'static AstAttribute]) -> Self {
+    pub fn new(
+        sourceRange: SourceRange,
+        scope: ScopeRef,
+        attrs: &'static [&'static AstAttribute],
+    ) -> Self {
         Self {
-            base: BaseDecl::new(sourceRange),
+            base: BaseDecl::new(sourceRange, scope),
             attrs,
         }
     }
