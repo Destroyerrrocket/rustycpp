@@ -79,20 +79,6 @@ impl BufferedLexer {
         false
     }
 
-    pub fn consumeTokenIf(
-        &mut self,
-        lexpos: &mut StateBufferedLexer,
-        cond: fn(&Token) -> bool,
-    ) -> bool {
-        if !self.reachedEnd(lexpos)
-            && cond(&self.internalGetUnchecked(lexpos.currentToken).tokPos.tok)
-        {
-            lexpos.currentToken += 1;
-            return true;
-        }
-        false
-    }
-
     pub fn get(&mut self, lexpos: &mut StateBufferedLexer) -> Option<&'static FileTokPos<Token>> {
         if self.reachedEnd(lexpos) {
             return None;

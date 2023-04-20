@@ -146,7 +146,7 @@ impl PreLexer {
             }
             let splice_point_slash_nl = self.spliceNewlinePosition();
             (kind, idx) = self.getNextTokenNonSpliced();
-            if splice_point_slash_nl.contains(&idx)
+            if splice_point_slash_nl.is_some_and(|c| c == idx)
                 || (matches!(kind, Some(PreToken::Unknown(_))) && splice_point_slash_nl.is_some())
             {
                 self.applySplice(splice_point_slash_nl.unwrap());
@@ -156,7 +156,7 @@ impl PreLexer {
                 self.current = prevCurrent;
                 splices = 0;
                 let splice_point_slash_nl = self.spliceNewlinePosition();
-                if splice_point_slash_nl.contains(&idx) {
+                if splice_point_slash_nl.is_some_and(|c| c == idx) {
                     self.applySplice(splice_point_slash_nl.unwrap());
                     splices += 1;
                 }

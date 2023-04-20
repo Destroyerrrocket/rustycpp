@@ -2,12 +2,16 @@ use std::rc::Rc;
 
 use deriveMacros::CommonAst;
 
-use crate::{ast::Decl::AstDecl, utils::unsafeallocator::UnsafeAllocator};
+use crate::{
+    ast::{Decl::AstDecl, Type::TypeDict},
+    utils::unsafeallocator::UnsafeAllocator,
+};
 
 #[derive(Clone, CommonAst)]
 pub struct AstTu {
     #[AstChildSlice]
     globalDecl: &'static [&'static AstDecl],
+    typeDict: TypeDict,
     alloc: Rc<UnsafeAllocator>,
 }
 
@@ -15,8 +19,16 @@ pub struct AstTu {
 unsafe impl Send for AstTu {}
 
 impl AstTu {
-    pub fn new(alloc: Rc<UnsafeAllocator>, global: &[&'static AstDecl]) -> Self {
+    pub fn new(
+        alloc: Rc<UnsafeAllocator>,
+        typeDict: TypeDict,
+        global: &[&'static AstDecl],
+    ) -> Self {
         let globalDecl = alloc.alloc().alloc_slice_clone(global);
-        Self { globalDecl, alloc }
+        Self {
+            globalDecl,
+            typeDict,
+            alloc,
+        }
     }
 }

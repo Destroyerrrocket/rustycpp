@@ -238,7 +238,7 @@ pub struct CompileNote;
 #[doc(hidden)]
 impl CompileMsgImpl for CompileNote {
     fn getKind() -> CompileMsgKind {
-        CompileMsgKind::Warning
+        CompileMsgKind::Notice
     }
 }
 
@@ -274,12 +274,12 @@ impl<T: Copy + Debug> Copy for FileTokPos<T> {}
 
 impl<T: Clone + Debug> FileTokPos<T> {
     /// New token
-    pub fn new(file: u64, tok: TokPos<T>) -> Self {
+    pub const fn new(file: u64, tok: TokPos<T>) -> Self {
         Self { file, tokPos: tok }
     }
 
     /// New meta token. It is not located anywhere
-    pub fn new_meta(tok: T) -> Self {
+    pub const fn new_meta(tok: T) -> Self {
         Self {
             file: 0,
             tokPos: TokPos {
@@ -292,7 +292,7 @@ impl<T: Clone + Debug> FileTokPos<T> {
 
     /// New meta token. It copies its location from another token, even if it is
     /// not located anywhere. Allows for better diagnostics
-    pub fn new_meta_c<U: Clone + Debug>(tok: T, other: &FileTokPos<U>) -> Self {
+    pub const fn new_meta_c<U: Clone + Debug>(tok: T, other: &FileTokPos<U>) -> Self {
         Self {
             file: other.file,
             tokPos: TokPos {
@@ -318,25 +318,7 @@ pub struct SourceRange {
 }
 
 impl SourceRange {
-    pub fn new(startfile: u64, endfile: u64, start: usize, end: usize) -> Self {
-        Self {
-            startfile,
-            endfile,
-            start,
-            end,
-        }
-    }
-
-    pub fn newSingle(file: u64, start: usize, end: usize) -> Self {
-        Self {
-            startfile: file,
-            endfile: file,
-            start,
-            end,
-        }
-    }
-
-    pub fn newSingleTok<T: Clone + Debug>(tok: &FileTokPos<T>) -> Self {
+    pub const fn newSingleTok<T: Clone + Debug>(tok: &FileTokPos<T>) -> Self {
         Self {
             startfile: tok.file,
             endfile: tok.file,
@@ -345,7 +327,7 @@ impl SourceRange {
         }
     }
 
-    pub fn newDoubleTok<T: Clone + Debug>(t1: &FileTokPos<T>, t2: &FileTokPos<T>) -> Self {
+    pub const fn newDoubleTok<T: Clone + Debug>(t1: &FileTokPos<T>, t2: &FileTokPos<T>) -> Self {
         Self {
             startfile: t1.file,
             endfile: t2.file,

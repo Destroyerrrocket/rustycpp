@@ -40,10 +40,6 @@ pub enum PreTokenIf {
     Bitand,
     Bitor,
     Compl,
-    AndEq,
-    OrEq,
-    XorEq,
-    NotEq,
 }
 
 impl std::fmt::Display for PreTokenIf {
@@ -85,10 +81,6 @@ impl std::fmt::Display for PreTokenIf {
             Self::Bitand => write!(f, "bitand"),
             Self::Bitor => write!(f, "bitor"),
             Self::Compl => write!(f, "compl"),
-            Self::AndEq => write!(f, "and_eq"),
-            Self::OrEq => write!(f, "or_eq"),
-            Self::XorEq => write!(f, "xor_eq"),
-            Self::NotEq => write!(f, "not_eq"),
         }
     }
 }

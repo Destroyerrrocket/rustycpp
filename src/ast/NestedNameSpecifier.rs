@@ -47,7 +47,7 @@ pub struct AstNestedNameSpecifier {
 }
 
 impl AstNestedNameSpecifier {
-    pub fn new(kind: Kind, sourceRange: SourceRange) -> Self {
+    pub const fn new(kind: Kind, sourceRange: SourceRange) -> Self {
         Self {
             kind,
             sourceRange,

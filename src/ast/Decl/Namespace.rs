@@ -1,4 +1,4 @@
-use std::{cell::RefCell};
+use std::cell::RefCell;
 
 use deriveMacros::{CommonAst, DeclAst};
 
@@ -7,7 +7,7 @@ use crate::{
         Attribute::AstAttribute,
         Decl::{AstDecl, BaseDecl},
     },
-    sema::scope::{ ScopeRef},
+    sema::scope::ScopeRef,
     utils::{stringref::StringRef, structs::SourceRange},
 };
 
@@ -78,15 +78,15 @@ impl AstNamespaceDecl {
         *contents = newContents;
     }
 
-    pub fn isInline(&self) -> bool {
+    pub const fn isInline(&self) -> bool {
         self.isInline
     }
 
-    pub fn parentScope(&self) -> &ScopeRef {
+    pub const fn parentScope(&self) -> &ScopeRef {
         &self.parentScope
     }
 
-    pub fn scope(&self) -> &ScopeRef {
+    pub const fn scope(&self) -> &ScopeRef {
         &self.base.scope
     }
 }

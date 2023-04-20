@@ -224,7 +224,7 @@ impl Preprocessor {
                 _ => {
                     // We have a replacement macro, but the first token is not whitespace. This is technically an extension
                     rlt = vec![tokLParen];
-                    ntok.collect_into(&mut rlt);
+                    rlt.extend(ntok);
                 }
             }
 

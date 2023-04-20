@@ -9,7 +9,7 @@ use crate::{
 pub struct AstRustyCppUnused;
 
 impl AstRustyCppUnused {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 }

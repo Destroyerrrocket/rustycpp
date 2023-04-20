@@ -3,17 +3,6 @@
 //! Please see the readme at [github](https://github.com/Destroyerrrocket/rustycpp)
 //! for more information.
 //!
-#![feature(
-    option_result_contains,
-    iter_collect_into,
-    is_some_and,
-    unwrap_infallible,
-    new_uninit,
-    map_try_insert,
-    map_many_mut,
-    get_mut_unchecked,
-    core_intrinsics
-)]
 #![warn(
     missing_docs,
     clippy::all,
@@ -28,12 +17,7 @@
     clippy::empty_structs_with_brackets,
     //clippy::missing_docs_in_private_items
 )]
-#![allow(
-    non_snake_case,
-    dead_code,
-    clippy::missing_const_for_fn, // Bugged
-    clippy::multiple_crate_versions, // Bugged
-)]
+#![allow(clippy::multiple_crate_versions, non_snake_case)]
 
 mod ast;
 mod compiler;

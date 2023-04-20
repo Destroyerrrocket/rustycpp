@@ -25,7 +25,7 @@ pub struct Lexer {
 
 impl Lexer {
     /// Creates a new `Lexer`
-    pub fn new(preprocessor: Preprocessor) -> Self {
+    pub const fn new(preprocessor: Preprocessor) -> Self {
         Self {
             preprocessor,
             lastTokens: VecDeque::new(),

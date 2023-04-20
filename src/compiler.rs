@@ -26,8 +26,11 @@ use crate::utils::filemap::FileMap;
 use crate::utils::parameters::Parameters;
 use crate::utils::statecompileunit::StateCompileUnit;
 use crate::utils::structs::{CompileMsg, CompileMsgKind};
-use crate::{ast::Tu::AstTu, utils::statecompileunit::StageCompileUnit};
+use crate::{utils::statecompileunit::StageCompileUnit};
 use crate::{lex::lexer::Lexer, utils::moduleHeaderAtomicLexingList::ModuleHeaderAtomicLexingList};
+
+#[cfg(test)]
+use crate::ast::Tu::AstTu;
 
 /// Path to a translation unit
 pub type TranslationUnit = u64;
@@ -339,6 +342,7 @@ impl Compiler {
     }
 
     /// Parses the resulting tokens to an AST and returns it
+    #[cfg(test)]
     pub fn parsed_tree_test(
         &mut self,
         result: &mut (HashMap<String, AstTu>, Vec<CompileMsg>),

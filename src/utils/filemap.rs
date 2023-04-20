@@ -73,23 +73,6 @@ impl<'a> FileMap {
         self.getPath(path).unwrap()
     }
 
-    /// Get file. If not present, open it. On error, crash.
-    pub fn getAddFileRef(&'a mut self, path: &str) -> Arc<CompileFile> {
-        let index = &self.getPath(path).unwrap();
-        #[allow(clippy::option_if_let_else)]
-        if let Some(file) = self.files.get_mut(*index as usize) {
-            match file {
-                Either::CompileFile(file) => file.clone(),
-                Either::NotReadFile(file) => {
-                    let fileRef = file.take().unwrap();
-                    self.internalReadFile(*index, &fileRef)
-                }
-            }
-        } else {
-            panic!("File not found in visited files, but somehow we have an index that matches this path? Internal bug, pls report. Path: {path}");
-        }
-    }
-
     /// Can it access the file? Does not need to be previously opened.
     pub fn hasFileAccess(&mut self, path: &str) -> bool {
         let absolutePath = self.getPath(path);
@@ -120,16 +103,8 @@ impl<'a> FileMap {
         }
     }
 
-    /// Get paths of current files opened.
-    pub fn getCurrPaths(&self) -> Vec<u64> {
-        let mut paths = Vec::new();
-        for path in 1..self.files.len() {
-            paths.push(path as u64);
-        }
-        paths
-    }
-
     /// Add a fake test file. Intened for testing.
+    #[cfg(test)]
     pub fn addTestFile(&mut self, path: String, content: &str) {
         self.resolvedPaths
             .insert(path.clone(), self.files.len() as u64);

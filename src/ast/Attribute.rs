@@ -59,7 +59,7 @@ impl super::common::CommonAst for AstAttribute {
 }
 
 impl AstAttribute {
-    pub fn new(kind: Kind, sourceRange: SourceRange) -> Self {
+    pub const fn new(kind: Kind, sourceRange: SourceRange) -> Self {
         Self { kind, sourceRange }
     }
 }

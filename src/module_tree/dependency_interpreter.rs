@@ -1,5 +1,5 @@
 //! Interprets dependency instructions to create the nodes of the tree
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::slice;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
@@ -221,9 +221,9 @@ pub fn generateNode(
             }
         },
     );
-
-    match genNewArcTable.try_insert(moduleDecl, Arc::new((moduleDecl, tu))) {
-        Ok(res) => {
+    match genNewArcTable.entry(moduleDecl) {
+        Entry::Vacant(res) => {
+            let res = res.insert(Arc::new((moduleDecl, tu)));
             if err.is_empty() {
                 Ok((
                     Node {
@@ -239,11 +239,13 @@ pub fn generateNode(
                 Err(err)
             }
         }
-        Err(error) => {
+        Entry::Occupied(error) => {
             err.push(CompileError::onFile(
                 format!(
                     "Module {} already defined. Conflicting files: {} and {}",
-                    moduleDecl, error.value.1, tu
+                    moduleDecl,
+                    error.get().1,
+                    tu
                 ),
                 tu,
             ));

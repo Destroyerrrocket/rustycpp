@@ -22,7 +22,10 @@ pub struct AstRustyCppCheckSymbolMatchTag {
 }
 
 impl AstRustyCppCheckSymbolMatchTag {
-    pub fn new_unqualified(numberOrFound: FileTokPos<Token>, name: FileTokPos<Token>) -> Self {
+    pub const fn new_unqualified(
+        numberOrFound: FileTokPos<Token>,
+        name: FileTokPos<Token>,
+    ) -> Self {
         Self {
             numberOrFound,
             qualifiedNameSpecifier: None,
@@ -30,7 +33,7 @@ impl AstRustyCppCheckSymbolMatchTag {
         }
     }
 
-    pub fn new_qualified(
+    pub const fn new_qualified(
         numberOrFound: FileTokPos<Token>,
         name: FileTokPos<Token>,
         qualified: &'static [AstNestedNameSpecifier],

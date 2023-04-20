@@ -22,7 +22,7 @@ pub enum ParseMatched {
 }
 
 impl ParseMatched {
-    fn matched(&self) -> bool {
+    const fn matched(&self) -> bool {
         match self {
             Self::Matched => true,
             Self::NotMatched => false,

@@ -12,7 +12,7 @@ pub struct AstRustyCppTagDecl {
 }
 
 impl AstRustyCppTagDecl {
-    pub fn new(number: FileTokPos<Token>) -> Self {
+    pub const fn new(number: FileTokPos<Token>) -> Self {
         Self { number }
     }
 }

@@ -32,7 +32,11 @@ impl Parser {
             }
         }
 
-        return AstTu::new(self.alloc.clone(), totalDeclarations.as_slice());
+        return AstTu::new(
+            self.alloc.clone(),
+            self.typeDict.clone(),
+            totalDeclarations.as_slice(),
+        );
     }
 
     /**

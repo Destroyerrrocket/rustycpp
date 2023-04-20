@@ -131,13 +131,7 @@ impl Preprocessor {
             }
             result.append(&mut preproTokie);
         } else {
-            expandData
-                .namedArgs
-                .get(&a.tokPos.tok)
-                .unwrap()
-                .clone()
-                .into_iter()
-                .collect_into(&mut result);
+            result.extend(expandData.namedArgs.get(&a.tokPos.tok).unwrap().clone());
             if expandData.namedArgs.get(&a.tokPos.tok).unwrap().is_empty() {
                 FileTokPos::new_meta_c(PreToken::ValidNop, a);
             }

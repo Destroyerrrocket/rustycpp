@@ -1,7 +1,12 @@
 use std::rc::Rc;
+use strum::IntoEnumIterator;
 
 use crate::{
-    ast::{common::CommonAst, Tu::AstTu},
+    ast::{
+        common::CommonAst,
+        Tu::AstTu,
+        Type::{Builtin::BuiltinTypeKind, TypeDict},
+    },
     compiler::TranslationUnit,
     lex::token::Token,
     sema::scope::{Scope, ScopeRef},
@@ -47,6 +52,7 @@ pub struct Parser {
     errors: Vec<CompileMsg>,
 
     alloc: Rc<UnsafeAllocator>,
+    typeDict: TypeDict,
 }
 
 impl Parser {
@@ -57,6 +63,7 @@ impl Parser {
     ) -> Self {
         let (lexer, lexerStart) = BufferedLexer::new(tokens);
         let rootScope = Scope::new_root();
+        let alloc = Rc::new(UnsafeAllocator::new());
         Self {
             lexer,
             lexerStart,
@@ -67,11 +74,19 @@ impl Parser {
             currentScope: rootScope,
             errors: vec![],
 
-            alloc: Rc::new(UnsafeAllocator::new()),
+            typeDict: TypeDict::new(alloc.clone()),
+            alloc,
+        }
+    }
+
+    fn initBuiltinTypes(&mut self) {
+        for ty in BuiltinTypeKind::iter() {
+            self.typeDict.addBuiltinType(ty);
         }
     }
 
     pub fn parse(&mut self) -> (AstTu, Vec<CompileMsg>) {
+        self.initBuiltinTypes();
         let tu = self.parseTu();
         (tu, self.errors.clone())
     }

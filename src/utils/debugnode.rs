@@ -43,14 +43,6 @@ impl DebugNode {
         self
     }
 
-    pub fn add_children_from(mut self, children: &[Self]) -> Self {
-        self.children.reserve(children.len());
-        for c in children {
-            self.children.push(c.clone());
-        }
-        self
-    }
-
     fn colorizedTag(result: &mut String, tag: &str) {
         colored::control::set_override(true);
         #[allow(clippy::unnecessary_to_owned)]

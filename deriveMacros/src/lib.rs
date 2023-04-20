@@ -36,7 +36,7 @@ fn impl_AstToString(_: &Field, fieldName: TokenStream) -> TokenStream {
 
 fn impl_AstChild(_: &Field, fieldName: TokenStream) -> TokenStream {
     quote! {
-        add_child(&self.#fieldName.getDebugNode())
+        add_child(self.#fieldName.getDebugNode())
     }
 }
 
@@ -177,6 +177,46 @@ fn impl_DeclAst(ast: &DeriveInput) -> TokenStream {
     }
 }
 
+fn impl_TypeAst(ast: &DeriveInput) -> TokenStream {
+    let name = &ast.ident;
+    let generics = &ast.generics.to_token_stream();
+    match &ast.data {
+        syn::Data::Struct(structData) => {
+            let fields = &structData.fields;
+            match fields {
+                syn::Fields::Named(fields) => {
+                    let field = fields
+                        .named
+                        .iter()
+                        .find(|field| field.ty.to_token_stream().to_string() == "BaseType");
+                    if let Some(field) = field {
+                        let field = field.ident.to_token_stream();
+                        quote! {
+                            impl #generics crate::ast::Type::TypeAst for #name {
+                                fn getBaseType(&self) -> &crate::ast::Type::BaseType {
+                                    return &self.#field;
+                                }
+                            }
+                        }
+                    } else {
+                        quote!(compile_error!(
+                            "Can't implement TypeAst as there is no field with type BaseType"
+                        ))
+                    }
+                }
+                syn::Fields::Unnamed(_) => {
+                    quote!(compile_error!("Can't derive TypeAst for tuple struct"))
+                }
+                syn::Fields::Unit => {
+                    quote!(compile_error!("Can't derive TypeAst for unit struct"))
+                }
+            }
+        }
+        syn::Data::Enum(_) => quote!(compile_error!("Can't derive TypeAst for enum")),
+        syn::Data::Union(_) => quote!(compile_error!("Can't derive TypeAst for union")),
+    }
+}
+
 #[proc_macro_derive(
     CommonAst,
     attributes(AstChild, AstChildSlice, AstChildSliceCell, AstToString)
@@ -196,4 +236,13 @@ pub fn DeclAst_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream
     let ast = syn::parse(input).unwrap();
     // Build the trait implementation
     finalResult!(release impl_DeclAst(&ast))
+}
+
+#[proc_macro_derive(TypeAst, attributes())]
+pub fn TypeAst_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // Construct a representation of Rust code as a syntax tree
+    // that we can manipulate
+    let ast = syn::parse(input).unwrap();
+    // Build the trait implementation
+    finalResult!(release impl_TypeAst(&ast))
 }
