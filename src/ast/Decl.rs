@@ -60,3 +60,5 @@ pub enum AstDecl {
     AstCustomRustyCppEnum,
     AstUsingNamespaceDecl,
 }
+
+pub struct DeclStruct;

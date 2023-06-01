@@ -33,6 +33,10 @@ atomic_enum = "0.2.0"
 strum = "0.24.1"
 strum_macros = "0.24.3"
 
+[build-dependencies]
+enum_dispatch = "0.3.11"
+
+
 [profile.release]
 lto = true
 codegen-units = 1
