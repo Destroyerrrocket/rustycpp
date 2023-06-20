@@ -1,20 +1,24 @@
 use deriveMacros::CommonAst;
 
 use crate::{
-    ast::Attribute::{AtrributeKindInfo, CXXAttribute, CXXAttributeKindInfo},
+    ast::{
+        common::AstAttributeCXXRustyCppUnusedStructNode,
+        Attribute::{AtrributeKindInfo, CXXAttribute, CXXAttributeKindInfo},
+    },
     utils::stringref::ToStringRef,
+    Base, Parent,
 };
 
 #[derive(Clone, Copy, CommonAst)]
-pub struct AstRustyCppUnused;
+pub struct AstAttributeCXXRustyCppUnusedStruct;
 
-impl AstRustyCppUnused {
+impl AstAttributeCXXRustyCppUnusedStruct {
     pub const fn new() -> Self {
         Self {}
     }
 }
 
-impl CXXAttributeKindInfo for AstRustyCppUnused {
+impl CXXAttributeKindInfo for AstAttributeCXXRustyCppUnusedStruct {
     fn getAtrributeKindInfo() -> AtrributeKindInfo {
         AtrributeKindInfo {
             name: "unused".to_StringRef(),
@@ -25,4 +29,13 @@ impl CXXAttributeKindInfo for AstRustyCppUnused {
     }
 }
 
-impl CXXAttribute for AstRustyCppUnused {}
+impl CXXAttribute for &AstAttributeCXXRustyCppUnusedStructNode {}
+
+impl AstAttributeCXXRustyCppUnusedStructNode {
+    pub fn new() -> Self {
+        Self {
+            parent: <Parent!()>::new(),
+            base: <Base!()>::new(),
+        }
+    }
+}

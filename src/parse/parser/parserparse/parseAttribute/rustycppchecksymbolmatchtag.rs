@@ -1,5 +1,5 @@
+use crate::ast::common::*;
 use crate::{
-    ast::{self, Attribute::rustyCppCheckSymbolMatchTag::AstRustyCppCheckSymbolMatchTag},
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,
     utils::structs::{CompileError, CompileMsgImpl, FileTokPos},
@@ -14,7 +14,7 @@ impl Parser {
         &mut self,
         name: &FileTokPos<Token>,
         contents: Option<StateBufferedLexer>,
-    ) -> Option<ast::Attribute::AstCXXAttribute> {
+    ) -> Option<AstAttributeCXX> {
         let lexpos = &mut contents.unwrap();
         let Some(number) = self
             .lexer()
@@ -47,17 +47,22 @@ impl Parser {
             };
 
         Some(
-            ast::Attribute::AstCXXAttribute::AstRustyCppCheckSymbolMatchTag(
-                if matchedQualified.matched() {
-                    AstRustyCppCheckSymbolMatchTag::new_qualified(
+            if matchedQualified.matched() {
+                self.alloc().alloc(
+                    AstAttributeCXXRustyCppCheckSymbolMatchTagStructNode::new_qualified(
                         *number,
                         *name,
                         qualifiedNameSpecifier,
-                    )
-                } else {
-                    AstRustyCppCheckSymbolMatchTag::new_unqualified(*number, *name)
-                },
-            ),
+                    ),
+                )
+            } else {
+                self.alloc().alloc(
+                    AstAttributeCXXRustyCppCheckSymbolMatchTagStructNode::new_unqualified(
+                        *number, *name,
+                    ),
+                )
+            }
+            .into(),
         )
     }
 }

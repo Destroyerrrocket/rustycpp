@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Attribute::AstAttribute, Decl::AstDecl},
+    ast::common::*,
     fileTokPosMatchArm,
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,
@@ -32,8 +32,8 @@ impl Parser {
     pub fn parseNamespaceDeclaration(
         &mut self,
         lexpos: &mut StateBufferedLexer,
-        attr: &[&'static AstAttribute],
-    ) -> Vec<&'static AstDecl> {
+        attr: &[AstAttribute],
+    ) -> Vec<AstDecl> {
         self.actWrongAttributeLocation(attr);
 
         let isInline = self.lexer().consumeTokenIfEq(lexpos, Token::Inline);
@@ -47,7 +47,7 @@ impl Parser {
             ));
         }
 
-        let attr = self.parseAttributes(lexpos);
+        let attr: Vec<AstAttribute> = self.parseAttributes(lexpos);
         let name = self.lexer().getConsumeToken(lexpos);
         match name {
             Some(fileTokPosMatchArm!(Token::Identifier(nameStr))) => {
@@ -65,7 +65,7 @@ impl Parser {
                         // named-namespace-definition
                         let astNamespace = self.actOnStartNamedNamespaceDefinition(
                             isInline,
-                            &attr,
+                            attr.as_slice(),
                             *nameStr,
                             SourceRange::newSingleTok(name.unwrap()),
                         );
@@ -94,7 +94,7 @@ impl Parser {
      * namespace-body:
      *   declaration-seq [opt]
      */
-    pub fn parseNamespaceBody(&mut self, lexpos: &mut StateBufferedLexer) -> Vec<&'static AstDecl> {
+    pub fn parseNamespaceBody(&mut self, lexpos: &mut StateBufferedLexer) -> Vec<AstDecl> {
         if !self.lexer().consumeTokenIfEq(lexpos, Token::LBrace) {
             let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);
             self.errors.push(CompileError::fromPreTo(
@@ -112,7 +112,7 @@ impl Parser {
                     break;
                 }
                 let attrs = self.parseAttributes(lexpos);
-                let newDecls = self.parseDeclaration(lexpos, &attrs);
+                let newDecls = self.parseDeclaration(lexpos, attrs.as_slice());
                 decls.extend(newDecls);
             } else {
                 let posErr = self.lexer().getWithOffsetSaturating(lexpos, -1);

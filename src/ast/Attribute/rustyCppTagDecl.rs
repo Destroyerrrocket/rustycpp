@@ -1,23 +1,27 @@
 use deriveMacros::CommonAst;
 
 use crate::{
-    ast::Attribute::{AtrributeKindInfo, CXXAttribute, CXXAttributeKindInfo},
+    ast::{
+        common::AstAttributeCXXRustyCppTagDeclStructNode,
+        Attribute::{AtrributeKindInfo, CXXAttribute, CXXAttributeKindInfo},
+    },
     lex::token::Token,
     utils::{stringref::ToStringRef, structs::FileTokPos},
+    Base, Parent,
 };
 
 #[derive(Clone, Copy, CommonAst)]
-pub struct AstRustyCppTagDecl {
+pub struct AstAttributeCXXRustyCppTagDeclStruct {
     pub number: FileTokPos<Token>,
 }
 
-impl AstRustyCppTagDecl {
+impl AstAttributeCXXRustyCppTagDeclStruct {
     pub const fn new(number: FileTokPos<Token>) -> Self {
         Self { number }
     }
 }
 
-impl CXXAttributeKindInfo for AstRustyCppTagDecl {
+impl CXXAttributeKindInfo for AstAttributeCXXRustyCppTagDeclStruct {
     fn getAtrributeKindInfo() -> AtrributeKindInfo {
         AtrributeKindInfo {
             name: "tagDecl".to_StringRef(),
@@ -28,4 +32,17 @@ impl CXXAttributeKindInfo for AstRustyCppTagDecl {
     }
 }
 
-impl CXXAttribute for AstRustyCppTagDecl {}
+impl CXXAttribute for &AstAttributeCXXRustyCppTagDeclStructNode {}
+
+impl AstAttributeCXXRustyCppTagDeclStructNode {
+    pub fn getNumber(&self) -> FileTokPos<Token> {
+        self.base.number
+    }
+
+    pub fn new(number: FileTokPos<Token>) -> Self {
+        Self {
+            parent: <Parent!()>::new(),
+            base: <Base!()>::new(number),
+        }
+    }
+}

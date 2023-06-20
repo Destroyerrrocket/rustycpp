@@ -1,29 +1,23 @@
+use crate::Base;
+use crate::Parent;
+use deriveMacros::CommonAst;
 use std::cell::RefCell;
 
-use deriveMacros::{CommonAst, DeclAst};
-
 use crate::{
-    ast::{
-        Attribute::AstAttribute,
-        Decl::{AstDecl, BaseDecl},
-    },
+    ast::common::*,
     sema::scope::ScopeRef,
     utils::{stringref::StringRef, structs::SourceRange},
 };
 
-#[derive(CommonAst, DeclAst)]
-pub struct AstNamespaceDecl {
-    base: BaseDecl,
+#[derive(CommonAst)]
+pub struct AstDeclNamespaceStruct {
     #[AstToString]
     name: StringRef,
     #[AstToString]
     isInline: bool,
-    nextExtension: RefCell<Option<&'static AstNamespaceDecl>>,
-    #[DeclAttributes]
-    #[AstChildSlice]
-    attrs: &'static [&'static AstAttribute],
+    nextExtension: RefCell<Option<&'static AstDeclNamespaceStructNode>>,
     #[AstChildSliceCell]
-    contents: RefCell<&'static [&'static AstDecl]>,
+    contents: RefCell<&'static [AstDecl]>,
     /**
      * This is always the parent scope of where this was declared. This is
      * specially useful when dealing with namespaces that extend other
@@ -40,40 +34,28 @@ pub struct AstNamespaceDecl {
     parentScope: ScopeRef,
 }
 
-impl AstNamespaceDecl {
-    pub fn new(
-        sourceRange: SourceRange,
-        myScope: ScopeRef,
-        attrs: &'static [&'static AstAttribute],
-        name: StringRef,
-        isInline: bool,
-        parentScope: ScopeRef,
-    ) -> Self {
+impl AstDeclNamespaceStruct {
+    pub fn new(name: StringRef, isInline: bool, parentScope: ScopeRef) -> Self {
         Self {
-            base: BaseDecl::new(sourceRange, myScope),
             name,
             isInline,
             nextExtension: RefCell::new(None),
-            attrs,
             contents: RefCell::default(),
             parentScope,
         }
     }
 
-    pub fn addExtension(&self, extension: &'static AstDecl) {
+    pub fn addExtension(&self, extension: &'static AstDeclNamespaceStructNode) {
         // This is like a single-linked-list, basically.
         let mut next = self.nextExtension.borrow_mut();
         while next.is_some() {
-            next = next.unwrap().nextExtension.borrow_mut();
+            next = next.unwrap().base.nextExtension.borrow_mut();
         }
-        let AstDecl::AstNamespaceDecl(extension) = extension else {
-            panic!("Expected an AstNamespaceDecl");
-        };
 
         *next = Some(extension);
     }
 
-    pub fn setContents(&self, newContents: &'static [&'static AstDecl]) {
+    pub fn setContents(&self, newContents: &'static [AstDecl]) {
         let mut contents = self.contents.borrow_mut();
         *contents = newContents;
     }
@@ -85,8 +67,36 @@ impl AstNamespaceDecl {
     pub const fn parentScope(&self) -> &ScopeRef {
         &self.parentScope
     }
+}
 
-    pub const fn scope(&self) -> &ScopeRef {
-        &self.base.scope
+impl AstDeclNamespaceStructNode {
+    pub fn new(
+        sourceRange: SourceRange,
+        scope: ScopeRef,
+        attrs: &'static [AstAttribute],
+        name: StringRef,
+        isInline: bool,
+        parentScope: ScopeRef,
+    ) -> Self {
+        Self {
+            parent: <Parent!()>::new(sourceRange, scope, attrs),
+            base: <Base!()>::new(name, isInline, parentScope),
+        }
+    }
+
+    pub fn addExtension(&self, extension: &'static AstDeclNamespaceStructNode) {
+        self.base.addExtension(extension);
+    }
+
+    pub fn setContents(&self, newContents: &'static [AstDecl]) {
+        self.base.setContents(newContents);
+    }
+
+    pub const fn isInline(&self) -> bool {
+        self.base.isInline()
+    }
+
+    pub const fn parentScope(&self) -> &ScopeRef {
+        self.base.parentScope()
     }
 }

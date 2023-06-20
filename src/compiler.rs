@@ -24,13 +24,10 @@ use crate::preprocessor::Preprocessor;
 use crate::utils::compilerstate::CompilerState;
 use crate::utils::filemap::FileMap;
 use crate::utils::parameters::Parameters;
+use crate::utils::statecompileunit::StageCompileUnit;
 use crate::utils::statecompileunit::StateCompileUnit;
 use crate::utils::structs::{CompileMsg, CompileMsgKind};
-use crate::{utils::statecompileunit::StageCompileUnit};
 use crate::{lex::lexer::Lexer, utils::moduleHeaderAtomicLexingList::ModuleHeaderAtomicLexingList};
-
-#[cfg(test)]
-use crate::ast::Tu::AstTu;
 
 /// Path to a translation unit
 pub type TranslationUnit = u64;
@@ -345,7 +342,7 @@ impl Compiler {
     #[cfg(test)]
     pub fn parsed_tree_test(
         &mut self,
-        result: &mut (HashMap<String, AstTu>, Vec<CompileMsg>),
+        result: &mut (HashMap<String, crate::ast::common::AstTu>, Vec<CompileMsg>),
     ) -> CompilerState {
         let tree = match self.lexAllCompileModule() {
             Ok(tree) => tree,

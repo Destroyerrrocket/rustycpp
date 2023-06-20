@@ -1,36 +1,41 @@
-use deriveMacros::{CommonAst, DeclAst};
+use crate::ast::common::AstAttribute;
+use crate::ast::common::AstDeclUsingNamespaceStructNode;
+use crate::sema::scope::ScopeRef;
+use crate::utils::structs::SourceRange;
+use crate::Base;
+use crate::Parent;
+use deriveMacros::CommonAst;
 
-use crate::{
-    ast::{Attribute::AstAttribute, Decl::BaseDecl, NestedNameSpecifier::AstNestedNameSpecifier},
-    sema::scope::ScopeRef,
-    utils::{stringref::StringRef, structs::SourceRange},
-};
+use crate::{ast::NestedNameSpecifier::AstNestedNameSpecifier, utils::stringref::StringRef};
 
-#[derive(CommonAst, DeclAst)]
-pub struct AstUsingNamespaceDecl {
-    base: BaseDecl,
+#[derive(CommonAst)]
+pub struct AstDeclUsingNamespaceStruct {
     #[AstToString]
     name: StringRef,
-    #[DeclAttributes]
-    #[AstChildSlice]
-    attrs: &'static [&'static AstAttribute],
     #[AstChildSlice]
     nestedNameSpecifier: &'static [AstNestedNameSpecifier],
 }
 
-impl AstUsingNamespaceDecl {
+impl AstDeclUsingNamespaceStruct {
+    pub fn new(name: StringRef, nestedNameSpecifier: &'static [AstNestedNameSpecifier]) -> Self {
+        Self {
+            name,
+            nestedNameSpecifier,
+        }
+    }
+}
+
+impl AstDeclUsingNamespaceStructNode {
     pub fn new(
         sourceRange: SourceRange,
         scope: ScopeRef,
+        attrs: &'static [AstAttribute],
         name: StringRef,
-        attrs: &'static [&'static AstAttribute],
         nestedNameSpecifier: &'static [AstNestedNameSpecifier],
     ) -> Self {
         Self {
-            base: BaseDecl::new(sourceRange, scope),
-            name,
-            attrs,
-            nestedNameSpecifier,
+            parent: <Parent!()>::new(sourceRange, scope, attrs),
+            base: <Base!()>::new(name, nestedNameSpecifier),
         }
     }
 }

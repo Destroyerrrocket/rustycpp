@@ -1,32 +1,33 @@
-use deriveMacros::{CommonAst, DeclAst};
+use crate::ast::common::AstAttribute;
+use crate::Parent;
+use crate::{ast::common::AstDeclAsmStructNode, utils::structs::SourceRange};
+use crate::{sema::scope::ScopeRef, Base};
+use deriveMacros::CommonAst;
 
-use crate::{
-    ast::{Attribute::AstAttribute, Decl::BaseDecl},
-    sema::scope::ScopeRef,
-    utils::{stringref::StringRef, structs::SourceRange},
-};
+use crate::utils::stringref::StringRef;
 
-#[derive(CommonAst, DeclAst)]
-pub struct AstAsmDecl {
-    base: BaseDecl,
-    #[DeclAttributes]
-    #[AstChildSlice]
-    attrs: &'static [&'static AstAttribute],
+#[derive(CommonAst)]
+pub struct AstDeclAsmStruct {
     #[AstToString]
     asm: StringRef,
 }
 
-impl AstAsmDecl {
+impl AstDeclAsmStruct {
+    pub fn new(asm: StringRef) -> Self {
+        Self { asm }
+    }
+}
+
+impl AstDeclAsmStructNode {
     pub fn new(
         sourceRange: SourceRange,
         scope: ScopeRef,
-        attrs: &'static [&'static AstAttribute],
+        attrs: &'static [AstAttribute],
         asm: StringRef,
     ) -> Self {
         Self {
-            base: BaseDecl::new(sourceRange, scope),
-            attrs,
-            asm,
+            parent: <Parent!()>::new(sourceRange, scope, attrs),
+            base: <Base!()>::new(asm),
         }
     }
 }

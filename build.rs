@@ -32,7 +32,7 @@ fn main() {
 
     fs::write(dest_path, generateFile(&getAST())).unwrap();
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=build/ClassRepresentation.rs");
-    println!("cargo:rerun-if-changed=build/AST.rs");
-    println!("cargo:rerun-if-changed=build/ASTNodes.rs");
+    println!("cargo:rerun-if-changed=codegen/ClassRepresentation.rs");
+    println!("cargo:rerun-if-changed=codegen/AST.rs");
+    println!("cargo:rerun-if-changed=codegen/ASTNodes.rs");
 }

@@ -1,5 +1,4 @@
-use crate::ast;
-use crate::ast::Attribute::rustyCppTagDecl::AstRustyCppTagDecl;
+use crate::ast::common::*;
 use crate::parse::bufferedLexer::StateBufferedLexer;
 use crate::{
     lex::token::Token,
@@ -15,7 +14,7 @@ impl Parser {
         &mut self,
         name: &FileTokPos<Token>,
         contents: Option<StateBufferedLexer>,
-    ) -> Option<ast::Attribute::AstCXXAttribute> {
+    ) -> Option<AstAttributeCXX> {
         let lexpos = &mut contents.unwrap();
         let Some(number) = self
             .lexer()
@@ -27,8 +26,10 @@ impl Parser {
                 return None;
             };
 
-        Some(ast::Attribute::AstCXXAttribute::AstRustyCppTagDecl(
-            AstRustyCppTagDecl::new(*number),
-        ))
+        Some(
+            self.alloc()
+                .alloc(AstAttributeCXXRustyCppTagDeclStructNode::new(*number))
+                .into(),
+        )
     }
 }

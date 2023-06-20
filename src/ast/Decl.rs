@@ -1,18 +1,14 @@
+use std::fmt::Display;
+
+use crate::{
+    ast::common::{AstAttribute, AstDeclStructNode},
+    Parent,
+};
 use bitflags::bitflags;
 use deriveMacros::CommonAst;
-use enum_dispatch::enum_dispatch;
 
+use crate::sema::scope::ScopeRef;
 use crate::utils::structs::SourceRange;
-use crate::{
-    ast::{
-        Attribute::AstAttribute,
-        Decl::{
-            Asm::AstAsmDecl, Empty::AstEmptyDecl, Enum::AstCustomRustyCppEnum,
-            Namespace::AstNamespaceDecl, UsingNamespace::AstUsingNamespaceDecl,
-        },
-    },
-    sema::scope::ScopeRef,
-};
 
 pub mod Asm;
 pub mod Empty;
@@ -28,37 +24,71 @@ bitflags! {
     }
 }
 
-pub struct BaseDecl {
-    pub sourceRange: SourceRange,
-    pub scope: ScopeRef,
-    pub flags: MyFlags,
+impl Display for MyFlags {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut written = false;
+        if self.contains(Self::INVALID_DECL) {
+            write!(f, "INVALID_DECL")?;
+            written = true;
+        }
+        if self.contains(Self::USED) {
+            if written {
+                write!(f, " | ")?;
+            }
+            write!(f, "USED")?;
+        }
+        if self.contains(Self::REFERENCED) {
+            if written {
+                write!(f, " | ")?;
+            }
+            write!(f, "REFERENCED")?;
+        }
+        Ok(())
+    }
 }
 
-impl BaseDecl {
-    pub fn new(sourceRange: SourceRange, scope: ScopeRef) -> Self {
+#[derive(CommonAst)]
+pub struct AstDeclStruct {
+    pub sourceRange: SourceRange,
+    pub scope: ScopeRef,
+    #[AstToString]
+    pub flags: MyFlags,
+    #[AstChildSlice]
+    pub attrs: &'static [AstAttribute],
+}
+
+impl AstDeclStruct {
+    pub fn new(sourceRange: SourceRange, scope: ScopeRef, attrs: &'static [AstAttribute]) -> Self {
         Self {
             sourceRange,
             scope,
             flags: MyFlags::empty(),
+            attrs,
         }
     }
 }
 
-#[enum_dispatch]
-pub trait DeclAst {
-    fn getBaseDecl(&self) -> &BaseDecl;
-    fn getAttributes(&self) -> Option<&'static [&'static AstAttribute]>;
-}
+impl AstDeclStructNode {
+    pub fn new(sourceRange: SourceRange, scope: ScopeRef, attrs: &'static [AstAttribute]) -> Self {
+        Self {
+            parent: <Parent!()>::new(),
+            base: AstDeclStruct::new(sourceRange, scope, attrs),
+        }
+    }
 
-#[allow(clippy::enum_variant_names)]
-#[derive(CommonAst)]
-#[enum_dispatch(DeclAst)]
-pub enum AstDecl {
-    AstEmptyDecl,
-    AstAsmDecl,
-    AstNamespaceDecl,
-    AstCustomRustyCppEnum,
-    AstUsingNamespaceDecl,
-}
+    pub fn getAttributes(&self) -> &'static [AstAttribute] {
+        self.base.attrs
+    }
 
-pub struct DeclStruct;
+    pub fn getScope(&self) -> ScopeRef {
+        self.base.scope.clone()
+    }
+
+    pub fn getSourceRange(&self) -> SourceRange {
+        self.base.sourceRange
+    }
+
+    pub fn getFlags(&self) -> MyFlags {
+        self.base.flags
+    }
+}

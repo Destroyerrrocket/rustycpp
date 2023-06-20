@@ -1,5 +1,6 @@
-use crate::ast;
-use crate::{ast::Attribute::rustyCppUnused::AstRustyCppUnused, utils::structs::FileTokPos};
+use crate::ast::common::AstAttributeCXX;
+use crate::ast::common::AstAttributeCXXRustyCppUnusedStructNode;
+use crate::utils::structs::FileTokPos;
 use crate::{lex::token::Token, parse::bufferedLexer::StateBufferedLexer};
 
 use super::super::super::Parser;
@@ -11,9 +12,10 @@ impl Parser {
         &mut self,
         _: &FileTokPos<Token>,
         _: Option<StateBufferedLexer>,
-    ) -> Option<ast::Attribute::AstCXXAttribute> {
-        Some(ast::Attribute::AstCXXAttribute::AstRustyCppUnused(
-            AstRustyCppUnused::new(),
+    ) -> Option<AstAttributeCXX> {
+        Some(AstAttributeCXX::AstAttributeCXXRustyCppUnused(
+            self.alloc()
+                .alloc(AstAttributeCXXRustyCppUnusedStructNode::new()),
         ))
     }
 }

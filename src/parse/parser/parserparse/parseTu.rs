@@ -1,9 +1,8 @@
-use crate::ast::Decl::AstDecl;
 use crate::utils::structs::FileTokPos;
 use crate::utils::structs::SourceRange;
 use crate::utils::structs::TokPos;
 use crate::{
-    ast::Tu::AstTu,
+    ast::common::*,
     fileTokPosMatchArm,
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,
@@ -32,11 +31,14 @@ impl Parser {
             }
         }
 
-        return AstTu::new(
-            self.alloc.clone(),
-            self.typeDict.clone(),
-            totalDeclarations.as_slice(),
-        );
+        return self
+            .alloc()
+            .alloc(AstTuStructNode::new(
+                self.alloc.clone(),
+                self.typeDict.clone(),
+                totalDeclarations.as_slice(),
+            ))
+            .into();
     }
 
     /**
@@ -55,7 +57,7 @@ impl Parser {
      * module-declaration:
      *   export-keyword [opt] module-keyword module-name module-partition [opt] attribute-specifier-seq [opt];
      */
-    fn parseTopLevelDecl(&mut self, lexpos: &mut StateBufferedLexer) -> Vec<&'static AstDecl> {
+    fn parseTopLevelDecl(&mut self, lexpos: &mut StateBufferedLexer) -> Vec<AstDecl> {
         let tok1 = self.lexer().get(lexpos).unwrap();
         match tok1 {
             fileTokPosMatchArm!(Token::Module) => {

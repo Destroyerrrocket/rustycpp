@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Attribute::AstAttribute, Decl::AstDecl},
+    ast::common::*,
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,
     utils::structs::{CompileError, CompileMsgImpl, CompileWarning, SourceRange},
@@ -15,8 +15,8 @@ impl Parser {
     pub fn parseAsmDeclaration(
         &mut self,
         lexpos: &mut StateBufferedLexer,
-        attr: &[&'static AstAttribute],
-    ) -> Vec<&'static AstDecl> {
+        attr: &[AstAttribute],
+    ) -> Vec<AstDecl> {
         let startlexpos = *lexpos;
         let startedAsm = self.lexer().consumeTokenIfEq(lexpos, Token::Asm);
         assert!(startedAsm);

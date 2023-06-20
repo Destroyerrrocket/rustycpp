@@ -4,7 +4,7 @@ use ::function_name::named;
 use test_log::test;
 
 use crate::{
-    ast::Tu::AstTu,
+    ast::common::AstTu,
     compiler::Compiler,
     utils::{
         compilerstate::CompilerState,

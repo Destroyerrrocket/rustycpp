@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Attribute::AstAttribute, Decl::AstDecl},
+    ast::common::*,
     fileTokPosMatchArm,
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,
@@ -15,8 +15,8 @@ impl Parser {
     pub fn parseCustom__rustycpp__Decl(
         &mut self,
         lexpos: &mut StateBufferedLexer,
-        attr: &[&'static AstAttribute],
-    ) -> Vec<&'static AstDecl> {
+        attr: &[AstAttribute],
+    ) -> Vec<AstDecl> {
         let Some(rustyCpp) = self
             .lexer()
             .getConsumeTokenIfEq(lexpos, Token::__rustycpp__) else
@@ -60,8 +60,8 @@ impl Parser {
         &mut self,
         lexpos: &mut StateBufferedLexer,
         rustyCpp: &FileTokPos<Token>,
-        attr: &[&'static AstAttribute],
-    ) -> Vec<&'static AstDecl> {
+        attr: &[AstAttribute],
+    ) -> Vec<AstDecl> {
         let Some(enumTok) = self.lexer().getConsumeTokenIfEq(lexpos, Token::Enum) else {
             self.errors.push(CompileError::fromPreTo(
                 "Expected \"enum\" inside '__rustycpp__' keyword.",

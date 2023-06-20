@@ -1,3 +1,7 @@
+use crate::{
+    ast::{common::*, Type::Builtin::BuiltinTypeKind},
+    Parent,
+};
 use std::{fmt::Display, rc::Rc};
 
 use bitflags::bitflags;
@@ -5,12 +9,21 @@ use bumpalo::Bump;
 use deriveMacros::CommonAst;
 use enum_dispatch::enum_dispatch;
 
-use crate::{
-    ast::Type::Builtin::{BuiltinType, BuiltinTypeKind},
-    utils::unsafeallocator::UnsafeAllocator,
-};
+use crate::utils::unsafeallocator::UnsafeAllocator;
 
 pub mod Builtin;
+
+#[derive(Clone, Copy, CommonAst)]
+pub struct AstTypeStruct;
+
+impl AstTypeStructNode {
+    pub fn new() -> Self {
+        Self {
+            parent: <Parent!()>::new(),
+            base: AstTypeStruct,
+        }
+    }
+}
 
 pub struct BaseType {
     pub size: u64,
@@ -24,23 +37,9 @@ impl BaseType {
 }
 
 #[enum_dispatch]
-pub trait TypeAst: Display {
-    fn getBaseType(&self) -> &BaseType;
-}
-
-#[allow(clippy::enum_variant_names)]
-#[derive(CommonAst)]
-#[enum_dispatch(TypeAst)]
-pub enum AstType {
-    BuiltinType,
-}
-
-impl Display for AstType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::BuiltinType(t) => t.fmt(f),
-        }
-    }
+pub trait TypeAst {
+    fn getBaseType(&self) -> BaseType;
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
 }
 
 bitflags! {
@@ -69,14 +68,18 @@ impl Display for QualTypeFlags {
 #[derive(CommonAst)]
 struct QualType {
     #[AstChild]
-    unqualType: &'static AstType,
+    unqualType: AstType,
     #[AstToString]
     flags: QualTypeFlags,
 }
 
 impl TypeAst for QualType {
-    fn getBaseType(&self) -> &BaseType {
+    fn getBaseType(&self) -> BaseType {
         self.unqualType.getBaseType()
+    }
+
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}", self.flags, self.unqualType)
     }
 }
 
@@ -87,11 +90,11 @@ impl Display for QualType {
 }
 
 impl QualType {
-    pub const fn new(unqualType: &'static AstType, flags: QualTypeFlags) -> Self {
+    pub const fn new(unqualType: AstType, flags: QualTypeFlags) -> Self {
         Self { unqualType, flags }
     }
 
-    pub const fn getUnqualType(&self) -> &'static AstType {
+    pub const fn getUnqualType(&self) -> AstType {
         self.unqualType
     }
 
@@ -158,7 +161,7 @@ impl QualType {
 
 #[derive(Clone)]
 pub struct TypeDict {
-    builtinTypes: Vec<&'static AstType>,
+    builtinTypes: Vec<AstTypeBuiltin>,
     alloc: Rc<UnsafeAllocator>,
 }
 
@@ -176,13 +179,12 @@ impl TypeDict {
 
     pub fn addBuiltinType(&mut self, t: BuiltinTypeKind) {
         assert!(t as usize == self.builtinTypes.len());
-        let ty = self
-            .alloc()
-            .alloc(AstType::BuiltinType(BuiltinType::new(t)));
-        self.builtinTypes.push(ty);
+        let ty: &'static AstTypeBuiltinStructNode =
+            self.alloc().alloc(AstTypeBuiltinStructNode::new(t));
+        self.builtinTypes.push(ty.into());
     }
 
-    pub fn getBuiltinType(&self, t: BuiltinTypeKind) -> &'static AstType {
+    pub fn getBuiltinType(&self, t: BuiltinTypeKind) -> AstTypeBuiltin {
         self.builtinTypes[t as usize]
     }
 }

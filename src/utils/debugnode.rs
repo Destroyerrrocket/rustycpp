@@ -91,6 +91,10 @@ impl DebugNode {
             + (depth as usize) * 5
             + 1 // nl
     }
+
+    pub fn getChilds(&self) -> &Vec<DebugNode> {
+        &self.children
+    }
 }
 
 impl ToString for DebugNode {

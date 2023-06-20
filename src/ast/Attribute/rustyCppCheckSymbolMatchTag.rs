@@ -1,12 +1,17 @@
+use crate::ast::common::{
+    AstAttribute, AstAttributeCXX, AstAttributeCXXRustyCppCheckSymbolMatchTagStructNode,
+    AstAttributeCXXRustyCppTagDecl,
+};
+use crate::Base;
+use crate::Parent;
 use crate::{
-    ast::{Attribute::AstAttribute, Decl::DeclAst, NestedNameSpecifier::AstNestedNameSpecifier},
-    parse::parser::Parser,
+    ast::NestedNameSpecifier::AstNestedNameSpecifier, parse::parser::Parser,
     utils::structs::CompileNote,
 };
 use deriveMacros::CommonAst;
 
 use crate::{
-    ast::Attribute::{AstCXXAttribute, AtrributeKindInfo, CXXAttribute, CXXAttributeKindInfo},
+    ast::Attribute::{AtrributeKindInfo, CXXAttribute, CXXAttributeKindInfo},
     lex::token::Token,
     utils::{
         stringref::ToStringRef,
@@ -15,13 +20,13 @@ use crate::{
 };
 
 #[derive(Clone, Copy, CommonAst)]
-pub struct AstRustyCppCheckSymbolMatchTag {
+pub struct AstAttributeCXXRustyCppCheckSymbolMatchTagStruct {
     pub numberOrFound: FileTokPos<Token>,
     pub qualifiedNameSpecifier: Option<&'static [AstNestedNameSpecifier]>,
     pub name: FileTokPos<Token>,
 }
 
-impl AstRustyCppCheckSymbolMatchTag {
+impl AstAttributeCXXRustyCppCheckSymbolMatchTagStruct {
     pub const fn new_unqualified(
         numberOrFound: FileTokPos<Token>,
         name: FileTokPos<Token>,
@@ -46,7 +51,27 @@ impl AstRustyCppCheckSymbolMatchTag {
     }
 }
 
-impl CXXAttributeKindInfo for AstRustyCppCheckSymbolMatchTag {
+impl AstAttributeCXXRustyCppCheckSymbolMatchTagStructNode {
+    pub fn new_unqualified(numberOrFound: FileTokPos<Token>, name: FileTokPos<Token>) -> Self {
+        Self {
+            parent: <Parent!()>::new(),
+            base: <Base!()>::new_unqualified(numberOrFound, name),
+        }
+    }
+
+    pub fn new_qualified(
+        numberOrFound: FileTokPos<Token>,
+        name: FileTokPos<Token>,
+        qualified: &'static [AstNestedNameSpecifier],
+    ) -> Self {
+        Self {
+            parent: <Parent!()>::new(),
+            base: <Base!()>::new_qualified(numberOrFound, name, qualified),
+        }
+    }
+}
+
+impl CXXAttributeKindInfo for AstAttributeCXXRustyCppCheckSymbolMatchTagStruct {
     fn getAtrributeKindInfo() -> AtrributeKindInfo {
         AtrributeKindInfo {
             name: "checkSymbolMatchTag".to_StringRef(),
@@ -57,7 +82,7 @@ impl CXXAttributeKindInfo for AstRustyCppCheckSymbolMatchTag {
     }
 }
 
-impl CXXAttribute for AstRustyCppCheckSymbolMatchTag {
+impl CXXAttribute for AstAttributeCXXRustyCppCheckSymbolMatchTagStruct {
     fn actOnAttributeDecl(&self, parser: &mut crate::parse::parser::Parser) {
         let Token::Identifier(name) = self.name.tokPos.tok else {
             unimplemented!()
@@ -99,21 +124,22 @@ impl CXXAttribute for AstRustyCppCheckSymbolMatchTag {
             unreachable!();
         };
 
-        let found = decls[0].getDecl().getAttributes().and_then(|attrs| {
-            attrs.iter().find_map(|attr: &&AstAttribute| {
-                let crate::ast::Attribute::Kind::Cxx(attrmembers) = attr.kind else {
+        let found = decls[0]
+            .getDecl()
+            .getAttributes()
+            .iter()
+            .find_map(|attr: &AstAttribute| {
+                let crate::ast::Attribute::Kind::Cxx(attrmembers) = attr.getKind() else {
                     return None;
                 };
-                attrmembers.iter().find_map(|attrmember: &AstCXXAttribute| {
-                    let AstCXXAttribute::AstRustyCppTagDecl(tag) = attrmember else {
-                            return None;
-                        };
-                    Some(tag)
-                })
-            })
-        });
+                attrmembers.iter().find_map(
+                    |attrmember: &AstAttributeCXX| -> Option<AstAttributeCXXRustyCppTagDecl> {
+                        AstAttributeCXXRustyCppTagDecl::try_from(attrmember).ok()
+                    },
+                )
+            });
         if let Some(tag) = found {
-            let Token::IntegerLiteral(othernumber, _) = tag.number.tokPos.tok else {
+            let Token::IntegerLiteral(othernumber, _) = tag.getNumber().tokPos.tok else {
                 unreachable!();
             };
             if number != othernumber {
@@ -123,7 +149,7 @@ impl CXXAttribute for AstRustyCppCheckSymbolMatchTag {
                 ));
                 parser.addError(CompileNote::fromSourceRange(
                     "Found decl is this one",
-                    &decls[0].getDecl().getBaseDecl().sourceRange,
+                    &decls[0].getDecl().getSourceRange(),
                 ));
             }
         } else {
@@ -133,8 +159,14 @@ impl CXXAttribute for AstRustyCppCheckSymbolMatchTag {
             ));
             parser.addError(CompileNote::fromSourceRange(
                 "Found decl is this one",
-                &decls[0].getDecl().getBaseDecl().sourceRange,
+                &&decls[0].getDecl().getSourceRange(),
             ));
         }
+    }
+}
+
+impl CXXAttribute for &AstAttributeCXXRustyCppCheckSymbolMatchTagStructNode {
+    fn actOnAttributeDecl(&self, parser: &mut crate::parse::parser::Parser) {
+        self.base.actOnAttributeDecl(parser);
     }
 }

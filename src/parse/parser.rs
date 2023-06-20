@@ -3,8 +3,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     ast::{
-        common::CommonAst,
-        Tu::AstTu,
+        common::{AstTu, CommonAst},
         Type::{Builtin::BuiltinTypeKind, TypeDict},
     },
     compiler::TranslationUnit,

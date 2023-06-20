@@ -1,32 +1,35 @@
-use deriveMacros::{CommonAst, DeclAst};
+use crate::ast::common::AstAttribute;
+use crate::ast::common::AstDeclCustomRustyCppEnumStructNode;
+use crate::sema::scope::ScopeRef;
+use crate::utils::structs::SourceRange;
+use crate::Base;
+use crate::Parent;
+use deriveMacros::CommonAst;
 
-use crate::{
-    ast::{Attribute::AstAttribute, Decl::BaseDecl},
-    sema::scope::ScopeRef,
-    utils::{stringref::StringRef, structs::SourceRange},
-};
+use crate::utils::stringref::StringRef;
 
-#[derive(CommonAst, DeclAst)]
-pub struct AstCustomRustyCppEnum {
-    base: BaseDecl,
+#[derive(CommonAst)]
+pub struct AstDeclCustomRustyCppEnumStruct {
     #[AstToString]
     name: StringRef,
-    #[DeclAttributes]
-    #[AstChildSlice]
-    attrs: &'static [&'static AstAttribute],
 }
 
-impl AstCustomRustyCppEnum {
+impl AstDeclCustomRustyCppEnumStruct {
+    pub fn new(name: StringRef) -> Self {
+        Self { name }
+    }
+}
+
+impl AstDeclCustomRustyCppEnumStructNode {
     pub fn new(
         sourceRange: SourceRange,
         scope: ScopeRef,
+        attrs: &'static [AstAttribute],
         name: StringRef,
-        attrs: &'static [&'static AstAttribute],
     ) -> Self {
         Self {
-            base: BaseDecl::new(sourceRange, scope),
-            name,
-            attrs,
+            parent: <Parent!()>::new(sourceRange, scope, attrs),
+            base: <Base!()>::new(name),
         }
     }
 }

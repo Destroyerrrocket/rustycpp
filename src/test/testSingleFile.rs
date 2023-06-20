@@ -4,7 +4,7 @@ use ::function_name::named;
 use test_log::test;
 
 use crate::{
-    ast::{common::CommonAst, Tu::AstTu},
+    ast::{common::AstTu, common::CommonAst},
     compiler::Compiler,
     debugTree,
     utils::{
@@ -186,12 +186,17 @@ fn parsesAttrDecl() {
     assert_tree_eq!(
         ast.getDebugNode(),
         debugTree!(
-            "AstTu",
+            "AstTuStruct",
             (
-                "AstEmptyDecl",
-                ("AstAttribute", ("AstRustyCppUnused")),
-                ("AstAttribute", ("AstRustyCppUnused"), ("AstRustyCppUnused")),
-                ("AstAttribute", ("AstRustyCppUnused")),
+                "AstDeclEmptyStruct",
+                ("flags: "),
+                ("AstAttribute", ("AstAttributeCXXRustyCppUnusedStruct")),
+                (
+                    "AstAttribute",
+                    ("AstAttributeCXXRustyCppUnusedStruct"),
+                    ("AstAttributeCXXRustyCppUnusedStruct")
+                ),
+                ("AstAttribute", ("AstAttributeCXXRustyCppUnusedStruct")),
                 ("AstAttribute")
             )
         )
@@ -219,25 +224,48 @@ fn parsesNamedNamespace() {
     assert_tree_eq!(
         ast.getDebugNode(),
         debugTree!(
-            "AstTu",
+            "AstTuStruct",
             (
-                "AstNamespaceDecl",
+                "AstDeclNamespaceStruct",
                 ("name: A"),
                 ("isInline: false"),
                 (
-                    "AstNamespaceDecl",
+                    "AstDeclNamespaceStruct",
                     ("name: B"),
                     ("isInline: false"),
-                    ("AstNamespaceDecl", ("name: C"), ("isInline: false"))
+                    (
+                        "AstDeclNamespaceStruct",
+                        ("name: C"),
+                        ("isInline: false"),
+                        ("flags: ")
+                    ),
+                    ("flags: ")
                 ),
-                ("AstNamespaceDecl", ("name: C"), ("isInline: false")),
-                ("AstNamespaceDecl", ("name: C"), ("isInline: false")),
                 (
-                    "AstNamespaceDecl",
+                    "AstDeclNamespaceStruct",
+                    ("name: C"),
+                    ("isInline: false"),
+                    ("flags: ")
+                ),
+                (
+                    "AstDeclNamespaceStruct",
+                    ("name: C"),
+                    ("isInline: false"),
+                    ("flags: ")
+                ),
+                (
+                    "AstDeclNamespaceStruct",
                     ("name: D"),
                     ("isInline: true"),
-                    ("AstNamespaceDecl", ("name: E"), ("isInline: false"))
-                )
+                    (
+                        "AstDeclNamespaceStruct",
+                        ("name: E"),
+                        ("isInline: false"),
+                        ("flags: ")
+                    ),
+                    ("flags: ")
+                ),
+                ("flags: ")
             )
         )
     );
@@ -257,12 +285,13 @@ fn parses__rustycpp__enum() {
     assert_tree_eq!(
         ast.getDebugNode(),
         debugTree!(
-            "AstTu",
+            "AstTuStruct",
             (
-                "AstNamespaceDecl",
+                "AstDeclNamespaceStruct",
                 ("name: Enum"),
                 ("isInline: false"),
-                ("AstCustomRustyCppEnum", ("name: A"))
+                ("AstDeclCustomRustyCppEnumStruct", ("name: A"), ("flags: ")),
+                ("flags: ")
             )
         )
     );
@@ -281,7 +310,10 @@ fn parsesAsmDecl() {
     let ast = testSuccessfulFile!();
     assert_tree_eq!(
         ast.getDebugNode(),
-        debugTree!("AstTu", ("AstAsmDecl", ("asm: hello")))
+        debugTree!(
+            "AstTuStruct",
+            ("AstDeclAsmStruct", ("asm: hello"), ("flags: "))
+        )
     );
 }
 

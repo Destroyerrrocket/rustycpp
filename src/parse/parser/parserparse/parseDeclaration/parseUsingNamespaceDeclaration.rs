@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Attribute::AstAttribute, Decl::AstDecl},
+    ast::common::*,
     lex::token::Token,
     parse::{bufferedLexer::StateBufferedLexer, parser::parserparse::ParseMatched},
     utils::structs::{CompileError, CompileMsgImpl, SourceRange},
@@ -16,8 +16,8 @@ impl Parser {
     pub fn parseUsingNamespaceDeclaration(
         &mut self,
         lexpos: &mut StateBufferedLexer,
-        attr: &[&'static AstAttribute],
-    ) -> Vec<&'static AstDecl> {
+        attr: &[AstAttribute],
+    ) -> Vec<AstDecl> {
         let startlexpos = &mut lexpos.clone();
         let Some(usingTok) = self.lexer().getConsumeTokenIfEq(lexpos, Token::Using) else {
             // We already expected a using keyword. Reaching this is a bug.

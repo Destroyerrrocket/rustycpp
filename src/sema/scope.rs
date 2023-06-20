@@ -1,12 +1,12 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
-
+use crate::ast::common::*;
 /**
  * This is inspired by clang's [scope flags](https://github.com/llvm/llvm-project/blob/fec5ff2a3230ac9214891879e97b67dd6db833ed/clang/include/clang/Sema/Scope.h)
  * enum, so I don't have to check which scopes I'll need.
  */
 use bitflags::bitflags;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::{ast::Decl::AstDecl, utils::stringref::StringRef};
+use crate::utils::stringref::StringRef;
 bitflags! {
 /// `ScopeKind` - This bitflag is used to configure the kind of scope we have. Based on clang's ScopeFlags (comments from them).
 pub struct ScopeKind : u32 {
@@ -85,7 +85,7 @@ pub enum Child {
     /**
      * This is a child that is a declaration and can't have further children, like a variable.
      */
-    Decl(&'static AstDecl),
+    Decl(AstDecl),
     /**
      * This is a child that can have further children, like a function, class, or namespace.
      */
@@ -100,9 +100,9 @@ impl Child {
         }
     }
 
-    pub fn getDecl(&self) -> &'static AstDecl {
+    pub fn getDecl(&self) -> AstDecl {
         match self {
-            Self::Decl(res) => res,
+            Self::Decl(res) => *res,
             Self::Scope(scope) => scope.borrow().causingDecl.unwrap(),
         }
     }
@@ -136,7 +136,7 @@ pub struct Scope {
      * This is the declaration that this scope is associated with.
      * For example, the causing declaration of a class scope is the class itself, of a function scope is a function, etc.
      */
-    pub causingDecl: Option<&'static AstDecl>,
+    pub causingDecl: Option<AstDecl>,
 
     // RESOLVED: Can we merge inlinedNamespaces and usingNamespaces into one vector?
     // No. Qualified name lookup in namespaces need to be able to distinguish between inlined and using namespaces.
@@ -183,7 +183,7 @@ impl Scope {
 
 #[allow(clippy::module_name_repetitions)]
 pub trait RefCellScope {
-    fn setCausingDecl(&self, decl: &'static AstDecl);
+    fn setCausingDecl(&self, decl: AstDecl);
     fn addNamelessChild(&self, child: Child);
     fn addChild(&self, name: StringRef, child: Child);
     fn addInlinedChild(&self, name: StringRef, child: ScopeRef);
@@ -194,7 +194,7 @@ pub trait RefCellScope {
 pub type ScopeRef = Rc<RefCell<Scope>>;
 
 impl RefCellScope for ScopeRef {
-    fn setCausingDecl(&self, decl: &'static AstDecl) {
+    fn setCausingDecl(&self, decl: AstDecl) {
         assert!(self.borrow().causingDecl.is_none());
         self.borrow_mut().causingDecl = Some(decl);
     }

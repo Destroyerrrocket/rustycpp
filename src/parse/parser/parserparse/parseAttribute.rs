@@ -1,10 +1,9 @@
+use crate::ast::common::AstAttributeStructNode;
+use crate::ast::common::{AstAttribute, AstAttributeCXX};
+use crate::parse::parser::parserparse::ParseMatched;
 use crate::utils::structs::TokPos;
 use crate::utils::structs::{CompileNote, FileTokPos};
 use crate::{ast, utils::stringref::StringRef};
-use crate::{
-    ast::Attribute::{AstAttribute, AstCXXAttribute},
-    parse::parser::parserparse::ParseMatched,
-};
 use crate::{
     fileTokPosMatchArm,
     lex::token::Token,
@@ -46,7 +45,7 @@ impl Parser {
     pub fn errorAttributes(&mut self, lexpos: &mut StateBufferedLexer) {
         while let (attr, ParseMatched::Matched) = self.optParseAttributeSpecifier(lexpos, false) {
             if let Some(attr) = attr {
-                self.actWrongAttributeLocation(&[&attr]);
+                self.actWrongAttributeLocation(&[attr]);
             }
         }
     }
@@ -61,14 +60,11 @@ impl Parser {
      * alignment-specifier:
      *  alignas ( ignore-balanced )
      */
-    pub fn parseAttributes(
-        &mut self,
-        lexpos: &mut StateBufferedLexer,
-    ) -> Vec<&'static AstAttribute> {
+    pub fn parseAttributes(&mut self, lexpos: &mut StateBufferedLexer) -> Vec<AstAttribute> {
         let mut attributes = vec![];
         while let (attr, ParseMatched::Matched) = self.optParseAttributeSpecifier(lexpos, false) {
             if let Some(attr) = attr {
-                attributes.push(&*self.alloc().alloc(attr));
+                attributes.push(attr);
             }
         }
         attributes
@@ -117,10 +113,12 @@ impl Parser {
                 };
                 let endParen = self.lexer().getWithOffsetSaturating(lexpos, -1); // Saturating not needed in theory, but just in case
                 return (
-                    Some(AstAttribute::new(
-                        ast::Attribute::Kind::AlignAs,
-                        SourceRange::newDoubleTok(start.unwrap(), endParen),
-                    )),
+                    Some(AstAttribute::AstAttribute(self.alloc().alloc(
+                        AstAttributeStructNode::new(
+                            ast::Attribute::Kind::AlignAs,
+                            SourceRange::newDoubleTok(start.unwrap(), endParen),
+                        ),
+                    ))),
                     ParseMatched::Matched,
                 );
             }
@@ -228,13 +226,15 @@ impl Parser {
             return None;
         }
         let attributes = self.alloc().alloc_slice_copy(attributes.as_slice());
-        Some(AstAttribute::new(
-            ast::Attribute::Kind::Cxx(attributes),
-            SourceRange::newDoubleTok(
-                self.lexer().getWithOffsetSaturating(lexpos, -2),
-                self.lexer().getWithOffsetSaturating(lexpos, -1),
+        Some(AstAttribute::from(self.alloc().alloc(
+            AstAttributeStructNode::new(
+                ast::Attribute::Kind::Cxx(attributes),
+                SourceRange::newDoubleTok(
+                    self.lexer().getWithOffsetSaturating(lexpos, -2),
+                    self.lexer().getWithOffsetSaturating(lexpos, -1),
+                ),
             ),
-        ))
+        )))
     }
 
     /**
@@ -256,7 +256,7 @@ impl Parser {
         &mut self,
         lexpos: &mut StateBufferedLexer,
         usingNamespace: &Option<(SourceRange, StringRef)>,
-    ) -> Option<AstCXXAttribute> {
+    ) -> Option<AstAttributeCXX> {
         let Some(nameAttr) = self.lexer().getConsumeTokenIfIdentifier(lexpos) else {
             return None;
         };

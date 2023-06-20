@@ -1,9 +1,12 @@
 use std::fmt::Display;
 
-use deriveMacros::{CommonAst, TypeAst};
+use deriveMacros::CommonAst;
 use strum_macros::EnumIter;
 
-use crate::ast::Type::BaseType;
+use crate::ast::{
+    common::{AstTypeBuiltinStructNode, AstTypeStructNode},
+    Type::{BaseType, TypeAst},
+};
 
 #[derive(EnumIter, Copy, Clone)]
 pub enum BuiltinTypeKind {
@@ -84,23 +87,37 @@ impl Display for BuiltinTypeKind {
     }
 }
 
-#[derive(CommonAst, TypeAst)]
-pub struct BuiltinType {
-    base: BaseType,
+#[derive(CommonAst)]
+pub struct AstTypeBuiltinStruct {
     #[AstToString]
     kindType: BuiltinTypeKind,
 }
 
-impl Display for BuiltinType {
+impl Display for AstTypeBuiltinStruct {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.kindType)
     }
 }
 
-impl BuiltinType {
+impl AstTypeBuiltinStruct {
     pub const fn new(kindType: BuiltinTypeKind) -> Self {
+        Self { kindType }
+    }
+}
+
+impl AstTypeBuiltinStructNode {
+    pub fn new(kindType: BuiltinTypeKind) -> Self {
+        Self {
+            base: AstTypeBuiltinStruct::new(kindType),
+            parent: AstTypeStructNode::new(),
+        }
+    }
+}
+
+impl TypeAst for &AstTypeBuiltinStructNode {
+    fn getBaseType(&self) -> BaseType {
         #[allow(clippy::match_same_arms)]
-        let (size, align) = match kindType {
+        let (size, align) = match self.base.kindType {
             BuiltinTypeKind::Void => (0, 0),
             BuiltinTypeKind::VoidPtr => (8, 8),
             BuiltinTypeKind::Bool => (1, 1),
@@ -136,9 +153,10 @@ impl BuiltinType {
             BuiltinTypeKind::DecltypeAuto => (0, 0),
             BuiltinTypeKind::Unknown => (0, 0),
         };
-        Self {
-            base: BaseType::new(size, align),
-            kindType,
-        }
+        BaseType { size, align }
+    }
+
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.base.fmt(f)
     }
 }

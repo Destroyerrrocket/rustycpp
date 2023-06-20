@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Attribute::AstAttribute, Decl::AstDecl},
+    ast::common::*,
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,
     utils::structs::{CompileError, CompileMsgImpl, SourceRange},
@@ -34,8 +34,8 @@ impl Parser {
     pub fn parseDeclaration(
         &mut self,
         lexpos: &mut StateBufferedLexer,
-        attr: &[&'static AstAttribute],
-    ) -> Vec<&'static AstDecl> {
+        attr: &[AstAttribute],
+    ) -> Vec<AstDecl> {
         let tok = self.lexer().get(lexpos);
         if tok.is_none() {
             let posErr = self.lexer().getWithOffsetSaturating(lexpos, 0);

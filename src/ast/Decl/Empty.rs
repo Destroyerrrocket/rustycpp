@@ -1,28 +1,25 @@
-use deriveMacros::{CommonAst, DeclAst};
+use crate::ast::common::AstAttribute;
+use crate::ast::common::AstDeclEmptyStructNode;
+use crate::sema::scope::ScopeRef;
+use crate::utils::structs::SourceRange;
+use crate::Base;
+use crate::Parent;
+use deriveMacros::CommonAst;
 
-use crate::{
-    ast::{Attribute::AstAttribute, Decl::BaseDecl},
-    sema::scope::ScopeRef,
-    utils::structs::SourceRange,
-};
+#[derive(CommonAst)]
+pub struct AstDeclEmptyStruct;
 
-#[derive(CommonAst, DeclAst)]
-pub struct AstEmptyDecl {
-    base: BaseDecl,
-    #[DeclAttributes]
-    #[AstChildSlice]
-    attrs: &'static [&'static AstAttribute],
+impl AstDeclEmptyStruct {
+    pub fn new() -> Self {
+        Self {}
+    }
 }
 
-impl AstEmptyDecl {
-    pub fn new(
-        sourceRange: SourceRange,
-        scope: ScopeRef,
-        attrs: &'static [&'static AstAttribute],
-    ) -> Self {
+impl AstDeclEmptyStructNode {
+    pub fn new(sourceRange: SourceRange, scope: ScopeRef, attrs: &'static [AstAttribute]) -> Self {
         Self {
-            base: BaseDecl::new(sourceRange, scope),
-            attrs,
+            parent: <Parent!()>::new(sourceRange, scope, attrs),
+            base: <Base!()>::new(),
         }
     }
 }

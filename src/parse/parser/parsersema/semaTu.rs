@@ -1,5 +1,5 @@
 use crate::{
-    ast::Decl::AstDecl,
+    ast::common::*,
     parse::parser::ModuleImportState,
     utils::structs::{CompileError, CompileMsgImpl, SourceRange},
 };
@@ -107,7 +107,7 @@ impl Parser {
         }
     }
 
-    pub fn actOnTopLevelDecl(&mut self, decl: &Vec<&'static AstDecl>) {
+    pub fn actOnTopLevelDecl(&mut self, decl: &Vec<AstDecl>) {
         if !decl.is_empty() {
             self.moduleImportState = match self.moduleImportState {
                 ModuleImportState::GlobalSection => ModuleImportState::GlobalSection,

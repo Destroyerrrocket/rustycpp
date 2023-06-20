@@ -1,34 +1,41 @@
+use crate::ast::common::AstTuStructNode;
 use std::rc::Rc;
 
 use deriveMacros::CommonAst;
 
 use crate::{
-    ast::{Decl::AstDecl, Type::TypeDict},
+    ast::{common, Type::TypeDict},
     utils::unsafeallocator::UnsafeAllocator,
+    Base, Parent,
 };
 
 #[derive(Clone, CommonAst)]
-pub struct AstTu {
+pub struct AstTuStruct {
     #[AstChildSlice]
-    globalDecl: &'static [&'static AstDecl],
+    globalDecl: &'static [common::AstDecl],
     typeDict: TypeDict,
     alloc: Rc<UnsafeAllocator>,
 }
 
 #[allow(clippy::non_send_fields_in_send_ty)]
-unsafe impl Send for AstTu {}
+unsafe impl Send for AstTuStruct {}
 
-impl AstTu {
-    pub fn new(
-        alloc: Rc<UnsafeAllocator>,
-        typeDict: TypeDict,
-        global: &[&'static AstDecl],
-    ) -> Self {
+impl AstTuStruct {
+    pub fn new(alloc: Rc<UnsafeAllocator>, typeDict: TypeDict, global: &[common::AstDecl]) -> Self {
         let globalDecl = alloc.alloc().alloc_slice_clone(global);
         Self {
             globalDecl,
             typeDict,
             alloc,
+        }
+    }
+}
+
+impl AstTuStructNode {
+    pub fn new(alloc: Rc<UnsafeAllocator>, typeDict: TypeDict, global: &[common::AstDecl]) -> Self {
+        Self {
+            parent: <Parent!()>::new(),
+            base: <Base!()>::new(alloc, typeDict, global),
         }
     }
 }
