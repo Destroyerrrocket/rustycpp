@@ -95,6 +95,7 @@ fn generatorCommon(parents: &Vec<&Class>, class: &Class) -> String {
 }
 
 #[must_use]
+#[allow(clippy::module_name_repetitions)]
 pub fn getAST() -> Class {
     absCustom(
         "AstNode",

@@ -56,12 +56,10 @@ thread_local! {
 
 fn getMapOfNameToClassInfo() -> HashMap<String, ClassInfo> {
     let mut map = HashMap::new();
-    let classes: &'static codegen::ClassRepresentation::Class = &CLASSARCH.with(|classes| {
-        let classes = unsafe { &*classes.get() };
-        classes
-    });
-    getMapOfNameToClassInfoRec(&mut Vec::new(), &classes, &mut map);
-    return map;
+    let classes: &'static codegen::ClassRepresentation::Class =
+        CLASSARCH.with(|classes| unsafe { &*classes.get() });
+    getMapOfNameToClassInfoRec(&mut Vec::new(), classes, &mut map);
+    map
 }
 
 fn patternGetIdent(pattern: &syn::Pat) -> Option<&Ident> {
@@ -145,16 +143,14 @@ pub fn impl_RustycppInheritanceConstructors(ast: &ItemImpl) -> TokenStream {
                         syn::FnArg::Typed(t) => {
                             let nameMaybe = patternGetIdent(&t.pat);
 
-                            if nameMaybe.is_none() {
+                            let Some(name) = nameMaybe else {
                                 let errMsg =
                                     "RustycppInheritanceConstructors does not support the argument "
                                         .to_string()
                                         + &t.to_token_stream().to_string();
                                 return Some(quote!(compile_error!(#errMsg)));
-                            } else {
-                                let name = nameMaybe.unwrap();
-                                Some(quote!(#name))
-                            }
+                            };
+                            Some(quote!(#name))
                         }
                     })
                     .collect::<Vec<_>>();
