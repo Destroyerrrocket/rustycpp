@@ -1,8 +1,9 @@
 use std::fmt::Display;
 
-use deriveMacros::CommonAst;
+use deriveMacros::{CommonAst, RustycppInheritanceConstructors};
 use strum_macros::EnumIter;
 
+use crate::ast::common::AstTypeBuiltin;
 use crate::ast::{
     common::{AstTypeBuiltinStructNode, AstTypeStructNode},
     Type::{BaseType, TypeAst},
@@ -105,6 +106,7 @@ impl AstTypeBuiltinStruct {
     }
 }
 
+#[RustycppInheritanceConstructors]
 impl AstTypeBuiltinStructNode {
     pub fn new(kindType: BuiltinTypeKind) -> Self {
         Self {

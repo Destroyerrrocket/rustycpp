@@ -48,18 +48,17 @@ impl Parser {
 
         Some(
             if matchedQualified.matched() {
-                self.alloc().alloc(
-                    AstAttributeCXXRustyCppCheckSymbolMatchTagStructNode::new_qualified(
-                        *number,
-                        *name,
-                        qualifiedNameSpecifier,
-                    ),
+                AstAttributeCXXRustyCppCheckSymbolMatchTag::new_qualified(
+                    self.alloc(),
+                    *number,
+                    *name,
+                    qualifiedNameSpecifier,
                 )
             } else {
-                self.alloc().alloc(
-                    AstAttributeCXXRustyCppCheckSymbolMatchTagStructNode::new_unqualified(
-                        *number, *name,
-                    ),
+                AstAttributeCXXRustyCppCheckSymbolMatchTag::new_unqualified(
+                    self.alloc(),
+                    *number,
+                    *name,
                 )
             }
             .into(),

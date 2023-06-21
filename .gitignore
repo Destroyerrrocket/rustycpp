@@ -5,3 +5,4 @@ Cargo.lock
 .vscode/*
 src/grammars/generated/*
 src/grammars/.antlr/*
+codegen/target

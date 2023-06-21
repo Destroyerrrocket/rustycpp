@@ -1,5 +1,4 @@
-use deriveMacros::CommonAst;
-
+use crate::ast::common::AstAttributeCXXRustyCppUnused;
 use crate::{
     ast::{
         common::AstAttributeCXXRustyCppUnusedStructNode,
@@ -8,6 +7,8 @@ use crate::{
     utils::stringref::ToStringRef,
     Base, Parent,
 };
+use deriveMacros::CommonAst;
+use deriveMacros::RustycppInheritanceConstructors;
 
 #[derive(Clone, Copy, CommonAst)]
 pub struct AstAttributeCXXRustyCppUnusedStruct;
@@ -31,6 +32,7 @@ impl CXXAttributeKindInfo for AstAttributeCXXRustyCppUnusedStruct {
 
 impl CXXAttribute for &AstAttributeCXXRustyCppUnusedStructNode {}
 
+#[RustycppInheritanceConstructors]
 impl AstAttributeCXXRustyCppUnusedStructNode {
     pub fn new() -> Self {
         Self {

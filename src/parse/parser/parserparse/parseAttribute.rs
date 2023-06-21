@@ -1,4 +1,3 @@
-use crate::ast::common::AstAttributeStructNode;
 use crate::ast::common::{AstAttribute, AstAttributeCXX};
 use crate::parse::parser::parserparse::ParseMatched;
 use crate::utils::structs::TokPos;
@@ -113,12 +112,11 @@ impl Parser {
                 };
                 let endParen = self.lexer().getWithOffsetSaturating(lexpos, -1); // Saturating not needed in theory, but just in case
                 return (
-                    Some(AstAttribute::AstAttribute(self.alloc().alloc(
-                        AstAttributeStructNode::new(
-                            ast::Attribute::Kind::AlignAs,
-                            SourceRange::newDoubleTok(start.unwrap(), endParen),
-                        ),
-                    ))),
+                    Some(AstAttribute::new(
+                        self.alloc(),
+                        ast::Attribute::Kind::AlignAs,
+                        SourceRange::newDoubleTok(start.unwrap(), endParen),
+                    )),
                     ParseMatched::Matched,
                 );
             }
@@ -226,15 +224,14 @@ impl Parser {
             return None;
         }
         let attributes = self.alloc().alloc_slice_copy(attributes.as_slice());
-        Some(AstAttribute::from(self.alloc().alloc(
-            AstAttributeStructNode::new(
-                ast::Attribute::Kind::Cxx(attributes),
-                SourceRange::newDoubleTok(
-                    self.lexer().getWithOffsetSaturating(lexpos, -2),
-                    self.lexer().getWithOffsetSaturating(lexpos, -1),
-                ),
+        Some(AstAttribute::new(
+            self.alloc(),
+            ast::Attribute::Kind::Cxx(attributes),
+            SourceRange::newDoubleTok(
+                self.lexer().getWithOffsetSaturating(lexpos, -2),
+                self.lexer().getWithOffsetSaturating(lexpos, -1),
             ),
-        )))
+        ))
     }
 
     /**

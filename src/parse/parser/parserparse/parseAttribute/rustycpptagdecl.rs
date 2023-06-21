@@ -26,10 +26,6 @@ impl Parser {
                 return None;
             };
 
-        Some(
-            self.alloc()
-                .alloc(AstAttributeCXXRustyCppTagDeclStructNode::new(*number))
-                .into(),
-        )
+        Some(AstAttributeCXXRustyCppTagDecl::new(self.alloc(), *number).into())
     }
 }

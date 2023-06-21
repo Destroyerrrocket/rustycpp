@@ -1,7 +1,7 @@
-use crate::{ast::common::AstAttributeCXXStructNode, Base, Parent};
+use crate::{ast::common::AstAttribute, ast::common::AstAttributeCXXStructNode, Base, Parent};
 use std::collections::HashMap;
 
-use deriveMacros::CommonAst;
+use deriveMacros::{CommonAst, RustycppInheritanceConstructors};
 use enum_dispatch::enum_dispatch;
 use lazy_static::lazy_static;
 
@@ -67,6 +67,7 @@ impl AstAttributeStruct {
     }
 }
 
+#[RustycppInheritanceConstructors]
 impl AstAttributeStructNode {
     pub fn getKind(&self) -> Kind {
         self.base.kind
@@ -125,6 +126,14 @@ impl AstAttributeCXXStructNode {
             parent: <Parent!()>::new(),
             base: Default::default(),
         }
+    }
+
+    // I'm leaving this here until I have a real case for using getDyn()
+    pub fn actOnAttributeDeclTestRemoveMePlease(
+        &'static self,
+        parser: &mut crate::parse::parser::Parser,
+    ) {
+        self.getDyn().actOnAttributeDecl(parser);
     }
 }
 

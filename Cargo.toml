@@ -34,7 +34,8 @@ strum = "0.24.1"
 strum_macros = "0.24.3"
 
 [build-dependencies]
-enum_dispatch = "0.3.11"
+codegen = {path = "./codegen"}
+
 
 
 [profile.release]

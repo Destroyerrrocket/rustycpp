@@ -1,15 +1,13 @@
 [package]
-name = "deriveMacros"
+name = "codegen"
+description = "A tool to generate tons of boilerplate code"
 version = "0.1.0"
 edition = "2021"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+keywords = []
+categories = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-proc-macro = true
-
 [dependencies]
-syn = "1.0"
-quote = "1.0"
-proc-macro2 = "1.0"
-codegen = { path = "../codegen" }

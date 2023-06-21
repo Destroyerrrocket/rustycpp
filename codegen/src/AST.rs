@@ -1,6 +1,6 @@
 use std::vec;
 
-use crate::codegen::ClassRepresentation::{Class, FuncCustomCodegen};
+use crate::ClassRepresentation::{Class, FuncCustomCodegen};
 
 const fn fin(name: &'static str) -> Class {
     Class {

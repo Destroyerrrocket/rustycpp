@@ -1,7 +1,8 @@
+use crate::ast::common::AstTu;
 use crate::ast::common::AstTuStructNode;
 use std::rc::Rc;
 
-use deriveMacros::CommonAst;
+use deriveMacros::{CommonAst, RustycppInheritanceConstructors};
 
 use crate::{
     ast::{common, Type::TypeDict},
@@ -31,6 +32,7 @@ impl AstTuStruct {
     }
 }
 
+#[RustycppInheritanceConstructors]
 impl AstTuStructNode {
     pub fn new(alloc: Rc<UnsafeAllocator>, typeDict: TypeDict, global: &[common::AstDecl]) -> Self {
         Self {

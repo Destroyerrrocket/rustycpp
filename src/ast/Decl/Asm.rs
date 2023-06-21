@@ -1,8 +1,10 @@
 use crate::ast::common::AstAttribute;
+use crate::ast::common::AstDeclAsm;
 use crate::Parent;
 use crate::{ast::common::AstDeclAsmStructNode, utils::structs::SourceRange};
 use crate::{sema::scope::ScopeRef, Base};
 use deriveMacros::CommonAst;
+use deriveMacros::RustycppInheritanceConstructors;
 
 use crate::utils::stringref::StringRef;
 
@@ -18,6 +20,7 @@ impl AstDeclAsmStruct {
     }
 }
 
+#[RustycppInheritanceConstructors]
 impl AstDeclAsmStructNode {
     pub fn new(
         sourceRange: SourceRange,

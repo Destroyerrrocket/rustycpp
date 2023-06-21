@@ -1,6 +1,7 @@
 use crate::Base;
 use crate::Parent;
 use deriveMacros::CommonAst;
+use deriveMacros::RustycppInheritanceConstructors;
 use std::cell::RefCell;
 
 use crate::{
@@ -69,6 +70,7 @@ impl AstDeclNamespaceStruct {
     }
 }
 
+#[RustycppInheritanceConstructors]
 impl AstDeclNamespaceStructNode {
     pub fn new(
         sourceRange: SourceRange,
@@ -84,8 +86,8 @@ impl AstDeclNamespaceStructNode {
         }
     }
 
-    pub fn addExtension(&self, extension: &'static AstDeclNamespaceStructNode) {
-        self.base.addExtension(extension);
+    pub fn addExtension(&self, extension: &AstDeclNamespace) {
+        self.base.addExtension(extension.getStatic());
     }
 
     pub fn setContents(&self, newContents: &'static [AstDecl]) {

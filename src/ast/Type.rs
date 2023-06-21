@@ -179,9 +179,7 @@ impl TypeDict {
 
     pub fn addBuiltinType(&mut self, t: BuiltinTypeKind) {
         assert!(t as usize == self.builtinTypes.len());
-        let ty: &'static AstTypeBuiltinStructNode =
-            self.alloc().alloc(AstTypeBuiltinStructNode::new(t));
-        self.builtinTypes.push(ty.into());
+        self.builtinTypes.push(AstTypeBuiltin::new(self.alloc(), t));
     }
 
     pub fn getBuiltinType(&self, t: BuiltinTypeKind) -> AstTypeBuiltin {

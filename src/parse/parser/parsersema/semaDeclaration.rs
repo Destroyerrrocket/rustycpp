@@ -1,4 +1,3 @@
-use crate::ast::Attribute::CXXAttribute;
 use crate::ast::{common::*, Attribute};
 use crate::{
     ast::NestedNameSpecifier::AstNestedNameSpecifier,
@@ -19,7 +18,7 @@ impl Parser {
         for a in attr {
             if let Attribute::Kind::Cxx(attrmembers) = a.getKind() {
                 for attrmember in attrmembers {
-                    (*attrmember).actOnAttributeDecl(self);
+                    (*attrmember).actOnAttributeDeclTestRemoveMePlease(self);
                 }
             } else {
                 self.errors.push(CompileError::fromSourceRange(
@@ -29,12 +28,13 @@ impl Parser {
                 continue;
             }
         }
-        let ast = AstDeclEmptyStructNode::new(
+        let ast = AstDeclEmpty::new(
+            self.alloc(),
             location,
             self.currentScope.clone(),
             self.alloc().alloc_slice_copy(attr),
         );
-        vec![self.alloc().alloc(ast).into()]
+        vec![ast.into()]
     }
 
     /**
@@ -46,13 +46,14 @@ impl Parser {
         location: SourceRange,
         asm: StringRef,
     ) -> Vec<AstDecl> {
-        let astAsm = AstDeclAsmStructNode::new(
+        let astAsm = AstDeclAsm::new(
+            self.alloc(),
             location,
             self.currentScope.clone(),
             self.alloc().alloc_slice_copy(attr),
             asm,
         );
-        vec![self.alloc().alloc(astAsm).into()]
+        vec![astAsm.into()]
     }
 
     /**
@@ -65,19 +66,17 @@ impl Parser {
         name: StringRef,
         locationName: SourceRange,
     ) -> Vec<AstDecl> {
-        let createNamespace =
-            |parser: &mut Self, scope: ScopeRef| -> &'static AstDeclNamespaceStructNode {
-                let astNamespace = AstDeclNamespaceStructNode::new(
-                    locationName,
-                    scope,
-                    parser.alloc().alloc_slice_copy(attr),
-                    name,
-                    isInline,
-                    parser.currentScope.clone(),
-                );
-
-                return parser.alloc().alloc(astNamespace);
-            };
+        let createNamespace = |parser: &mut Self, scope: ScopeRef| -> AstDeclNamespace {
+            return AstDeclNamespace::new(
+                parser.alloc(),
+                locationName,
+                scope,
+                parser.alloc().alloc_slice_copy(attr),
+                name,
+                isInline,
+                parser.currentScope.clone(),
+            );
+        };
         let possibleOriginalDecl = self.namespaceExtendableLookup(name);
 
         if let Some(originalDecl) = possibleOriginalDecl {
@@ -89,7 +88,7 @@ impl Parser {
                 ));
             }
             let astNamespaceDecl = createNamespace(self, originalDecl.clone());
-            causingDecl.addExtension(astNamespaceDecl);
+            causingDecl.addExtension(&astNamespaceDecl);
             self.currentScope = originalDecl.clone();
             return vec![astNamespaceDecl.into()];
         }
@@ -136,8 +135,8 @@ impl Parser {
         let enumScope = Scope::new(ScopeKind::ENUM | ScopeKind::CAN_DECL);
 
         let astEnum =
-            AstDeclCustomRustyCppEnumStructNode::new(location, enumScope.clone(), attrs, name);
-        let astEnumDecl = self.alloc().alloc(astEnum).into();
+            AstDeclCustomRustyCppEnum::new(self.alloc(), location, enumScope.clone(), attrs, name);
+        let astEnumDecl = astEnum.into();
         enumScope.setCausingDecl(astEnumDecl);
 
         self.currentScope
@@ -185,15 +184,14 @@ impl Parser {
         };
         self.currentScope.addUsingNamespace(result.clone());
         let attr = self.alloc().alloc_slice_copy(attr);
-        vec![self
-            .alloc()
-            .alloc(AstDeclUsingNamespaceStructNode::new(
-                location,
-                result,
-                attr,
-                name,
-                nestedNameSpecifier,
-            ))
-            .into()]
+        vec![AstDeclUsingNamespace::new(
+            self.alloc(),
+            location,
+            result,
+            attr,
+            name,
+            nestedNameSpecifier,
+        )
+        .into()]
     }
 }

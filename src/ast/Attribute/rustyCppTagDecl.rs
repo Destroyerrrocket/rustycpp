@@ -1,4 +1,5 @@
-use deriveMacros::CommonAst;
+use crate::ast::common::AstAttributeCXXRustyCppTagDecl;
+use deriveMacros::{CommonAst, RustycppInheritanceConstructors};
 
 use crate::{
     ast::{
@@ -34,6 +35,7 @@ impl CXXAttributeKindInfo for AstAttributeCXXRustyCppTagDeclStruct {
 
 impl CXXAttribute for &AstAttributeCXXRustyCppTagDeclStructNode {}
 
+#[RustycppInheritanceConstructors]
 impl AstAttributeCXXRustyCppTagDeclStructNode {
     pub fn getNumber(&self) -> FileTokPos<Token> {
         self.base.number

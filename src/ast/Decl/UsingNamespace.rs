@@ -1,12 +1,13 @@
 use crate::ast::common::AstAttribute;
+use crate::ast::common::AstDeclUsingNamespace;
 use crate::ast::common::AstDeclUsingNamespaceStructNode;
 use crate::sema::scope::ScopeRef;
 use crate::utils::structs::SourceRange;
 use crate::Base;
 use crate::Parent;
-use deriveMacros::CommonAst;
-
 use crate::{ast::NestedNameSpecifier::AstNestedNameSpecifier, utils::stringref::StringRef};
+use deriveMacros::CommonAst;
+use deriveMacros::RustycppInheritanceConstructors;
 
 #[derive(CommonAst)]
 pub struct AstDeclUsingNamespaceStruct {
@@ -25,6 +26,7 @@ impl AstDeclUsingNamespaceStruct {
     }
 }
 
+#[RustycppInheritanceConstructors]
 impl AstDeclUsingNamespaceStructNode {
     pub fn new(
         sourceRange: SourceRange,

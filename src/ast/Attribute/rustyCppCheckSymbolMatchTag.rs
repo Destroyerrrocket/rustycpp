@@ -1,6 +1,6 @@
 use crate::ast::common::{
-    AstAttribute, AstAttributeCXX, AstAttributeCXXRustyCppCheckSymbolMatchTagStructNode,
-    AstAttributeCXXRustyCppTagDecl,
+    AstAttribute, AstAttributeCXX, AstAttributeCXXRustyCppCheckSymbolMatchTag,
+    AstAttributeCXXRustyCppCheckSymbolMatchTagStructNode, AstAttributeCXXRustyCppTagDecl,
 };
 use crate::Base;
 use crate::Parent;
@@ -8,7 +8,7 @@ use crate::{
     ast::NestedNameSpecifier::AstNestedNameSpecifier, parse::parser::Parser,
     utils::structs::CompileNote,
 };
-use deriveMacros::CommonAst;
+use deriveMacros::{CommonAst, RustycppInheritanceConstructors};
 
 use crate::{
     ast::Attribute::{AtrributeKindInfo, CXXAttribute, CXXAttributeKindInfo},
@@ -51,6 +51,7 @@ impl AstAttributeCXXRustyCppCheckSymbolMatchTagStruct {
     }
 }
 
+#[RustycppInheritanceConstructors]
 impl AstAttributeCXXRustyCppCheckSymbolMatchTagStructNode {
     pub fn new_unqualified(numberOrFound: FileTokPos<Token>, name: FileTokPos<Token>) -> Self {
         Self {

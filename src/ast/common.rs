@@ -31,8 +31,9 @@ fn foo(d: AstDecl) {
 pub struct AstNodeStruct;
 
 impl AstNodeStructNode {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
+            finalType : Default::default(),
             base: AstNodeStruct,
         }
     }

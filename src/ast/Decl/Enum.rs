@@ -1,12 +1,13 @@
 use crate::ast::common::AstAttribute;
+use crate::ast::common::AstDeclCustomRustyCppEnum;
 use crate::ast::common::AstDeclCustomRustyCppEnumStructNode;
 use crate::sema::scope::ScopeRef;
+use crate::utils::stringref::StringRef;
 use crate::utils::structs::SourceRange;
 use crate::Base;
 use crate::Parent;
 use deriveMacros::CommonAst;
-
-use crate::utils::stringref::StringRef;
+use deriveMacros::RustycppInheritanceConstructors;
 
 #[derive(CommonAst)]
 pub struct AstDeclCustomRustyCppEnumStruct {
@@ -20,6 +21,7 @@ impl AstDeclCustomRustyCppEnumStruct {
     }
 }
 
+#[RustycppInheritanceConstructors]
 impl AstDeclCustomRustyCppEnumStructNode {
     pub fn new(
         sourceRange: SourceRange,

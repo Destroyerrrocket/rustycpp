@@ -31,14 +31,12 @@ impl Parser {
             }
         }
 
-        return self
-            .alloc()
-            .alloc(AstTuStructNode::new(
-                self.alloc.clone(),
-                self.typeDict.clone(),
-                totalDeclarations.as_slice(),
-            ))
-            .into();
+        return AstTu::new(
+            self.alloc(),
+            self.alloc.clone(),
+            self.typeDict.clone(),
+            totalDeclarations.as_slice(),
+        );
     }
 
     /**

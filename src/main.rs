@@ -3,6 +3,7 @@
 //! Please see the readme at [github](https://github.com/Destroyerrrocket/rustycpp)
 //! for more information.
 //!
+#![feature(const_refs_to_cell)]
 #![warn(
     missing_docs,
     clippy::all,
