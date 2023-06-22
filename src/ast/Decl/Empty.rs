@@ -11,7 +11,7 @@ use deriveMacros::{CommonAst, RustycppInheritanceConstructors};
 pub struct AstDeclEmptyStruct;
 
 impl AstDeclEmptyStruct {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 }

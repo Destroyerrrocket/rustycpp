@@ -1,5 +1,5 @@
 use crate::{
-    ast::common::*,
+    ast::common::{AstAttribute, AstDecl},
     fileTokPosMatchArm,
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,
@@ -81,6 +81,6 @@ impl Parser {
         let location = SourceRange::newDoubleTok(enumTok, nameTok);
         let fileTokPosMatchArm!(Token::Identifier(name)) = nameTok else {unreachable!()};
 
-        return self.actOnRustyCppEnumDefinition(*name, location, attr);
+        self.actOnRustyCppEnumDefinition(*name, location, attr)
     }
 }

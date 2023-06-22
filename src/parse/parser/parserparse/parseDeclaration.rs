@@ -1,5 +1,5 @@
 use crate::{
-    ast::common::*,
+    ast::common::{AstAttribute, AstDecl},
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,
     utils::structs::{CompileError, CompileMsgImpl, SourceRange},
@@ -191,14 +191,14 @@ impl Parser {
              */
             Token::Semicolon => {
                 self.lexer().next(lexpos);
-                return self.actOnEmptyDecl(attr, SourceRange::newSingleTok(tok));
+                self.actOnEmptyDecl(attr, SourceRange::newSingleTok(tok))
             }
             /**
              * asm-declaration:
              *     asm ( asm-argument-clause ) asm-operand-clause ;
              */
             Token::Asm => {
-                return self.parseAsmDeclaration(lexpos, attr);
+                self.parseAsmDeclaration(lexpos, attr)
             }
             /**
              * enum-declaration:

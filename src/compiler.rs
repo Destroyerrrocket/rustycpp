@@ -321,7 +321,7 @@ impl Compiler {
                         output.push_str(&err.to_string(&compilerState.compileFiles));
                         output.push('\n');
                     }
-                    output.push_str(&Parser::printStringTree(&ast));
+                    output.push_str(&Parser::printStringTree(ast));
                     output.push('\n');
 
                     print!("{output}");

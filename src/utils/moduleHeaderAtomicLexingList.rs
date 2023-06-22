@@ -29,7 +29,7 @@ impl std::fmt::Debug for ModuleHeaderAtomicLexingList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ModuleHeaderAtomicLexingList")
             .field("available", &self.available.lock().unwrap().len())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

@@ -2,7 +2,7 @@ use crate::utils::structs::FileTokPos;
 use crate::utils::structs::SourceRange;
 use crate::utils::structs::TokPos;
 use crate::{
-    ast::common::*,
+    ast::common::{AstDecl, AstTu},
     fileTokPosMatchArm,
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,

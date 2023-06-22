@@ -48,6 +48,7 @@ fn generateClassEnum(
 ) {
     output.push_str("#[derive(Clone, Copy)]\n");
 
+    output.push_str("#[allow(clippy::enum_variant_names)]");
     output.push_str("#[enum_dispatch(");
     for implementTrait in getAllTraitsToImplement(parents, class) {
         output.push_str(&format!("{implementTrait}, "));
@@ -105,7 +106,7 @@ fn generateStructNodes(
 
         output.push_str(&format!("impl {name}StructNode {{\n"));
         output.push_str(&format!(
-            "    pub fn internalSetFinType(&mut self, finalType: {name}FinalTypes) -> () {{self.finalType = finalType;}}\n",
+            "    pub fn internalSetFinType(&mut self, finalType: {name}FinalTypes) {{self.finalType = finalType;}}\n",
         ));
         output.push_str("}\n");
     } else {
@@ -183,6 +184,10 @@ fn generateFroms(
                     output.push_str(&format!(
                         "impl From<{dec} {name}StructNode> for {parentName} {{\n"
                     ));
+                    output.push_str(
+                        "    #[allow(unreachable_patterns, clippy::trivially_copy_pass_by_ref)]\n",
+                    );
+                    output.push_str("    #[inline]\n");
                     output.push_str(&format!(
                         "    fn from(value: {dec} {name}StructNode) -> Self {{\n"
                     ));
@@ -196,7 +201,10 @@ fn generateFroms(
             let mut tryFromFunc = |dec: &str| {
                 output.push_str(&format!("impl TryFrom<{dec}{parentName}> for {name} {{\n"));
                 output.push_str("    type Error = ();\n");
-                output.push_str("    #[allow(unreachable_patterns)]\n");
+                output.push_str(
+                    "    #[allow(unreachable_patterns, clippy::trivially_copy_pass_by_ref)]\n",
+                );
+                output.push_str("    #[inline]\n");
                 output.push_str(&format!(
                     "    fn try_from(value: {dec}{parentName}) -> Result<Self, Self::Error> {{\n"
                 ));
@@ -231,8 +239,10 @@ fn generateFroms(
             fromFunc("&'static mut");
 
             output.push_str(&format!("impl {name} {{\n"));
+            output.push_str("    #[inline]");
+            output.push_str("    #[allow(clippy::trivially_copy_pass_by_ref)]");
             output.push_str(&format!(
-                "    pub fn getStatic(&self) -> &'static {name}StructNode {{\n"
+                "    pub const fn getStatic(&self) -> &'static {name}StructNode {{\n"
             ));
             output.push_str(&format!("        let Self::{name}(node) = self;\n"));
             output.push_str("        node\n");
@@ -290,7 +300,7 @@ fn generateDerefs(
     output.push_str("    fn deref(&self) -> &Self::Target {\n");
     output.push_str("        match self {\n");
     for childName in childNames {
-        output.push_str(&format!("            {name}::{childName}(node) => node,\n"));
+        output.push_str(&format!("            Self::{childName}(node) => node,\n"));
     }
     output.push_str("        }\n");
     output.push_str("    }\n");
@@ -372,6 +382,7 @@ fn generateGetDyn(
         ));
     }
 
+    output.push_str("    #[allow(clippy::cast_ptr_alignment)]\n");
     output.push_str(&format!("    pub fn getDyn(&'static self) -> {name} {{\n"));
     output.push_str(&format!(
         "        let nodeParent: &'static {firstParent}StructNode = self;\n",
@@ -390,11 +401,15 @@ fn generateGetDyn(
             "            {firstParent}FinalTypes::{childName} => {{\n"
         ));
         output.push_str("                unsafe {\n");
+        output.push_str(
+            "                    #[allow(clippy::cast_possible_wrap, clippy::use_self)]\n",
+        );
         output.push_str(&format!("                    let realtype = addr_bytes.offset(-({childName}StructNode::OFFSET_{childName}StructNode_{firstParent}StructNode as isize)).cast::<{childName}StructNode>();\n"));
+        output.push_str("                    #[allow(clippy::use_self)]\n");
         output.push_str(&format!(
             "                    let realtype: &'static {childName}StructNode = &*realtype;\n"
         ));
-        output.push_str("                    return realtype.into();\n");
+        output.push_str("                    realtype.into()\n");
         output.push_str("                }}\n");
     }
     output.push_str("            _ => unreachable!(\"Could not match internal type tag to one of my types.\")\n");

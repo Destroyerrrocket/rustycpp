@@ -91,7 +91,7 @@ impl Debug for DefineAst {
             .field("param", &self.param)
             .field("variadic", &self.variadic)
             .field("replacement", &self.replacement)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 unsafe impl Send for DefineAst {}

@@ -92,7 +92,7 @@ impl DebugNode {
             + 1 // nl
     }
 
-    pub fn getChilds(&self) -> &Vec<DebugNode> {
+    pub const fn getChilds(&self) -> &Vec<Self> {
         &self.children
     }
 }

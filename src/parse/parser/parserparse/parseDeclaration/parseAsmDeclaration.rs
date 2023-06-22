@@ -1,5 +1,5 @@
 use crate::{
-    ast::common::*,
+    ast::common::{AstAttribute, AstDecl},
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,
     utils::structs::{CompileError, CompileMsgImpl, CompileWarning, SourceRange},
@@ -74,6 +74,6 @@ impl Parser {
             self.lexer().getWithOffsetSaturating(&startlexpos, 0),
             self.lexer().getWithOffsetSaturating(lexpos, -1),
         );
-        return self.actOnAsmDecl(attr, posAsm, content);
+        self.actOnAsmDecl(attr, posAsm, content)
     }
 }

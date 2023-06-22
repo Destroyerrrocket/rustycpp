@@ -33,7 +33,7 @@ pub struct AstNodeStruct;
 impl AstNodeStructNode {
     pub fn new() -> Self {
         Self {
-            finalType : Default::default(),
+            finalType: AstNodeFinalTypes::default(),
             base: AstNodeStruct,
         }
     }

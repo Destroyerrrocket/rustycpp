@@ -26,17 +26,22 @@ bitflags! {
 
 impl Display for MyFlags {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut written = false;
-        if self.contains(Self::INVALID_DECL) {
+        let written = if self.contains(Self::INVALID_DECL) {
             write!(f, "INVALID_DECL")?;
-            written = true;
-        }
-        if self.contains(Self::USED) {
+            true
+        } else {
+            false
+        };
+
+        let written = if self.contains(Self::USED) {
             if written {
                 write!(f, " | ")?;
             }
             write!(f, "USED")?;
-        }
+            true
+        } else {
+            written
+        };
         if self.contains(Self::REFERENCED) {
             if written {
                 write!(f, " | ")?;
@@ -76,7 +81,7 @@ impl AstDeclStructNode {
         }
     }
 
-    pub fn getAttributes(&self) -> &'static [AstAttribute] {
+    pub const fn getAttributes(&self) -> &'static [AstAttribute] {
         self.base.attrs
     }
 
@@ -84,11 +89,11 @@ impl AstDeclStructNode {
         self.base.scope.clone()
     }
 
-    pub fn getSourceRange(&self) -> SourceRange {
+    pub const fn getSourceRange(&self) -> SourceRange {
         self.base.sourceRange
     }
 
-    pub fn getFlags(&self) -> MyFlags {
+    pub const fn getFlags(&self) -> MyFlags {
         self.base.flags
     }
 }

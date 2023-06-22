@@ -1,5 +1,5 @@
 use crate::{
-    ast::common::*,
+    ast::common::{AstAttribute, AstDecl},
     fileTokPosMatchArm,
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,

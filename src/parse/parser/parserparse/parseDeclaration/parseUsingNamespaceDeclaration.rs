@@ -1,5 +1,5 @@
 use crate::{
-    ast::common::*,
+    ast::common::{AstAttribute, AstDecl},
     lex::token::Token,
     parse::{bufferedLexer::StateBufferedLexer, parser::parserparse::ParseMatched},
     utils::structs::{CompileError, CompileMsgImpl, SourceRange},

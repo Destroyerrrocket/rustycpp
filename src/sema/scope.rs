@@ -1,4 +1,4 @@
-use crate::ast::common::*;
+use crate::ast::common::AstDecl;
 /**
  * This is inspired by clang's [scope flags](https://github.com/llvm/llvm-project/blob/fec5ff2a3230ac9214891879e97b67dd6db833ed/clang/include/clang/Sema/Scope.h)
  * enum, so I don't have to check which scopes I'll need.

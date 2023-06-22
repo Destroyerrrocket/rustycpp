@@ -37,7 +37,7 @@ impl CXXAttribute for &AstAttributeCXXRustyCppTagDeclStructNode {}
 
 #[RustycppInheritanceConstructors]
 impl AstAttributeCXXRustyCppTagDeclStructNode {
-    pub fn getNumber(&self) -> FileTokPos<Token> {
+    pub const fn getNumber(&self) -> FileTokPos<Token> {
         self.base.number
     }
 

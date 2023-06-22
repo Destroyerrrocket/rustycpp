@@ -1,5 +1,8 @@
 use crate::{
-    ast::{common::*, Type::Builtin::BuiltinTypeKind},
+    ast::{
+        common::{AstType, AstTypeBuiltin, AstTypeStructNode},
+        Type::Builtin::BuiltinTypeKind,
+    },
     Parent,
 };
 use std::{fmt::Display, rc::Rc};

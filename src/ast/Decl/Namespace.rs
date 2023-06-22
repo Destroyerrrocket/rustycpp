@@ -5,7 +5,7 @@ use deriveMacros::RustycppInheritanceConstructors;
 use std::cell::RefCell;
 
 use crate::{
-    ast::common::*,
+    ast::common::{AstAttribute, AstDecl, AstDeclNamespace, AstDeclNamespaceStructNode},
     sema::scope::ScopeRef,
     utils::{stringref::StringRef, structs::SourceRange},
 };
@@ -86,7 +86,7 @@ impl AstDeclNamespaceStructNode {
         }
     }
 
-    pub fn addExtension(&self, extension: &AstDeclNamespace) {
+    pub fn addExtension(&self, extension: AstDeclNamespace) {
         self.base.addExtension(extension.getStatic());
     }
 

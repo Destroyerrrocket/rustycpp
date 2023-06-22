@@ -78,6 +78,7 @@ impl TypeAst for {}StructNode {{
 fn generatorCommon(parents: &Vec<&Class>, class: &Class) -> String {
     let gen = |dec: &str| {
         format!("impl CommonAst for {dec}{}StructNode {{\n", class.name)
+            + "    #[allow(clippy::let_and_return)]"
             + format!("   fn getDebugNode(&self) -> DebugNode {{\n").as_str()
             + format!("       let nodes = self.base.getDebugNode();\n").as_str()
             + if parents.is_empty() {

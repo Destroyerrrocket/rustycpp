@@ -15,7 +15,7 @@ pub struct AstDeclAsmStruct {
 }
 
 impl AstDeclAsmStruct {
-    pub fn new(asm: StringRef) -> Self {
+    pub const fn new(asm: StringRef) -> Self {
         Self { asm }
     }
 }

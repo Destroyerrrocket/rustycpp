@@ -16,7 +16,7 @@ pub struct AstDeclCustomRustyCppEnumStruct {
 }
 
 impl AstDeclCustomRustyCppEnumStruct {
-    pub fn new(name: StringRef) -> Self {
+    pub const fn new(name: StringRef) -> Self {
         Self { name }
     }
 }

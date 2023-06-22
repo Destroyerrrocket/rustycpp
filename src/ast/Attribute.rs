@@ -51,12 +51,7 @@ impl super::common::CommonAst for AstAttributeStruct {
                     "Kind: Alignas".to_string(),
                 )),
             Kind::Cxx(attrs) => crate::utils::debugnode::DebugNode::new("AstAttribute".to_string())
-                .add_children(
-                    attrs
-                        .iter()
-                        .map(|a: &AstAttributeCXX| CommonAst::getDebugNode(a))
-                        .collect(),
-                ),
+                .add_children(attrs.iter().map(CommonAst::getDebugNode).collect()),
         }
     }
 }
@@ -69,11 +64,11 @@ impl AstAttributeStruct {
 
 #[RustycppInheritanceConstructors]
 impl AstAttributeStructNode {
-    pub fn getKind(&self) -> Kind {
+    pub const fn getKind(&self) -> Kind {
         self.base.kind
     }
 
-    pub fn getSourceRange(&self) -> SourceRange {
+    pub const fn getSourceRange(&self) -> SourceRange {
         self.base.sourceRange
     }
 
@@ -124,7 +119,7 @@ impl AstAttributeCXXStructNode {
     pub fn new() -> Self {
         Self {
             parent: <Parent!()>::new(),
-            base: Default::default(),
+            base: <Base!()>::default(),
         }
     }
 

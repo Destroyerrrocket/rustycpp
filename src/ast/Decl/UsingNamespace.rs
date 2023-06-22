@@ -18,7 +18,10 @@ pub struct AstDeclUsingNamespaceStruct {
 }
 
 impl AstDeclUsingNamespaceStruct {
-    pub fn new(name: StringRef, nestedNameSpecifier: &'static [AstNestedNameSpecifier]) -> Self {
+    pub const fn new(
+        name: StringRef,
+        nestedNameSpecifier: &'static [AstNestedNameSpecifier],
+    ) -> Self {
         Self {
             name,
             nestedNameSpecifier,

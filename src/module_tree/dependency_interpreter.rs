@@ -287,6 +287,7 @@ pub fn generateNodes(
 
     let (mut generatedEmptyNodes, genNewArcTable) = generateEmptyNodes(translationUnitContent)?;
 
+    #[allow(clippy::needless_collect)]
     for module in generatedEmptyNodes.keys().copied().collect::<Vec<_>>() {
         // Check we have everything we need
         //

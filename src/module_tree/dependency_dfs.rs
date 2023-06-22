@@ -28,6 +28,7 @@ fn dfsLoops(tree: &mut ModuleTree) -> Result<(), Vec<CompileMsg>> {
     let mut stack = vec![];
     let mut leftToVisit = vec![];
 
+    #[allow(clippy::needless_collect)] /*Obscure borrow checker error otherwise*/
     for root in tree
         .roots
         .iter()

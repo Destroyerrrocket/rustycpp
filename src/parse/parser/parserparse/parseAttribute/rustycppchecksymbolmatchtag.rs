@@ -1,4 +1,4 @@
-use crate::ast::common::*;
+use crate::ast::common::{AstAttributeCXX, AstAttributeCXXRustyCppCheckSymbolMatchTag};
 use crate::{
     lex::token::Token,
     parse::bufferedLexer::StateBufferedLexer,

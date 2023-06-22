@@ -1,4 +1,10 @@
-use crate::ast::{common::*, Attribute};
+use crate::ast::{
+    common::{
+        AstAttribute, AstDecl, AstDeclAsm, AstDeclCustomRustyCppEnum, AstDeclEmpty,
+        AstDeclNamespace, AstDeclUsingNamespace,
+    },
+    Attribute,
+};
 use crate::{
     ast::NestedNameSpecifier::AstNestedNameSpecifier,
     sema::scope::{Child, RefCellScope, Scope, ScopeKind, ScopeRef},
@@ -88,8 +94,8 @@ impl Parser {
                 ));
             }
             let astNamespaceDecl = createNamespace(self, originalDecl.clone());
-            causingDecl.addExtension(&astNamespaceDecl);
-            self.currentScope = originalDecl.clone();
+            causingDecl.addExtension(astNamespaceDecl);
+            self.currentScope = originalDecl;
             return vec![astNamespaceDecl.into()];
         }
         let enumScope = Scope::new(ScopeKind::NAMESPACE | ScopeKind::CAN_DECL);

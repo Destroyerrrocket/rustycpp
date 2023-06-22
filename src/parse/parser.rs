@@ -90,7 +90,7 @@ impl Parser {
         (tu, self.errors.clone())
     }
 
-    pub fn printStringTree(ast: &AstTu) -> String {
+    pub fn printStringTree(ast: AstTu) -> String {
         ast.getDebugNode().to_string()
     }
 

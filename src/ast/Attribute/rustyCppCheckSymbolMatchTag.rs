@@ -160,7 +160,7 @@ impl CXXAttribute for AstAttributeCXXRustyCppCheckSymbolMatchTagStruct {
             ));
             parser.addError(CompileNote::fromSourceRange(
                 "Found decl is this one",
-                &&decls[0].getDecl().getSourceRange(),
+                &decls[0].getDecl().getSourceRange(),
             ));
         }
     }
