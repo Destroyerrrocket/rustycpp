@@ -9,9 +9,9 @@ use quote::{quote, ToTokens};
 
 mod RustycppInheritance;
 
-mod deriveCommonAst;
+mod DeriveCommonAst;
 
-use crate::deriveCommonAst::impl_CommonAst;
+use crate::DeriveCommonAst::impl_CommonAst;
 use crate::RustycppInheritance::impl_RustycppInheritanceConstructors;
 
 macro_rules! finalResult {
@@ -43,7 +43,7 @@ pub fn RustycppInheritanceConstructors(
 ) -> proc_macro::TokenStream {
     // Construct a representation of Rust code as a syntax tree
     // that we can manipulate
-    let ast: syn::ItemImpl = syn::parse::<syn::ItemImpl>(item).unwrap();
+    let ast: syn::ItemImpl = syn::parse(item).unwrap();
     // Build the trait implementation
     finalResult!(release impl_RustycppInheritanceConstructors(&ast))
 }

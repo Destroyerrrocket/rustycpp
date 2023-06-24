@@ -14,10 +14,10 @@ use std::{num::NonZeroUsize, sync::atomic::AtomicBool};
 
 use threadpool::ThreadPool;
 
-use crate::ModuleTree::generate::generateDependencyTree;
+use crate::ModuleTree::Generate::generateDependencyTree;
 use crate::ModuleTree::Structs::ModuleTree;
 use crate::ModuleTree::{
-    dependency_Parser::parseModuleMacroOp, dependency_iterator::DependencyIterator,
+    DependencyIterator::DependencyIterator, DependencyParser::parseModuleMacroOp,
 };
 use crate::Parse::Parser::Parser;
 use crate::Preprocessor::Preprocessor;

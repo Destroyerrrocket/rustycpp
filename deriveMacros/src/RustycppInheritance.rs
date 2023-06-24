@@ -173,14 +173,11 @@ pub fn impl_RustycppInheritanceConstructors(ast: &ItemImpl) -> TokenStream {
                 ourFunction.vis = syn::parse2(quote!(pub)).unwrap();
                 let funcName = &function.sig.ident;
                 ourFunction.block.stmts.push(
-                    syn::parse::<syn::Stmt>(
-                        quote!({
-                            let mut node = #name::#funcName(#(#args),*);
-                            node.internalSetFinType(#name::INTERNAL_FIN_TYPE_TAG);
-                            return allocator__rusycpp.alloc(node).into();
-                        })
-                        .into(),
-                    )
+                    syn::parse2::<syn::Stmt>(quote!({
+                        let mut node = #name::#funcName(#(#args),*);
+                        node.internalSetFinType(#name::INTERNAL_FIN_TYPE_TAG);
+                        return allocator__rusycpp.alloc(node).into();
+                    }))
                     .unwrap(),
                 );
 

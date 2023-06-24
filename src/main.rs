@@ -20,23 +20,22 @@
 )]
 #![allow(clippy::multiple_crate_versions, non_snake_case, dead_code)]
 
-mod ast;
-mod compiler;
-mod grammars;
-mod lex;
-mod module_tree;
-mod parse;
-mod preprocessor;
-mod sema;
-mod utils;
+mod Ast;
+mod Compiler;
+mod Grammars;
+mod Lex;
+mod ModuleTree;
+mod Parse;
+mod Preprocessor;
+mod Sema;
+mod Utils;
 
-mod test;
+mod Test;
 
 use clap::Parser;
-use compiler::Compiler;
-use utils::compilerstate::CompilerState;
-use utils::parameters::Parameters;
-use utils::structs::CompileMsg;
+use Utils::CompilerState::CompilerState;
+use Utils::Parameters::Parameters;
+use Utils::Structs::CompileMsg;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -64,7 +63,7 @@ fn execCompiler(
     parameters: Parameters,
     args: &Args,
 ) -> Result<(), (CompilerState, Vec<CompileMsg>)> {
-    let mut compiler = Compiler::new(parameters);
+    let mut compiler = Compiler::Compiler::new(parameters);
     if args.printDependencyTree {
         compiler.print_dependency_tree()
     } else if args.preprocess {
