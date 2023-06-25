@@ -48,7 +48,7 @@ fn generateClassEnum(
 ) {
     output.push_str("#[derive(Clone, Copy)]\n");
 
-    output.push_str("#[allow(clippy::enum_variant_names)]");
+    output.push_str("#[allow(clippy::enum_variant_names)]\n");
     output.push_str("#[enum_dispatch(");
     for implementTrait in getAllTraitsToImplement(parents, class) {
         output.push_str(&format!("{implementTrait}, "));

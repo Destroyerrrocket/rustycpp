@@ -7,11 +7,11 @@ use std::cell::UnsafeCell;
  * This is basically needed because otherwise the creation of the AST would be very annoying, as the lifetimes
  * would constantly be nagging me.
 */
-pub struct UnsafeAllocator {
+pub struct UnsafeAllocatorImpl {
     alloc: UnsafeCell<bumpalo::Bump>,
 }
 
-impl UnsafeAllocator {
+impl UnsafeAllocatorImpl {
     pub fn new() -> Self {
         Self {
             alloc: UnsafeCell::new(bumpalo::Bump::new()),
@@ -22,3 +22,11 @@ impl UnsafeAllocator {
         unsafe { UnsafeCell::get(&self.alloc).as_ref().unwrap_unchecked() }
     }
 }
+
+impl Default for UnsafeAllocatorImpl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+pub type UnsafeAllocator = Box<UnsafeAllocatorImpl>;

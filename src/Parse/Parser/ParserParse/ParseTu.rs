@@ -1,4 +1,3 @@
-use crate::Utils::Structs::FileTokPos;
 use crate::Utils::Structs::SourceRange;
 use crate::Utils::Structs::TokPos;
 use crate::{
@@ -8,6 +7,7 @@ use crate::{
     Parse::BufferedLexer::StateBufferedLexer,
     Utils::Structs::{CompileError, CompileMsgImpl},
 };
+use crate::{Sema::AstContext::AstContext, Utils::Structs::FileTokPos};
 
 use super::super::Parser;
 
@@ -31,10 +31,11 @@ impl Parser {
             }
         }
 
+        /*WARNING. INVALIDATING PARSER!!! DON'T USE THE PARSER AFTER THIS!*/
+        let tuAstContext = std::mem::replace(&mut self.astContext, AstContext::new());
         return AstTu::new(
-            self.alloc(),
-            self.alloc.clone(),
-            self.typeDict.clone(),
+            tuAstContext.alloc.alloc(),
+            tuAstContext,
             totalDeclarations.as_slice(),
         );
     }

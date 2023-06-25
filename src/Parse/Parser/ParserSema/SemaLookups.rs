@@ -31,7 +31,7 @@ impl Parser {
         Rule 2: If a using namespace directive is found, the members of the namespace are added to the lookup set always.
         Rule 3: If you're looking up an unqualified name for a function call, use the rules in 6.5.3. 6.5.2 does not apply.
         */
-        let scope = self.currentScope.borrow();
+        let scope = self.astContext.currentScope.borrow();
         /*
          * Rule 4 (basically the same) / Rule 5: Inside a namespace. Look at the current scope and all its
          * aliased/using namespaces, if not found, look at the parent scope,
@@ -39,7 +39,7 @@ impl Parser {
          */
         if scope.flags & ScopeKind::NAMESPACE == ScopeKind::NAMESPACE {
             let mut currVisitingScope =
-                unsafe { self.currentScope.try_borrow_unguarded() }.unwrap();
+                unsafe { self.astContext.currentScope.try_borrow_unguarded() }.unwrap();
             return loop {
                 let mut result =
                     Self::getChildsAndAliased(name, currVisitingScope, cond).peekable();
@@ -190,7 +190,7 @@ impl Parser {
      * appears
      */
     pub fn namespaceExtendableLookup(&self, name: StringRef) -> Option<ScopeRef> {
-        let currentScope = self.currentScope.borrow();
+        let currentScope = self.astContext.currentScope.borrow();
         let candidate = Self::getChildsAndOnlyInlined(name, &currentScope, |scope: &Child| {
             let Child::Scope(scope) = scope else {return false;};
             scope.borrow().flags == ScopeKind::NAMESPACE | ScopeKind::CAN_DECL

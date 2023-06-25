@@ -37,9 +37,17 @@ struct StringRefImpl {
     ptr: &'static str,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct StringRef {
     ptr: &'static StringRefImpl,
+}
+
+impl std::hash::Hash for StringRef {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let string: *const str = self.ptr.ptr;
+        let void: *const () = string.cast::<()>();
+        void.hash(state);
+    }
 }
 
 impl Add for StringRef {

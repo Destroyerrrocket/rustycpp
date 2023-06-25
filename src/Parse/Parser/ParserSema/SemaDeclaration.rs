@@ -37,7 +37,7 @@ impl Parser {
         let ast = AstDeclEmpty::new(
             self.alloc(),
             location,
-            self.currentScope.clone(),
+            self.astContext.currentScope.clone(),
             self.alloc().alloc_slice_copy(attr),
         );
         vec![ast.into()]
@@ -55,7 +55,7 @@ impl Parser {
         let astAsm = AstDeclAsm::new(
             self.alloc(),
             location,
-            self.currentScope.clone(),
+            self.astContext.currentScope.clone(),
             self.alloc().alloc_slice_copy(attr),
             asm,
         );
@@ -80,7 +80,7 @@ impl Parser {
                 parser.alloc().alloc_slice_copy(attr),
                 name,
                 isInline,
-                parser.currentScope.clone(),
+                parser.astContext.currentScope.clone(),
             );
         };
         let possibleOriginalDecl = self.namespaceExtendableLookup(name);
@@ -95,7 +95,7 @@ impl Parser {
             }
             let astNamespaceDecl = createNamespace(self, originalDecl.clone());
             causingDecl.addExtension(astNamespaceDecl);
-            self.currentScope = originalDecl;
+            self.astContext.currentScope = originalDecl;
             return vec![astNamespaceDecl.into()];
         }
         let enumScope = Scope::new(ScopeKind::NAMESPACE | ScopeKind::CAN_DECL);
@@ -103,12 +103,15 @@ impl Parser {
         enumScope.setCausingDecl(astNamespaceDecl.into());
 
         if isInline {
-            self.currentScope.addInlinedChild(name, enumScope.clone());
+            self.astContext
+                .currentScope
+                .addInlinedChild(name, enumScope.clone());
         } else {
-            self.currentScope
+            self.astContext
+                .currentScope
                 .addChild(name, Child::Scope(enumScope.clone()));
         }
-        self.currentScope = enumScope;
+        self.astContext.currentScope = enumScope;
         vec![astNamespaceDecl.into()]
     }
 
@@ -126,8 +129,14 @@ impl Parser {
         let contents = self.alloc().alloc_slice_copy(contents);
         namespaceDecl.setContents(contents);
 
-        let newCurrent = self.currentScope.borrow().parent.clone().unwrap();
-        self.currentScope = newCurrent;
+        let newCurrent = self
+            .astContext
+            .currentScope
+            .borrow()
+            .parent
+            .clone()
+            .unwrap();
+        self.astContext.currentScope = newCurrent;
     }
 
     pub fn actOnRustyCppEnumDefinition(
@@ -145,13 +154,20 @@ impl Parser {
         let astEnumDecl = astEnum.into();
         enumScope.setCausingDecl(astEnumDecl);
 
-        self.currentScope
+        self.astContext
+            .currentScope
             .addChild(name, Child::Scope(enumScope.clone()));
-        self.currentScope = enumScope;
+        self.astContext.currentScope = enumScope;
 
         // Imediately pop, for now.
-        let newCurrent = self.currentScope.borrow().parent.clone().unwrap();
-        self.currentScope = newCurrent;
+        let newCurrent = self
+            .astContext
+            .currentScope
+            .borrow()
+            .parent
+            .clone()
+            .unwrap();
+        self.astContext.currentScope = newCurrent;
         vec![astEnumDecl]
     }
 
@@ -188,7 +204,9 @@ impl Parser {
                 };
             result
         };
-        self.currentScope.addUsingNamespace(result.clone());
+        self.astContext
+            .currentScope
+            .addUsingNamespace(result.clone());
         let attr = self.alloc().alloc_slice_copy(attr);
         vec![AstDeclUsingNamespace::new(
             self.alloc(),

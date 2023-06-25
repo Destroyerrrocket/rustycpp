@@ -1,7 +1,5 @@
 use deriveMacros::CommonAst;
 
-use crate::Utils::DebugNode::DebugNode;
-
 use crate::Ast::Attribute::AstAttributeCXXStruct;
 use crate::Ast::Attribute::AstAttributeStruct;
 use crate::Ast::Attribute::CXXAttribute;
@@ -18,7 +16,13 @@ use crate::Ast::Tu::AstTuStruct;
 use crate::Ast::Type::AstTypeStruct;
 use crate::Ast::Type::BaseType;
 use crate::Ast::Type::Builtin::AstTypeBuiltinStruct;
+use crate::Ast::Type::Pointer::AstTypePointerStruct;
+use crate::Ast::Type::Reference::AstTypeReferenceStruct;
 use crate::Ast::Type::TypeAst;
+use crate::Utils::DebugNode::DebugNode;
+use crate::Utils::FoldingContainer::Foldable;
+
+use crate::Utils::FoldingContainer::FoldingNode;
 use std::fmt::Display;
 
 include!(concat!(env!("OUT_DIR"), "/hello.rs"));

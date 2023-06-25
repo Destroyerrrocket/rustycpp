@@ -6,6 +6,7 @@ pub mod Structs;
 pub mod CompilerState;
 pub mod DebugNode;
 pub mod FileMap;
+pub mod FoldingContainer;
 pub mod ModuleHeaderAtomicLexingList;
 pub mod NomLike;
 pub mod Parameters;

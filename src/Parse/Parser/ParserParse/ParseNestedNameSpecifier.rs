@@ -46,7 +46,7 @@ impl Parser {
                 resVec = vec![AstNestedNameSpecifier::new_scoped(
                     NestedNameSpecifier::Kind::Global,
                     SourceRange::newSingleTok(startingTok.unwrap()),
-                    self.rootScope.clone(),
+                    self.astContext.rootScope.clone(),
                 )];
                 self.lexer().next(lexpos);
             }

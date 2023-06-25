@@ -3,16 +3,22 @@ use std::fmt::Display;
 use deriveMacros::{CommonAst, RustycppInheritanceConstructors};
 use strum_macros::EnumIter;
 
-use crate::Ast::Common::AstTypeBuiltin;
-use crate::Ast::{
-    Common::{AstTypeBuiltinStructNode, AstTypeStructNode},
-    Type::{BaseType, TypeAst},
+use crate::{
+    Ast::Common::AstTypeBuiltin,
+    Base, Parent,
+    Utils::FoldingContainer::{FoldingNode, PushFoldingNode},
+};
+use crate::{
+    Ast::{
+        Common::AstTypeBuiltinStructNode,
+        Type::{BaseType, TypeAst},
+    },
+    Utils::FoldingContainer::Foldable,
 };
 
 #[derive(EnumIter, Copy, Clone)]
 pub enum BuiltinTypeKind {
     Void,
-    VoidPtr,
     Bool,
     Char,
     SChar,
@@ -51,7 +57,6 @@ impl Display for BuiltinTypeKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Void => write!(f, "void"),
-            Self::VoidPtr => write!(f, "void*"),
             Self::Bool => write!(f, "bool"),
             Self::Char => write!(f, "char"),
             Self::SChar => write!(f, "signed char"),
@@ -110,8 +115,8 @@ impl AstTypeBuiltinStruct {
 impl AstTypeBuiltinStructNode {
     pub fn new(kindType: BuiltinTypeKind) -> Self {
         Self {
-            base: AstTypeBuiltinStruct::new(kindType),
-            parent: AstTypeStructNode::new(),
+            base: <Base!()>::new(kindType),
+            parent: <Parent!()>::new(),
         }
     }
 }
@@ -121,7 +126,6 @@ impl TypeAst for &AstTypeBuiltinStructNode {
         #[allow(clippy::match_same_arms)]
         let (size, align) = match self.base.kindType {
             BuiltinTypeKind::Void => (0, 0),
-            BuiltinTypeKind::VoidPtr => (8, 8),
             BuiltinTypeKind::Bool => (1, 1),
             BuiltinTypeKind::Char => (1, 1),
             BuiltinTypeKind::SChar => (1, 1),
@@ -160,5 +164,11 @@ impl TypeAst for &AstTypeBuiltinStructNode {
 
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.base.fmt(f)
+    }
+}
+
+impl Foldable for &AstTypeBuiltinStructNode {
+    fn foldNode(&self, node: &mut FoldingNode) {
+        node.push(&(self.base.kindType as u8));
     }
 }

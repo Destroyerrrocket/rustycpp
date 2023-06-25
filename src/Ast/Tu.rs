@@ -1,43 +1,37 @@
 use crate::Ast::Common::AstTu;
 use crate::Ast::Common::AstTuStructNode;
-use std::rc::Rc;
+use crate::Sema::AstContext::AstContext;
 
 use deriveMacros::{CommonAst, RustycppInheritanceConstructors};
 
-use crate::{
-    Ast::{Common, Type::TypeDict},
-    Base, Parent,
-    Utils::UnsafeAllocator::UnsafeAllocator,
-};
+use crate::{Ast::Common, Base, Parent};
 
-#[derive(Clone, CommonAst)]
+#[derive(CommonAst)]
 pub struct AstTuStruct {
     #[AstChildSlice]
     globalDecl: &'static [Common::AstDecl],
-    typeDict: TypeDict,
-    alloc: Rc<UnsafeAllocator>,
+    astContext: AstContext,
 }
 
 #[allow(clippy::non_send_fields_in_send_ty)]
 unsafe impl Send for AstTuStruct {}
 
 impl AstTuStruct {
-    pub fn new(alloc: Rc<UnsafeAllocator>, typeDict: TypeDict, global: &[Common::AstDecl]) -> Self {
-        let globalDecl = alloc.alloc().alloc_slice_clone(global);
+    pub fn new(astContext: AstContext, global: &[Common::AstDecl]) -> Self {
+        let globalDecl = astContext.alloc.alloc().alloc_slice_clone(global);
         Self {
             globalDecl,
-            typeDict,
-            alloc,
+            astContext,
         }
     }
 }
 
 #[RustycppInheritanceConstructors]
 impl AstTuStructNode {
-    pub fn new(alloc: Rc<UnsafeAllocator>, typeDict: TypeDict, global: &[Common::AstDecl]) -> Self {
+    pub fn new(astContext: AstContext, global: &[Common::AstDecl]) -> Self {
         Self {
             parent: <Parent!()>::new(),
-            base: <Base!()>::new(alloc, typeDict, global),
+            base: <Base!()>::new(astContext, global),
         }
     }
 }

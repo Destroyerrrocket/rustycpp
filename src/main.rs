@@ -18,7 +18,12 @@
     clippy::empty_structs_with_brackets,
     //clippy::missing_docs_in_private_items
 )]
-#![allow(clippy::multiple_crate_versions, non_snake_case, dead_code)]
+#![allow(
+    clippy::multiple_crate_versions,
+    clippy::module_name_repetitions,
+    non_snake_case,
+    dead_code
+)]
 
 mod Ast;
 mod Compiler;

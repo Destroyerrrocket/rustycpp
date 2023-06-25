@@ -124,8 +124,12 @@ pub fn getAST() -> Class {
             ),
             absCustom(
                 "AstType",
-                vec![fin("AstTypeBuiltin")],
-                vec!["TypeAst"],
+                vec![
+                    fin("AstTypeBuiltin"),
+                    fin("AstTypePointer"),
+                    fin("AstTypeReference"),
+                ],
+                vec!["TypeAst", "Foldable"],
                 vec![&generatorType],
             ),
             fin("AstTu"),

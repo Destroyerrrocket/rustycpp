@@ -1,18 +1,16 @@
-use std::rc::Rc;
 use strum::IntoEnumIterator;
 
 use crate::{
     Ast::{
         Common::{AstTu, CommonAst},
-        Type::{Builtin::BuiltinTypeKind, TypeDict},
+        Type::Builtin::BuiltinTypeKind,
     },
     Compiler::TranslationUnit,
     Lex::Token::Token,
-    Sema::Scope::{Scope, ScopeRef},
+    Sema::AstContext::AstContext,
     Utils::{
         CompilerState::CompilerState,
         Structs::{CompileMsg, FileTokPos},
-        UnsafeAllocator::UnsafeAllocator,
     },
 };
 
@@ -45,13 +43,8 @@ pub struct Parser {
 
     moduleImportState: ModuleImportState,
 
-    rootScope: ScopeRef,
-    currentScope: ScopeRef,
-
     errors: Vec<CompileMsg>,
-
-    alloc: Rc<UnsafeAllocator>,
-    typeDict: TypeDict,
+    astContext: AstContext,
 }
 
 impl Parser {
@@ -61,26 +54,20 @@ impl Parser {
         compilerState: CompilerState,
     ) -> Self {
         let (lexer, lexerStart) = BufferedLexer::new(tokens);
-        let rootScope = Scope::new_root();
-        let alloc = Rc::new(UnsafeAllocator::new());
         Self {
             lexer,
             lexerStart,
             filePath,
             compilerState,
             moduleImportState: ModuleImportState::StartFile,
-            rootScope: rootScope.clone(),
-            currentScope: rootScope,
             errors: vec![],
-
-            typeDict: TypeDict::new(alloc.clone()),
-            alloc,
+            astContext: AstContext::new(),
         }
     }
 
     fn initBuiltinTypes(&mut self) {
         for ty in BuiltinTypeKind::iter() {
-            self.typeDict.addBuiltinType(ty);
+            self.astContext.typeDict.addBuiltinType(ty);
         }
     }
 
@@ -99,7 +86,7 @@ impl Parser {
     }
 
     pub fn alloc(&self) -> &'static bumpalo::Bump {
-        self.alloc.alloc()
+        self.astContext.alloc.alloc()
     }
 
     pub fn addError(&mut self, msg: CompileMsg) {

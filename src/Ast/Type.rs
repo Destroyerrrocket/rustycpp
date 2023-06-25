@@ -1,20 +1,17 @@
 use crate::{
-    Ast::{
-        Common::{AstType, AstTypeBuiltin, AstTypeStructNode},
-        Type::Builtin::BuiltinTypeKind,
-    },
+    Ast::Common::{AstType, AstTypeStructNode},
     Parent,
+    Utils::FoldingContainer::{FoldingNode, PushFoldingNode},
 };
-use std::{fmt::Display, rc::Rc};
+use std::fmt::Display;
 
 use bitflags::bitflags;
-use bumpalo::Bump;
 use deriveMacros::CommonAst;
 use enum_dispatch::enum_dispatch;
 
-use crate::Utils::UnsafeAllocator::UnsafeAllocator;
-
 pub mod Builtin;
+pub mod Pointer;
+pub mod Reference;
 
 #[derive(Clone, Copy, CommonAst)]
 pub struct AstTypeStruct;
@@ -69,7 +66,7 @@ impl Display for QualTypeFlags {
 }
 
 #[derive(CommonAst)]
-struct QualType {
+pub struct QualType {
     #[AstChild]
     unqualType: AstType,
     #[AstToString]
@@ -162,30 +159,9 @@ impl QualType {
     }
 }
 
-#[derive(Clone)]
-pub struct TypeDict {
-    builtinTypes: Vec<AstTypeBuiltin>,
-    alloc: Rc<UnsafeAllocator>,
-}
-
-impl TypeDict {
-    pub fn new(alloc: Rc<UnsafeAllocator>) -> Self {
-        Self {
-            builtinTypes: Vec::new(),
-            alloc,
-        }
-    }
-
-    fn alloc(&self) -> &'static Bump {
-        self.alloc.alloc()
-    }
-
-    pub fn addBuiltinType(&mut self, t: BuiltinTypeKind) {
-        assert!(t as usize == self.builtinTypes.len());
-        self.builtinTypes.push(AstTypeBuiltin::new(self.alloc(), t));
-    }
-
-    pub fn getBuiltinType(&self, t: BuiltinTypeKind) -> AstTypeBuiltin {
-        self.builtinTypes[t as usize]
+impl crate::Utils::FoldingContainer::Foldable for QualType {
+    fn foldNode(&self, node: &mut FoldingNode) {
+        node.push(&self.flags.bits);
+        self.unqualType.foldNode(node);
     }
 }
